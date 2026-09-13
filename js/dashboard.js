@@ -1698,23 +1698,12 @@ function renderCardNonFinancials(data) {
 function financialsKPITable(f, isCredit) {
   const rows = [];
   if (isCredit) {
-    rows.push({ kpi: "Credit-Card CIF", value: formatNumber(f.cif) });
-    rows.push({ kpi: "Credit-Card AIF", value: formatNumber(f.aif) });
+    rows.push({ kpi: "Credit-Card CIF", value: formatNumber(f.cif, 0) });
+    rows.push({ kpi: "Credit-Card AIF", value: formatNumber(f.aif, 0) });
   }
-  rows.push({ kpi: "Current-Month Spend", value: formatCurrency(f.spendCurrent) });
-  rows.push({ kpi: "Previous-Month Spend", value: formatCurrency(f.spendPrevious) });
-  rows.push({ kpi: "Month-on-Month Change", value: calculateComparisons(f.spendCurrent, f.spendPrevious, true).html });
-  rows.push({ kpi: "Annual-Fee Income", value: formatCurrency(f.annualFeeIncome) });
-  rows.push({ kpi: "Domestic Transaction Count", value: formatNumber(f.domesticTxnCount) });
-  rows.push({ kpi: "Domestic Transaction Amount", value: formatCurrency(f.domesticTxnAmount) });
-  rows.push({ kpi: "International Transaction Count", value: formatNumber(f.intlTxnCount) });
-  rows.push({ kpi: "International Transaction Amount", value: formatCurrency(f.intlTxnAmount) });
-  if (isCredit) rows.push({ kpi: "OIF Earned (International Txns)", value: formatCurrency(f.oifIncome) });
-  else rows.push({ kpi: "OIF Income", value: formatCurrency(f.oifIncome) });
-  rows.push({ kpi: "Domestic Interchange Income", value: formatCurrency(f.domesticInterchange) });
-  rows.push({ kpi: "International Interchange Income", value: formatCurrency(f.intlInterchange) });
-  if (f.mdrIncome) rows.push({ kpi: "MDR Income", value: formatCurrency(f.mdrIncome) });
-  if (f.fxIncome) rows.push({ kpi: "FX Income", value: formatCurrency(f.fxIncome) });
+  rows.push({ kpi: "Domestic Transaction Count", value: formatNumber(f.domesticTxnCount, 0) });
+  rows.push({ kpi: "International Transaction Count", value: formatNumber(f.intlTxnCount, 0) });
+  rows.push({ kpi: "Total Transaction Count", value: formatNumber((f.domesticTxnCount || 0) + (f.intlTxnCount || 0), 0) });
   return rows;
 }
 
@@ -1738,6 +1727,8 @@ function renderCardFinancials(data) {
     { item: "Credit Card Spend", current: c.spendCurrent, previous: c.spendPrevious },
     { item: "Debit Card Spend", current: d.spendCurrent, previous: d.spendPrevious },
     { item: "Total Card Spend", current: (c.spendCurrent || 0) + (d.spendCurrent || 0), previous: (c.spendPrevious || 0) + (d.spendPrevious || 0) },
+    { item: "Domestic Transaction Volume", current: (c.domesticTxnAmount || 0) + (d.domesticTxnAmount || 0), previous: null },
+    { item: "International Transaction Volume", current: (c.intlTxnAmount || 0) + (d.intlTxnAmount || 0), previous: null },
     { item: "Interchange Income (Domestic)", current: (c.domesticInterchange || 0) + (d.domesticInterchange || 0), previous: data.revenueComposition ? (data.revenueComposition.find(function(r){ return r.item.indexOf("Domestic") !== -1; }) || {}).previous : null },
     { item: "Interchange Income (International)", current: (c.intlInterchange || 0) + (d.intlInterchange || 0), previous: data.revenueComposition ? (data.revenueComposition.find(function(r){ return r.item.indexOf("International") !== -1; }) || {}).previous : null },
     { item: "Annual Fee Income", current: (c.annualFeeIncome || 0) + (d.annualFeeIncome || 0), previous: data.revenueComposition ? (data.revenueComposition.find(function(r){ return r.item.indexOf("Annual") !== -1; }) || {}).previous : null },
@@ -1776,11 +1767,11 @@ function renderCardFinancials(data) {
   root.appendChild(tabs);
 
   const creditPanel = el("div", { class: "subtab-panel active" });
-  const wrapC = buildTable(null, [{ key: "kpi", label: "KPI" }, { key: "value", label: "Value" }], financialsKPITable(data.cardFinancials.credit, true));
+  const wrapC = buildTable(null, [{ key: "kpi", label: "Operational Metric" }, { key: "value", label: "Count / Status" }], financialsKPITable(data.cardFinancials.credit, true));
   creditPanel.appendChild(wrapC);
 
   const debitPanel = el("div", { class: "subtab-panel" });
-  const wrapD = buildTable(null, [{ key: "kpi", label: "KPI" }, { key: "value", label: "Value" }], financialsKPITable(data.cardFinancials.debit, false));
+  const wrapD = buildTable(null, [{ key: "kpi", label: "Operational Metric" }, { key: "value", label: "Count / Status" }], financialsKPITable(data.cardFinancials.debit, false));
   debitPanel.appendChild(wrapD);
 
   root.appendChild(creditPanel);

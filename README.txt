@@ -1,75 +1,34 @@
-ADC & CARDS OPERATIONS DASHBOARD — README
-==========================================
+﻿UBL ADC & CARDS OPERATIONS DASHBOARD
+=====================================
 
-WHAT THIS IS
+WHAT IT DOES
 ------------
-A fully offline, portable management dashboard for ADC Operations and Cards
-Operations, built with plain HTML, CSS and JavaScript. It runs directly in
-your web browser from the local folder — nothing is installed, no server is
-started, and no internet connection is used.
+A management-level analytics dashboard for ADC (Alternate Delivery Channels)
+and Cards Operations. It processes an Excel (.xlsx) data file and displays
+live KPIs, charts, alerts, and operational summaries across six pages:
 
-HOW TO START THE DASHBOARD
----------------------------
-1. Extract "Dashboard.zip" to any folder on your computer (Desktop, a USB
-   drive, a shared drive — anywhere you have write access is fine, though
-   write access is not actually required to run it).
-2. Open the extracted "Dashboard" folder.
-3. Double-click "Dashboard.bat".
-4. Your default web browser (Microsoft Edge or Google Chrome recommended)
-   will open the dashboard automatically. No command window stays open.
-5. Use the six menu options on the left to move between the independent
-   dashboard pages: Overview, ADC Operations, Card Non-Financials, Card
-   Financials, Chargeback, Reconciliation.
+  1. Overview          - High-level KPIs, ADC usage trends, NOSTRO positions,
+                         and system-wide alert notifications.
+  2. ADC Operations    - ATM/CDM/POS performance, channel uptime, fault trends,
+                         and replenishment status.
+  3. Card Non-Financials - Card lifecycle stats (CIF, AIF, issued, active, blocked,
+                           inactive) and operational metrics by product.
+  4. Card Financials   - Comprehensive revenue summary, transaction volumes,
+                         and product-level financial performance.
+  5. Chargeback        - Chargeback case tracking, aging buckets, and resolution status.
+  6. Reconciliation    - Nostro GL reconciliation, funding requirements, and buffers.
 
-LOADING YOUR OWN DATA
-----------------------
-6. Click "Load Excel File" in the header.
-7. Select the required workbook (.xlsx, .xls or .csv) from the standard
-   file picker. Browsers do not allow a webpage to read local files
-   automatically, so this manual step is required every time you want to
-   load a new file.
-8. Click "Refresh Dashboard" any time after updating the selected data if
-   you want to re-stamp the "Last refreshed" time without reloading a new
-   file.
-9. Click "Reset Data" to return to illustrative (sample) data at any time.
-
-WHAT YOU SEE BEFORE LOADING A FILE
-------------------------------------
-The dashboard opens with illustrative (sample) data so every page is
-immediately usable for demonstration or training. The header shows
-"Illustrative Data" until a real file is loaded, at which point it changes
-to "Excel Data Loaded" along with the file name and refresh time.
-
-IMPORTANT NOTE ABOUT .xlsx / .xls FILES
-------------------------------------------
-This dashboard uses a small third-party library (xlsx.min.js) to read
-.xlsx and .xls workbooks in the browser. A working placeholder file has
-been included at js/xlsx.min.js with step-by-step instructions for adding
-the real library (a one-time copy-paste, no installation). Until that file
-is replaced, .xlsx/.xls uploads will show an on-screen message explaining
-this — the rest of the dashboard, including illustrative data and .csv
-uploads, works immediately with no setup. See js/xlsx.min.js for details.
+HOW TO USE
+----------
+1. Double-click Dashboard.bat  OR  open Dashboard.html directly in Chrome/Edge.
+2. Click "Load Excel File" in the top-right and select your .xlsx data file.
+3. Use the date/filter controls to narrow the view as needed.
+4. Navigate pages using the top menu tabs.
+5. Click any alert toast (bottom-left) to jump to the relevant page.
+6. Click "Refresh" to reload data from the same file.
 
 REQUIREMENTS
 ------------
-- No installation is required.
-- No administrator access is required.
-- No internet connection is required.
-- No server, service or background process is started.
-- All data you load stays on your local computer for the duration of the
-  browser session only; nothing is uploaded, transmitted, or written to
-  disk by the dashboard itself.
-- The folder is fully portable — you can move, rename, copy to a USB
-  drive, or run it from any path (including paths with spaces).
-
-TROUBLESHOOTING
-----------------
-- "No supported data sheets were found": the selected file does not match
-  any of the expected sheet names (see data/README.txt for the full list
-  and accepted naming variations).
-- A page shows "No data available" for one section: the corresponding
-  sheet was missing from your workbook. Every other page and section
-  keeps working normally.
-- Nothing happens when double-clicking Dashboard.bat: right-click it and
-  choose "Open", or manually double-click Dashboard.html inside the same
-  folder.
+- Modern browser: Chrome 90+ or Edge 90+ recommended.
+- Excel file must follow the expected sheet/column structure.
+- No internet connection required - fully offline.
