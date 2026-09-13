@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADC & Cards Operations Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-top">
+    <div class="header-titles">
+      <div class="header-title-row">
+        <img src="UBL_logo.png" alt="UBL Logo" class="header-logo" onerror="this.onerror=null;this.src='images/UBL_logo.png';">
+        <h1>ADC &amp; Cards Operations Dashboard</h1>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span id="loadedFileName" class="loaded-file"></span>
+      <span id="lastRefreshed" class="last-refreshed">Last refreshed: &mdash;</span>
+      <button id="btnLoadExcel" class="btn btn-primary" type="button">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <span>Load Excel File</span>
+      </button>
+      <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" hidden>
+      <button id="btnRefresh" class="btn btn-secondary" type="button">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+        <span>Refresh Dashboard</span>
+      </button>
+      <button id="btnReset" class="btn btn-ghost" type="button">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+        <span>Reset Data</span>
+      </button>
+    </div>
+  </div>
+  <div id="globalMessage" class="global-message" role="status" aria-live="polite"></div>
+  <div class="header-filters" id="globalFilters">
+    <label class="filter-item">
+      <span>Reporting Date</span>
+      <input type="date" id="filterReportingDate">
+    </label>
+    <label class="filter-item">
+      <span>Reporting Month</span>
+      <input type="month" id="filterReportingMonth">
+    </label>
+    <label class="filter-item">
+      <span>Period</span>
+      <select id="filterPeriod">
+        <option value="today">Today</option>
+        <option value="mtd">MTD</option>
+      </select>
+    </label>
+    <label class="filter-item">
+      <span>Credit / Debit</span>
+      <select id="filterCreditDebit">
+        <option value="all">All</option>
+        <option value="credit">Credit</option>
+        <option value="debit">Debit</option>
+      </select>
+    </label>
+    <label class="filter-item">
+      <span>Domestic / Intl.</span>
+      <select id="filterDomIntl">
+        <option value="all">All</option>
+        <option value="domestic">Domestic</option>
+        <option value="international">International</option>
+      </select>
+    </label>
+    <label class="filter-item">
+      <span>Issuing / Acquiring</span>
+      <select id="filterIssAcq">
+        <option value="all">All</option>
+        <option value="issuing">Issuing</option>
+        <option value="acquiring">Acquiring</option>
+      </select>
+    </label>
+  </div>
+</header>
+
+<div class="app-body">
+  <nav class="side-nav" id="sideNav" aria-label="Dashboard pages">
+    <button class="nav-item" data-page="overview" type="button">
+      <span>Overview</span>
+      <svg class="nav-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
+    <button class="nav-item" data-page="adc-operations" type="button">
+      <span>ADC Operations</span>
+      <svg class="nav-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
+    <button class="nav-item" data-page="card-non-financials" type="button">
+      <span>Card Non-Financials</span>
+      <svg class="nav-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
+    <button class="nav-item" data-page="card-financials" type="button">
+      <span>Card Financials</span>
+      <svg class="nav-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
+    <button class="nav-item" data-page="chargeback" type="button">
+      <span>Chargeback</span>
+      <svg class="nav-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
+    <button class="nav-item" data-page="reconciliation" type="button">
+      <span>Reconciliation</span>
+      <svg class="nav-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
+  </nav>
+
+  <main class="page-content">
+
+    <section id="page-overview" class="page">
+      <div class="page-head">
+        <h2>Overview</h2>
+        <span class="period-label" data-period-label></span>
+      </div>
+      <div id="overview-body" class="page-body"></div>
+    </section>
+
+    <section id="page-adc-operations" class="page">
+      <div class="page-head">
+        <h2>ADC Operations</h2>
+        <span class="period-label" data-period-label></span>
+      </div>
+      <div id="adc-operations-body" class="page-body"></div>
+    </section>
+
+    <section id="page-card-non-financials" class="page">
+      <div class="page-head">
+        <h2>Card Non-Financials</h2>
+        <span class="period-label" data-period-label></span>
+      </div>
+      <div id="card-non-financials-body" class="page-body"></div>
+    </section>
+
+    <section id="page-card-financials" class="page">
+      <div class="page-head">
+        <h2>Card Financials</h2>
+        <span class="period-label" data-period-label></span>
+      </div>
+      <div id="card-financials-body" class="page-body"></div>
+    </section>
+
+    <section id="page-chargeback" class="page">
+      <div class="page-head">
+        <h2>Chargeback</h2>
+        <span class="period-label" data-period-label></span>
+      </div>
+      <div id="chargeback-body" class="page-body"></div>
+    </section>
+
+    <section id="page-reconciliation" class="page">
+      <div class="page-head">
+        <h2>Reconciliation</h2>
+        <span class="period-label" data-period-label></span>
+      </div>
+      <div id="reconciliation-body" class="page-body"></div>
+    </section>
+
+  </main>
+</div>
+
+<footer class="app-footer">
+  Data is processed locally in this browser session only. Nothing is uploaded, transmitted or stored on any server.
+</footer>
+
+<script src="js/xlsx.min.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>
