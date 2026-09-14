@@ -322,7 +322,7 @@ function generateIllustrativeData() {
       { product: "World Elite Card", count: 2650, prevMonth: 2500, fee: 35000 }
     ],
 
-    /* Card Financials data with full Current and Previous Month fields (No FX Income) */
+    /* Card Financials data with full Current and Previous Month fields */
     cardFinancials: {
       credit: {
         cif: 148600, cifPrevious: 142000,
@@ -440,8 +440,8 @@ function generateIllustrativeData() {
       ]
     },
     nostro: [
-      { currency: "USD", gl: "NOSTRO-USD-01", balance: 18600000, reportingDate: "" },
-      { currency: "AED", gl: "NOSTRO-AED-01", balance: 6200000, reportingDate: "" }
+      { currency: "USD", gl: "NOSTRO-USD", balance: 18600000, reportingDate: "" },
+      { currency: "AED", gl: "NOSTRO-AED", balance: 6200000, reportingDate: "" }
     ],
     rejected: {
       gl: "GL-60010", rejectedCount: 62, rejectedAmount: 8900000,
@@ -994,7 +994,7 @@ function applyFilters() {
 
 function periodLabelText() {
   const f = appState.filters || {};
-  const period = f.period === "mtd" ? "Month to Date" : "Today";
+  const period = f.period === "mtd" ? "Current Month" : "Today";
   const dateStr = f.reportingDate ? " \u2022 " + f.reportingDate : "";
   return period + dateStr;
 }
@@ -1274,25 +1274,55 @@ function renderOvAdcSummary(root, data) {
   const rows = [];
   if (data.atm) {
     const a = data.atm;
-    rows.push({ kpi: "ATM Withdrawals Count", today: formatNumber(a.withdrawalCountToday, 0), mtd: formatNumber(a.withdrawalCountMTD, 0), change: indicatorHTML(a.withdrawalCountToday, a.withdrawalCountYesterday, true, false) });
-    rows.push({ kpi: "ATM Withdrawal Amount", today: formatCurrency(a.withdrawalAmountToday), mtd: formatCurrency(a.withdrawalAmountMTD), change: indicatorHTML(a.withdrawalAmountToday, a.withdrawalAmountYesterday, true, false) });
-    rows.push({ kpi: "ATM Disputes Count",    today: formatNumber(a.disputesToday, 0),         mtd: formatNumber(a.disputesMTD, 0),         change: indicatorHTML(a.disputesToday, a.disputesMTD > 0 ? a.disputesMTD / 30 : null, false, false) });
-    rows.push({ kpi: "Cards Captured Count",  today: formatNumber(a.capturedCardsToday, 0),    mtd: formatNumber(a.capturedCardsMTD, 0),    change: "\u2014" });
+    const uptComp = formatUptimeComparison(a.uptimeToday, a.uptimeYesterday);
+    rows.push({
+      kpi: "ATM Success Rate",
+      today: uptComp.todayStr,
+      yesterday: uptComp.yesterdayStr,
+      change: uptComp.html,
+      mtd: formatPercentage(a.uptimeMTD)
+    });
   }
   if (data.raast) {
     const r = data.raast;
-    rows.push({ kpi: "RAAST Transaction Count", today: formatNumber(r.successCountToday, 0), mtd: formatNumber(r.successCountMTD, 0), change: indicatorHTML(r.successRateToday, r.successRateMTD, true, false) });
+    rows.push({
+      kpi: "RAAST Success Rate",
+      today: formatPercentage(r.successRateToday),
+      yesterday: formatPercentage(r.successRateYesterday),
+      change: calculateComparisons(r.successRateToday, r.successRateYesterday, true, false).html,
+      mtd: formatPercentage(r.successRateMTD)
+    });
+    rows.push({
+      kpi: "RAAST Transaction Count",
+      today: formatNumber(r.successCountToday, 0),
+      yesterday: formatNumber(r.successCountYesterday, 0),
+      change: calculateComparisons(r.successCountToday, r.successCountYesterday, true, false).html,
+      mtd: formatNumber(r.successCountMTD, 0)
+    });
   }
   if (data.ibft) {
     const i = data.ibft;
-    rows.push({ kpi: "IBFT Transaction Count",  today: formatNumber(i.successCountToday, 0),  mtd: formatNumber(i.successCountMTD, 0),  change: indicatorHTML(i.successRateToday, i.successRateMTD, true, false) });
+    rows.push({
+      kpi: "IBFT Success Rate",
+      today: formatPercentage(i.successRateToday),
+      yesterday: formatPercentage(i.successRateYesterday),
+      change: calculateComparisons(i.successRateToday, i.successRateYesterday, true, false).html,
+      mtd: formatPercentage(i.successRateMTD)
+    });
+    rows.push({
+      kpi: "IBFT Transaction Count",
+      today: formatNumber(i.successCountToday, 0),
+      yesterday: formatNumber(i.successCountYesterday, 0),
+      change: calculateComparisons(i.successCountToday, i.successCountYesterday, true, false).html,
+      mtd: formatNumber(i.successCountMTD, 0)
+    });
   }
 
   const wrap = el("div", { class: "ov-adc-table-wrap" });
   const table = el("table", { class: "ov-adc-table" });
   const thead = el("thead");
   const hr = el("tr");
-  ["KPI", "Today", "Current Month", "Change"].forEach(function (h, i) {
+  ["Metric", "Today", "Yesterday", "Change", "Current Month"].forEach(function (h, i) {
     hr.appendChild(el("th", { class: i > 0 ? "num" : "", text: h }));
   });
   thead.appendChild(hr);
@@ -1302,10 +1332,11 @@ function renderOvAdcSummary(root, data) {
     const tr = el("tr");
     tr.appendChild(el("td", { text: row.kpi }));
     tr.appendChild(el("td", { class: "num", text: row.today }));
-    tr.appendChild(el("td", { class: "num", text: row.mtd }));
+    tr.appendChild(el("td", { class: "num", text: row.yesterday }));
     const changeTd = el("td", { class: "num" });
     changeTd.innerHTML = row.change;
     tr.appendChild(changeTd);
+    tr.appendChild(el("td", { class: "num", text: row.mtd }));
     tbody.appendChild(tr);
   });
   table.appendChild(tbody);
@@ -1471,16 +1502,25 @@ function ovModuleCard(title, page, rows) {
 }
 
 function ovAdcRows(data) {
-  if (!data.atm) return null;
-  const a = data.atm;
-  const uptComp = formatUptimeComparison(a.uptimeToday, a.uptimeYesterday);
-  return [
-    ["ATM Uptime Today",        uptComp.todayStr + " (Yesterday: " + uptComp.yesterdayStr + ")"],
-    ["ATM Withdrawal Count",    formatNumber(a.withdrawalCountToday)],
-    ["ATM Withdrawal Amount",   formatCurrency(a.withdrawalAmountToday)],
-    ["RAAST Success Rate",      data.raast ? formatPercentage(data.raast.successRateToday)  : "N/A"],
-    ["IBFT Success Rate",       data.ibft  ? formatPercentage(data.ibft.successRateToday)   : "N/A"]
-  ];
+  const rows = [];
+  if (data.atm) {
+    const a = data.atm;
+    const uptComp = formatUptimeComparison(a.uptimeToday, a.uptimeYesterday);
+    rows.push(["ATM Success Rate", uptComp.todayStr + " (Yesterday: " + uptComp.yesterdayStr + " | " + uptComp.html + ")"]);
+  }
+  if (data.raast) {
+    const r = data.raast;
+    const rComp = calculateComparisons(r.successRateToday, r.successRateYesterday, true, false);
+    rows.push(["RAAST Success Rate", formatPercentage(r.successRateToday) + " (Yesterday: " + formatPercentage(r.successRateYesterday) + " | " + rComp.html + ")"]);
+    rows.push(["RAAST Txn Count", formatNumber(r.successCountToday) + " (MTD: " + formatNumber(r.successCountMTD) + ")"]);
+  }
+  if (data.ibft) {
+    const i = data.ibft;
+    const iComp = calculateComparisons(i.successRateToday, i.successRateYesterday, true, false);
+    rows.push(["IBFT Success Rate", formatPercentage(i.successRateToday) + " (Yesterday: " + formatPercentage(i.successRateYesterday) + " | " + iComp.html + ")"]);
+    rows.push(["IBFT Txn Count", formatNumber(i.successCountToday) + " (MTD: " + formatNumber(i.successCountMTD) + ")"]);
+  }
+  return rows;
 }
 
 function ovCardNFRows(data) {
@@ -1529,13 +1569,13 @@ function ovCbRows(data) {
 function ovReconRows(data) {
   if (!data.reconciliation) return null;
   const rec = data.reconciliation;
-  const usdBal = data.nostro ? (data.nostro.find(function(n){ return n.currency === "USD"; }) || {}).balance : null;
-  const aedBal = data.nostro ? (data.nostro.find(function(n){ return n.currency === "AED"; }) || {}).balance : null;
+  const recTxns = (rec.receivables || []).reduce(function (s, r) { return s + (r.txnCount || 0); }, 0);
+  const payTxns = (rec.payables || []).reduce(function (s, r) { return s + (r.txnCount || 0); }, 0);
   return [
-    ["Receivables > 30d Amount", formatCurrency(sumBy(rec.receivables, "amount"))],
-    ["Payables > 30d Amount",    formatCurrency(sumBy(rec.payables, "amount"))],
-    ["USD Available Balance",    usdBal !== null && usdBal !== undefined ? formatCurrency(usdBal, "USD") : "N/A"],
-    ["AED Available Balance",    aedBal !== null && aedBal !== undefined ? formatCurrency(aedBal, "AED") : "N/A"]
+    ["Receivables > 30d Amount",     formatCurrency(sumBy(rec.receivables, "amount"))],
+    ["Payables > 30d Amount",        formatCurrency(sumBy(rec.payables, "amount"))],
+    ["Receivables Open Items Count", formatNumber(recTxns)],
+    ["Payables Open Items Count",    formatNumber(payTxns)]
   ];
 }
 
@@ -1564,13 +1604,13 @@ function renderADCOperations(data) {
     grid.appendChild(kpiCard("ATM Uptime (Today vs Yesterday)", uptComp.todayStr + " (Today)", uptimeSubHTML));
 
     grid.appendChild(kpiCard("Withdrawal Transaction Count (Today)", formatNumber(a.withdrawalCountToday), calculateComparisons(a.withdrawalCountToday, a.withdrawalCountYesterday, true, false).html + " vs Yesterday"));
-    grid.appendChild(kpiCard("Withdrawal Transaction Count (Month to Date)", formatNumber(a.withdrawalCountMTD), calculateComparisons(a.withdrawalCountMTD, a.withdrawalCountPrevMTD, true, true).html + " vs Previous Month"));
+    grid.appendChild(kpiCard("Withdrawal Transaction Count (Current Month)", formatNumber(a.withdrawalCountMTD), calculateComparisons(a.withdrawalCountMTD, a.withdrawalCountPrevMTD, true, true).html + " vs Previous Month"));
     grid.appendChild(kpiCard("Withdrawal Transaction Amount (Today)", formatCurrency(a.withdrawalAmountToday), calculateComparisons(a.withdrawalAmountToday, a.withdrawalAmountYesterday, true, false).html + " vs Yesterday", fullValueTitle(a.withdrawalAmountToday, true)));
-    grid.appendChild(kpiCard("Withdrawal Transaction Amount (Month to Date)", formatCurrency(a.withdrawalAmountMTD), calculateComparisons(a.withdrawalAmountMTD, a.withdrawalAmountPrevMTD, true, true).html + " vs Previous Month", fullValueTitle(a.withdrawalAmountMTD, true)));
+    grid.appendChild(kpiCard("Withdrawal Transaction Amount (Current Month)", formatCurrency(a.withdrawalAmountMTD), calculateComparisons(a.withdrawalAmountMTD, a.withdrawalAmountPrevMTD, true, true).html + " vs Previous Month", fullValueTitle(a.withdrawalAmountMTD, true)));
     grid.appendChild(kpiCard("Failed ATM Transactions Count (Today)", formatNumber(a.failedTxnToday), calculateComparisons(a.failedTxnToday, a.failedTxnYesterday, false, false).html + " vs Yesterday"));
-    grid.appendChild(kpiCard("ATM Disputes / Claims Count (Month to Date)", formatNumber(a.disputesMTD)));
-    grid.appendChild(kpiCard("Cards Captured Count (Month to Date)", formatNumber(a.capturedCardsMTD)));
-    grid.appendChild(kpiCard("Cash-Retract Transactions Count (Month to Date)", formatNumber(a.retractTxnMTD)));
+    grid.appendChild(kpiCard("ATM Disputes / Claims Count (Current Month)", formatNumber(a.disputesMTD)));
+    grid.appendChild(kpiCard("Cards Captured Count (Current Month)", formatNumber(a.capturedCardsMTD)));
+    grid.appendChild(kpiCard("Cash-Retract Transactions Count (Current Month)", formatNumber(a.retractTxnMTD)));
     root.appendChild(grid);
 
     root.appendChild(sectionTitle("ATM Performance"));
@@ -1687,18 +1727,10 @@ function renderADCOperations(data) {
     root.appendChild(buildTable(null, adcThreeTableColumns, ibftRows));
 
     /* 3. IBFT Failure Reasons Table (Same Column Structure: Metric | Today | Yesterday | Change | Current Month) */
-    const failureCols = [
-      { key: "reason", label: "Failure Reason Category" },
-      { key: "today", label: "Today", numeric: true },
-      { key: "yesterday", label: "Yesterday", numeric: true },
-      { key: "change", label: "Change", numeric: true },
-      { key: "mtd", label: "Current Month", numeric: true }
-    ];
-
-    root.appendChild(buildTable("IBFT Failure Reasons", failureCols,
+    root.appendChild(buildTable("IBFT Failure Reasons", adcThreeTableColumns,
       (data.ibftFailures || []).map(function (f) {
         return {
-          reason: f.reason,
+          kpi: f.reason,
           today: formatNumber(f.today),
           yesterday: formatNumber(f.yesterday),
           change: calculateComparisons(f.today, f.yesterday, false, false).html,

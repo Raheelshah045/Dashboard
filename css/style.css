@@ -528,25 +528,30 @@ button, input, select {
   flex-wrap: wrap;
 }
 
-/* Indicators */
+/* Indicators — single pill style used across ALL tables and pages */
 .indicator {
-  font-weight: 700;
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: var(--radius-pill);
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  line-height: 1;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+  vertical-align: middle;
+  letter-spacing: 0.01em;
 }
 
-.indicator.up.positive, .indicator.down.positive {
+.indicator.up.positive,
+.indicator.down.positive {
   background: var(--positive-bg);
   color: var(--positive);
   border: 1px solid var(--positive-border);
 }
 
-.indicator.up.negative, .indicator.down.negative {
+.indicator.up.negative,
+.indicator.down.negative {
   background: var(--critical-bg);
   color: var(--critical);
   border: 1px solid var(--critical-border);
@@ -1218,18 +1223,22 @@ table.ov-adc-table tbody tr:hover { background: var(--ov-blue-xlight); }
 .ov-module-row {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: flex-start;
   padding: 6px var(--space-2);
   gap: var(--space-1);
   border-bottom: 1px dashed var(--border);
   font-size: 12px;
+  flex-wrap: wrap;
 }
 .ov-module-row:last-child { border-bottom: none; }
 .ov-module-row:hover { background: var(--ov-blue-xlight); }
 
 .ov-module-row-label {
   color: var(--ov-text-2nd);
-  flex-shrink: 0;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 58%;
+  line-height: 1.45;
 }
 
 .ov-module-row-value {
@@ -1237,7 +1246,13 @@ table.ov-adc-table tbody tr:hover { background: var(--ov-blue-xlight); }
   font-weight: 600;
   text-align: right;
   font-variant-numeric: tabular-nums;
-  word-break: break-word;
+  flex: 1 0 auto;
+  min-width: 80px;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+  line-height: 1.45;
 }
 
 /* =====================================================================
@@ -1584,6 +1599,14 @@ table.ov-adc-table tbody tr:hover { background: var(--ov-blue-xlight); }
   .ov-modules-grid {
     grid-template-columns: 1fr;
     gap: var(--space-1-5);
+  }
+
+  .ov-module-row-label {
+    max-width: 55%;
+  }
+
+  .ov-module-row-value {
+    min-width: 90px;
   }
 
   /* General Sub-page Mobile Grids */
