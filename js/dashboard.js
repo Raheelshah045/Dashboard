@@ -1934,9 +1934,9 @@ function renderCardFinancials(data) {
 
     const wrap = buildTable(null,
       [{ key: "item", label: "Financial / Performance Metric" },
-       { key: "currentDisplay", label: "Current Month", numeric: true },
-       { key: "previousDisplay", label: "Previous Month", numeric: true },
-       { key: "changeDisplay", label: "MoM Change", numeric: true }],
+       { key: "currentDisplay", label: "Current Month", rightAlign: true },
+       { key: "previousDisplay", label: "Previous Month", rightAlign: true },
+       { key: "changeDisplay", label: "MoM Change", rightAlign: true }],
       formattedRows
     );
     tableContainer.appendChild(wrap);
