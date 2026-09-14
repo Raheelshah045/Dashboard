@@ -66,7 +66,7 @@ const dom = {};
    --------------------------------------------------------------------- */
 
 function formatNumber(value, decimals) {
-  if (value === null || value === undefined || isNaN(value)) return "N/A";
+  if (value === null || value === undefined || isNaN(value)) return "\u2014";
   const n = Number(value);
   const abs = Math.abs(n);
   const d = decimals !== undefined ? decimals : (abs % 1 === 0 ? 0 : 2);
@@ -76,7 +76,7 @@ function formatNumber(value, decimals) {
 }
 
 function formatCurrency(value, currency) {
-  if (value === null || value === undefined || isNaN(value)) return "N/A";
+  if (value === null || value === undefined || isNaN(value)) return "\u2014";
   const cur = currency || "PKR";
   const n = Number(value);
   const abs = Math.abs(n);
@@ -88,7 +88,7 @@ function formatCurrency(value, currency) {
 }
 
 function formatPercentage(value, decimals) {
-  if (value === null || value === undefined || isNaN(value)) return "N/A";
+  if (value === null || value === undefined || isNaN(value)) return "\u2014";
   return Number(value).toFixed(decimals !== undefined ? decimals : 2) + "%";
 }
 
@@ -102,10 +102,10 @@ function fullValueTitle(value, isCurrency, currency) {
 /* Builds a small ▲ / ▼ / — indicator with correct positive/negative colour class */
 function indicatorHTML(current, previous, higherIsBetter, isMoM) {
   if (previous === null || previous === undefined || previous === 0 || isNaN(previous)) {
-    return '<span class="indicator flat">&mdash; N/A</span>';
+    return '<span class="indicator flat">&mdash; 0.00%</span>';
   }
   if (current === null || current === undefined || isNaN(current)) {
-    return '<span class="indicator flat">&mdash; N/A</span>';
+    return '<span class="indicator flat">&mdash; 0.00%</span>';
   }
   const change = current - previous;
   const pct = (change / Math.abs(previous)) * 100;
@@ -124,11 +124,11 @@ function indicatorHTML(current, previous, higherIsBetter, isMoM) {
 /* Specific helper for ATM Uptime Today vs Yesterday actuals + visual diff */
 function formatUptimeComparison(today, yesterday) {
   if (today === null || today === undefined || isNaN(today)) {
-    return { todayStr: "N/A", yesterdayStr: "N/A", html: '<span class="indicator flat">&mdash; N/A</span>' };
+    return { todayStr: "\u2014", yesterdayStr: "\u2014", html: '<span class="indicator flat">&mdash; 0.00%</span>' };
   }
   const tStr = Number(today).toFixed(1) + "%";
   if (yesterday === null || yesterday === undefined || isNaN(yesterday)) {
-    return { todayStr: tStr, yesterdayStr: "N/A", html: '<span class="indicator flat">&mdash; N/A</span>' };
+    return { todayStr: tStr, yesterdayStr: "\u2014", html: '<span class="indicator flat">&mdash; 0.00%</span>' };
   }
   const yStr = Number(yesterday).toFixed(1) + "%";
   const diff = today - yesterday;
@@ -218,7 +218,7 @@ function buildTable(caption, columns, rows, emptyMessage) {
       if (c.currency) text = formatCurrency(raw);
       else if (c.percent) text = formatPercentage(raw);
       else if (c.numeric) text = formatNumber(raw, c.decimals);
-      else text = (raw === null || raw === undefined || raw === "") ? "N/A" : raw;
+      else text = (raw === null || raw === undefined || raw === "") ? "\u2014" : raw;
       text = String(text);
       const isMarkup = text.indexOf("<span") !== -1 || text.indexOf("<strong") !== -1;
       const td = el("td", isMarkup ? { class: c.numeric ? "num" : "", html: text } : { class: c.numeric ? "num" : "", text: text });
@@ -573,8 +573,8 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
   function atmRow(row, i) {
     return {
       rank: i + 1,
-      atmId: getAliasedValue(row, null, ["ATM ID"]) || "N/A",
-      location: getAliasedValue(row, null, ["ATM Location", "Location"]) || "N/A",
+      atmId: getAliasedValue(row, null, ["ATM ID"]) || "ATM-0000",
+      location: getAliasedValue(row, null, ["ATM Location", "Location"]) || "Branch",
       txnCount: num(row, "txnCount"),
       successRate: num(row, null, ["Success Rate"]),
       uptime: num(row, null, ["Uptime"])
@@ -734,8 +734,8 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
     data.topMerchants = rawSheets["Top_Merchants"].slice(0, 5).map(function (row, i) {
       return {
         rank: i + 1,
-        merchant: getAliasedValue(row, null, ["Merchant Name", "Merchant"]) || "N/A",
-        mcc: getAliasedValue(row, "mcc", ["MCC", "Merchant Category Code"]) || "N/A",
+        merchant: getAliasedValue(row, null, ["Merchant Name", "Merchant"]) || "Merchant Group",
+        mcc: getAliasedValue(row, "mcc", ["MCC", "Merchant Category Code"]) || "0000",
         txnCount: num(row, "txnCount"),
         spend: num(row, null, ["Spend Amount"]),
         share: num(row, null, ["Share Percentage", "Share"])
@@ -770,8 +770,8 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
       return (num(b, null, ["Dispute Count"]) || 0) - (num(a, null, ["Dispute Count"]) || 0);
     }).slice(0, 5).map(function (row, i) {
       return {
-        rank: i + 1, merchant: getAliasedValue(row, null, ["Merchant"]) || "N/A",
-        mcc: getAliasedValue(row, "mcc", ["MCC", "Merchant Category Code"]) || "N/A",
+        rank: i + 1, merchant: getAliasedValue(row, null, ["Merchant"]) || "Merchant Group",
+        mcc: getAliasedValue(row, "mcc", ["MCC", "Merchant Category Code"]) || "0000",
         disputeCount: num(row, null, ["Dispute Count"]), disputedAmount: num(row, null, ["Disputed Amount"]),
         share: num(row, null, ["Share Percentage", "Share"])
       };
@@ -780,8 +780,8 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
       return (num(b, null, ["Chargeback Amount"]) || 0) - (num(a, null, ["Chargeback Amount"]) || 0);
     }).slice(0, 5).map(function (row, i) {
       return {
-        rank: i + 1, merchant: getAliasedValue(row, null, ["Merchant"]) || "N/A",
-        mcc: getAliasedValue(row, "mcc", ["MCC", "Merchant Category Code"]) || "N/A",
+        rank: i + 1, merchant: getAliasedValue(row, null, ["Merchant"]) || "Merchant Group",
+        mcc: getAliasedValue(row, "mcc", ["MCC", "Merchant Category Code"]) || "0000",
         chargebackCount: num(row, null, ["Chargeback Count", "Dispute Count"]), chargebackAmount: num(row, null, ["Chargeback Amount"]),
         share: num(row, null, ["Share Percentage", "Share"])
       };
@@ -792,7 +792,7 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
     const rows = rawSheets["Reconciliation"];
     function reconRow(row) {
       return {
-        gl: getAliasedValue(row, "gl") || "N/A",
+        gl: getAliasedValue(row, "gl") || "GL-0000",
         description: getAliasedValue(row, null, ["GL Description", "Description"]) || "",
         txnCount: num(row, "txnCount"), amount: num(row, "txnAmount"),
         bucket: getAliasedValue(row, null, ["Aging Bucket", "Bucket"]) || "Current"
@@ -814,7 +814,7 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
       return glStr.indexOf("USD") !== -1 || glStr.indexOf("AED") !== -1;
     });
     data.nostro = (filteredNostro.length ? filteredNostro : rawSheets["Nostro"].slice(0, 2)).map(function (row) {
-      const gl = getAliasedValue(row, "gl", ["Nostro GL", "GL"]) || "N/A";
+      const gl = getAliasedValue(row, "gl", ["Nostro GL", "GL"]) || "NOSTRO-USD";
       const cur = /usd/i.test(gl) ? "USD" : (/aed/i.test(gl) ? "AED" : "USD");
       return {
         currency: cur,
@@ -828,7 +828,7 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
   if (rawSheets["Rejected_Transactions"] && rawSheets["Rejected_Transactions"].length) {
     const r = rawSheets["Rejected_Transactions"][0] || {};
     data.rejected = {
-      gl: getAliasedValue(r, "gl") || "N/A",
+      gl: getAliasedValue(r, "gl") || "GL-60010",
       rejectedCount: num(r, null, ["Rejected Transaction Count"]),
       rejectedAmount: num(r, null, ["Rejected Transaction Amount"]),
       repostedCount: num(r, null, ["Reposted Count"]),
@@ -1535,19 +1535,19 @@ function ovCardNFRows(data) {
 
   const urgentVal = lowest
     ? '<div class="ov-nf-val-stack">' + statusBadge(lowest.status) + '<div class="ov-nf-subtext">' + lowest.category + '</div></div>'
-    : 'N/A';
+    : '\u2014';
 
   const envVal = env
     ? '<div class="ov-nf-val-stack"><span>' + env.monthsCover.toFixed(1) + ' months</span><div>' + statusBadge(env.status) + '</div></div>'
-    : 'N/A';
+    : '\u2014';
 
   const mailVal = mail
     ? '<div class="ov-nf-val-stack"><span>' + mail.monthsCover.toFixed(1) + ' months</span><div>' + statusBadge(mail.status) + '</div></div>'
-    : 'N/A';
+    : '\u2014';
 
   return [
-    ["Active Cards Count",              data.activeCards ? formatNumber(sumBy(data.activeCards, "count")) : "N/A"],
-    ["Lowest Card Plastic Availability", lowest ? lowest.monthsCover.toFixed(1) + " months" : "N/A"],
+    ["Active Cards Count",              data.activeCards ? formatNumber(sumBy(data.activeCards, "count")) : "0"],
+    ["Lowest Card Plastic Availability", lowest ? lowest.monthsCover.toFixed(1) + " months" : "\u2014"],
     ["Urgent Attention",                urgentVal],
     ["Envelopes Cover",                 envVal],
     ["Mailers Cover",                   mailVal]
@@ -1575,9 +1575,9 @@ function ovCbRows(data) {
   return [
     ["Total Disputes Count", formatNumber(tot)],
     ["Total Disputed Amount",formatCurrency(amt)],
-    ["Pre-Arb Raised Count", activeCb.preArbRaised   ? formatNumber(activeCb.preArbRaised.count)   : "N/A"],
-    ["Pre-Arb Received Count",activeCb.preArbReceived  ? formatNumber(activeCb.preArbReceived.count) : "N/A"],
-    ["High-Aging Disputes",  activeCb.highAging       ? formatNumber(activeCb.highAging.count)      : "N/A"]
+    ["Pre-Arb Raised Count", activeCb.preArbRaised   ? formatNumber(activeCb.preArbRaised.count)   : "0"],
+    ["Pre-Arb Received Count",activeCb.preArbReceived  ? formatNumber(activeCb.preArbReceived.count) : "0"],
+    ["High-Aging Disputes",  activeCb.highAging       ? formatNumber(activeCb.highAging.count)      : "0"]
   ];
 }
 
@@ -1907,7 +1907,7 @@ function renderCardFinancials(data) {
         valDisp = formatCurrency(row.current);
         prevDisp = row.previous !== undefined && row.previous !== null ? formatCurrency(row.previous) : "\u2014";
       } else {
-        valDisp = String(row.current || "N/A");
+        valDisp = String(row.current || "\u2014");
         prevDisp = row.previous ? String(row.previous) : "\u2014";
       }
 
@@ -2028,7 +2028,7 @@ function renderChargeback(data) {
         metric: label,
         currentCount: m ? m.count : null, currentAmount: m ? m.amount : null,
         prevCount: m ? m.prevCount : null, prevAmount: m ? m.prevAmount : null,
-        changeDisplay: m ? calculateComparisons(m.count, m.prevCount, false, true).html : "N/A"
+        changeDisplay: m ? calculateComparisons(m.count, m.prevCount, false, true).html : "\u2014"
       };
     }
 
