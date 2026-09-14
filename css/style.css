@@ -1223,22 +1223,21 @@ table.ov-adc-table tbody tr:hover { background: var(--ov-blue-xlight); }
 .ov-module-row {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  padding: 6px var(--space-2);
+  align-items: center;
+  padding: 7px var(--space-2);
   gap: var(--space-1);
   border-bottom: 1px dashed var(--border);
   font-size: 12px;
-  flex-wrap: wrap;
 }
 .ov-module-row:last-child { border-bottom: none; }
 .ov-module-row:hover { background: var(--ov-blue-xlight); }
 
 .ov-module-row-label {
   color: var(--ov-text-2nd);
-  flex: 0 1 auto;
+  flex: 1 1 55%;
   min-width: 0;
-  max-width: 58%;
-  line-height: 1.45;
+  line-height: 1.35;
+  word-wrap: break-word;
 }
 
 .ov-module-row-value {
@@ -1246,13 +1245,24 @@ table.ov-adc-table tbody tr:hover { background: var(--ov-blue-xlight); }
   font-weight: 600;
   text-align: right;
   font-variant-numeric: tabular-nums;
-  flex: 1 0 auto;
-  min-width: 80px;
-  max-width: 100%;
-  white-space: normal;
-  overflow-wrap: break-word;
-  word-break: normal;
-  line-height: 1.45;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  line-height: 1.35;
+}
+
+.ov-nf-val-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+
+.ov-nf-subtext {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  line-height: 1.25;
 }
 
 /* =====================================================================

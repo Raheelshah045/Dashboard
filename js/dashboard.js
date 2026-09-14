@@ -102,47 +102,46 @@ function fullValueTitle(value, isCurrency, currency) {
 /* Builds a small ▲ / ▼ / — indicator with correct positive/negative colour class */
 function indicatorHTML(current, previous, higherIsBetter, isMoM) {
   if (previous === null || previous === undefined || previous === 0 || isNaN(previous)) {
-    return '<span class="indicator flat">&mdash;</span>N/A';
+    return '<span class="indicator flat">&mdash; N/A</span>';
   }
   if (current === null || current === undefined || isNaN(current)) {
-    return '<span class="indicator flat">&mdash;</span>N/A';
+    return '<span class="indicator flat">&mdash; N/A</span>';
   }
   const change = current - previous;
   const pct = (change / Math.abs(previous)) * 100;
   const better = higherIsBetter === undefined ? true : higherIsBetter;
-  const labelSuffix = isMoM ? " MoM" : "";
   if (Math.abs(change) < 1e-9) {
-    return '<span class="indicator flat">&mdash;</span>0.00%' + labelSuffix;
+    return '<span class="indicator flat">&mdash; 0.00%</span>';
   }
   const isUp = change > 0;
   const goodDirection = isUp ? better : !better;
   const cls = (isUp ? "up" : "down") + " " + (goodDirection ? "positive" : "negative");
   const arrow = isUp ? "&#9650;" : "&#9660;";
   const sign = isUp ? "+" : "-";
-  return '<span class="indicator ' + cls + '">' + arrow + '</span>' + sign + Math.abs(pct).toFixed(2) + "%" + labelSuffix;
+  return '<span class="indicator ' + cls + '">' + arrow + ' ' + sign + Math.abs(pct).toFixed(2) + '%</span>';
 }
 
 /* Specific helper for ATM Uptime Today vs Yesterday actuals + visual diff */
 function formatUptimeComparison(today, yesterday) {
   if (today === null || today === undefined || isNaN(today)) {
-    return { todayStr: "N/A", yesterdayStr: "N/A", html: '<span class="indicator flat">&mdash;</span>' };
+    return { todayStr: "N/A", yesterdayStr: "N/A", html: '<span class="indicator flat">&mdash; N/A</span>' };
   }
   const tStr = Number(today).toFixed(1) + "%";
   if (yesterday === null || yesterday === undefined || isNaN(yesterday)) {
-    return { todayStr: tStr, yesterdayStr: "N/A", html: '<span class="indicator flat">&mdash;</span>' };
+    return { todayStr: tStr, yesterdayStr: "N/A", html: '<span class="indicator flat">&mdash; N/A</span>' };
   }
   const yStr = Number(yesterday).toFixed(1) + "%";
   const diff = today - yesterday;
   const isUp = diff > 0;
   const isFlat = Math.abs(diff) < 0.01;
   if (isFlat) {
-    return { todayStr: tStr, yesterdayStr: yStr, html: '<span class="indicator flat">&mdash; 0.0%</span>' };
+    return { todayStr: tStr, yesterdayStr: yStr, html: '<span class="indicator flat">&mdash; 0.00%</span>' };
   }
   const cls = (isUp ? "up" : "down") + " " + (isUp ? "positive" : "negative");
   const arrow = isUp ? "&#9650;" : "&#9660;";
   const sign = isUp ? "+" : "-";
-  const diffStr = sign + Math.abs(diff).toFixed(1) + "%";
-  const html = '<span class="indicator ' + cls + '">' + arrow + ' ' + diffStr + '</span>';
+  const diffStr = arrow + ' ' + sign + Math.abs(diff).toFixed(2) + "%";
+  const html = '<span class="indicator ' + cls + '">' + diffStr + '</span>';
   return { todayStr: tStr, yesterdayStr: yStr, html: html };
 }
 
@@ -204,7 +203,9 @@ function buildTable(caption, columns, rows, emptyMessage) {
   const thead = el("thead");
   const headRow = el("tr");
   columns.forEach(function (c) {
-    headRow.appendChild(el("th", { class: c.numeric ? "num" : "", text: c.label }));
+    const attrs = { class: c.numeric || c.percent || c.currency ? "num" : "", text: c.label };
+    if (c.title) attrs.title = c.title;
+    headRow.appendChild(el("th", attrs));
   });
   thead.appendChild(headRow);
   table.appendChild(thead);
@@ -1209,24 +1210,28 @@ function renderOvKpiStrip(root, data) {
   const adcCntTdy = (data.atm ? data.atm.withdrawalCountToday || 0 : 0)
                   + (data.raast ? data.raast.successCountToday || 0 : 0)
                   + (data.ibft ? data.ibft.successCountToday || 0 : 0);
-  const adcCntY   = data.atm ? data.atm.withdrawalCountYesterday : null;
+  const adcCntY   = (data.atm ? data.atm.withdrawalCountYesterday || 0 : 0)
+                  + (data.raast ? data.raast.successCountYesterday || 0 : 0)
+                  + (data.ibft ? data.ibft.successCountYesterday || 0 : 0);
   strip.appendChild(ovExecCard("Total ADC Transaction Count", formatNumber(adcCntTdy, 0),
-    indicatorHTML(adcCntTdy, adcCntY, true, false), "vs Yesterday", "DAILY"));
+    'Yesterday: ' + formatNumber(adcCntY, 0) + ' &nbsp;|&nbsp; ' + indicatorHTML(adcCntTdy, adcCntY, true, false), "vs Yesterday", "DAILY"));
 
   /* 3. Total ADC Transaction Amount */
   const adcAmtTdy = (data.atm ? data.atm.withdrawalAmountToday || 0 : 0)
                   + (data.raast ? data.raast.successAmountToday || 0 : 0)
                   + (data.ibft ? data.ibft.successAmountToday || 0 : 0);
-  const adcAmtY   = data.atm ? data.atm.withdrawalAmountYesterday : null;
+  const adcAmtY   = (data.atm ? data.atm.withdrawalAmountYesterday || 0 : 0)
+                  + (data.raast ? data.raast.successAmountYesterday || 0 : 0)
+                  + (data.ibft ? data.ibft.successAmountYesterday || 0 : 0);
   strip.appendChild(ovExecCard("Total ADC Transaction Amount", formatCurrency(adcAmtTdy),
-    indicatorHTML(adcAmtTdy, adcAmtY, true, false), "vs Yesterday", "DAILY",
+    'Yesterday: ' + formatCurrency(adcAmtY) + ' &nbsp;|&nbsp; ' + indicatorHTML(adcAmtTdy, adcAmtY, true, false), "vs Yesterday", "DAILY",
     fullValueTitle(adcAmtTdy, true)));
 
   /* 4. Active Cards */
   const activeTot = data.activeCards ? sumBy(data.activeCards, "count") : null;
   const activePrv = data.activeCards ? sumBy(data.activeCards, "prevMonth") : null;
   strip.appendChild(ovExecCard("Active Cards Count", formatNumber(activeTot, 0),
-    indicatorHTML(activeTot, activePrv, true, true), "vs Previous Month", "MONTHLY"));
+    'Prev Month: ' + formatNumber(activePrv, 0) + ' &nbsp;|&nbsp; ' + indicatorHTML(activeTot, activePrv, true, true), "vs Previous Month", "MONTHLY"));
 
   /* 5. Total Card Spend */
   const spend     = data.cardFinancials
@@ -1234,7 +1239,7 @@ function renderOvKpiStrip(root, data) {
   const spendPrv  = data.cardFinancials
     ? (data.cardFinancials.credit.spendPrevious || 0) + (data.cardFinancials.debit.spendPrevious || 0) : null;
   strip.appendChild(ovExecCard("Total Card Spend", formatCurrency(spend),
-    indicatorHTML(spend, spendPrv, true, true), "vs Previous Month", "MONTHLY",
+    'Prev Month: ' + formatCurrency(spendPrv) + ' &nbsp;|&nbsp; ' + indicatorHTML(spend, spendPrv, true, true), "vs Previous Month", "MONTHLY",
     fullValueTitle(spend, true)));
 
   /* 6. Reconciliation Exposure > 30d */
@@ -1505,20 +1510,17 @@ function ovAdcRows(data) {
   const rows = [];
   if (data.atm) {
     const a = data.atm;
-    const uptComp = formatUptimeComparison(a.uptimeToday, a.uptimeYesterday);
-    rows.push(["ATM Success Rate", uptComp.todayStr + " (Yesterday: " + uptComp.yesterdayStr + " | " + uptComp.html + ")"]);
+    rows.push(["ATM Success Rate", formatPercentage(a.uptimeToday)]);
   }
   if (data.raast) {
     const r = data.raast;
-    const rComp = calculateComparisons(r.successRateToday, r.successRateYesterday, true, false);
-    rows.push(["RAAST Success Rate", formatPercentage(r.successRateToday) + " (Yesterday: " + formatPercentage(r.successRateYesterday) + " | " + rComp.html + ")"]);
-    rows.push(["RAAST Txn Count", formatNumber(r.successCountToday) + " (MTD: " + formatNumber(r.successCountMTD) + ")"]);
+    rows.push(["RAAST Success Rate", formatPercentage(r.successRateToday)]);
+    rows.push(["RAAST Transaction Count", formatNumber(r.successCountToday)]);
   }
   if (data.ibft) {
     const i = data.ibft;
-    const iComp = calculateComparisons(i.successRateToday, i.successRateYesterday, true, false);
-    rows.push(["IBFT Success Rate", formatPercentage(i.successRateToday) + " (Yesterday: " + formatPercentage(i.successRateYesterday) + " | " + iComp.html + ")"]);
-    rows.push(["IBFT Txn Count", formatNumber(i.successCountToday) + " (MTD: " + formatNumber(i.successCountMTD) + ")"]);
+    rows.push(["IBFT Success Rate", formatPercentage(i.successRateToday)]);
+    rows.push(["IBFT Transaction Count", formatNumber(i.successCountToday)]);
   }
   return rows;
 }
@@ -1530,12 +1532,25 @@ function ovCardNFRows(data) {
   const stat = (data.cardStationery || []).map(computeStationeryStatus);
   const env  = stat.find(function (s) { return /envelope/i.test(s.item); });
   const mail = stat.find(function (s) { return /mailer/i.test(s.item) && !/pin/i.test(s.item); });
+
+  const urgentVal = lowest
+    ? '<div class="ov-nf-val-stack">' + statusBadge(lowest.status) + '<div class="ov-nf-subtext">' + lowest.category + '</div></div>'
+    : 'N/A';
+
+  const envVal = env
+    ? '<div class="ov-nf-val-stack"><span>' + env.monthsCover.toFixed(1) + ' months</span><div>' + statusBadge(env.status) + '</div></div>'
+    : 'N/A';
+
+  const mailVal = mail
+    ? '<div class="ov-nf-val-stack"><span>' + mail.monthsCover.toFixed(1) + ' months</span><div>' + statusBadge(mail.status) + '</div></div>'
+    : 'N/A';
+
   return [
     ["Active Cards Count",              data.activeCards ? formatNumber(sumBy(data.activeCards, "count")) : "N/A"],
     ["Lowest Card Plastic Availability", lowest ? lowest.monthsCover.toFixed(1) + " months" : "N/A"],
-    ["Urgent Attention",                lowest ? statusBadge(lowest.status) + " " + lowest.category : "N/A"],
-    ["Envelopes Cover",                 env  ? env.monthsCover.toFixed(1)  + " months " + statusBadge(env.status)  : "N/A"],
-    ["Mailers Cover",                   mail ? mail.monthsCover.toFixed(1) + " months " + statusBadge(mail.status) : "N/A"]
+    ["Urgent Attention",                urgentVal],
+    ["Envelopes Cover",                 envVal],
+    ["Mailers Cover",                   mailVal]
   ];
 }
 
@@ -1603,11 +1618,11 @@ function renderADCOperations(data) {
     const uptimeSubHTML = "Yesterday: " + uptComp.yesterdayStr + " &nbsp;|&nbsp; " + uptComp.html;
     grid.appendChild(kpiCard("ATM Uptime (Today vs Yesterday)", uptComp.todayStr + " (Today)", uptimeSubHTML));
 
-    grid.appendChild(kpiCard("Withdrawal Transaction Count (Today)", formatNumber(a.withdrawalCountToday), calculateComparisons(a.withdrawalCountToday, a.withdrawalCountYesterday, true, false).html + " vs Yesterday"));
-    grid.appendChild(kpiCard("Withdrawal Transaction Count (Current Month)", formatNumber(a.withdrawalCountMTD), calculateComparisons(a.withdrawalCountMTD, a.withdrawalCountPrevMTD, true, true).html + " vs Previous Month"));
-    grid.appendChild(kpiCard("Withdrawal Transaction Amount (Today)", formatCurrency(a.withdrawalAmountToday), calculateComparisons(a.withdrawalAmountToday, a.withdrawalAmountYesterday, true, false).html + " vs Yesterday", fullValueTitle(a.withdrawalAmountToday, true)));
-    grid.appendChild(kpiCard("Withdrawal Transaction Amount (Current Month)", formatCurrency(a.withdrawalAmountMTD), calculateComparisons(a.withdrawalAmountMTD, a.withdrawalAmountPrevMTD, true, true).html + " vs Previous Month", fullValueTitle(a.withdrawalAmountMTD, true)));
-    grid.appendChild(kpiCard("Failed ATM Transactions Count (Today)", formatNumber(a.failedTxnToday), calculateComparisons(a.failedTxnToday, a.failedTxnYesterday, false, false).html + " vs Yesterday"));
+    grid.appendChild(kpiCard("Withdrawal Transaction Count (Today)", formatNumber(a.withdrawalCountToday), "Yesterday: " + formatNumber(a.withdrawalCountYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(a.withdrawalCountToday, a.withdrawalCountYesterday, true, false).html));
+    grid.appendChild(kpiCard("Withdrawal Transaction Count (Current Month)", formatNumber(a.withdrawalCountMTD), "Prev Month: " + formatNumber(a.withdrawalCountPrevMTD) + " &nbsp;|&nbsp; " + calculateComparisons(a.withdrawalCountMTD, a.withdrawalCountPrevMTD, true, true).html));
+    grid.appendChild(kpiCard("Withdrawal Transaction Amount (Today)", formatCurrency(a.withdrawalAmountToday), "Yesterday: " + formatCurrency(a.withdrawalAmountYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(a.withdrawalAmountToday, a.withdrawalAmountYesterday, true, false).html, fullValueTitle(a.withdrawalAmountToday, true)));
+    grid.appendChild(kpiCard("Withdrawal Transaction Amount (Current Month)", formatCurrency(a.withdrawalAmountMTD), "Prev Month: " + formatCurrency(a.withdrawalAmountPrevMTD) + " &nbsp;|&nbsp; " + calculateComparisons(a.withdrawalAmountMTD, a.withdrawalAmountPrevMTD, true, true).html, fullValueTitle(a.withdrawalAmountMTD, true)));
+    grid.appendChild(kpiCard("Failed ATM Transactions Count (Today)", formatNumber(a.failedTxnToday), "Yesterday: " + formatNumber(a.failedTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(a.failedTxnToday, a.failedTxnYesterday, false, false).html));
     grid.appendChild(kpiCard("ATM Disputes / Claims Count (Current Month)", formatNumber(a.disputesMTD)));
     grid.appendChild(kpiCard("Cards Captured Count (Current Month)", formatNumber(a.capturedCardsMTD)));
     grid.appendChild(kpiCard("Cash-Retract Transactions Count (Current Month)", formatNumber(a.retractTxnMTD)));
@@ -1804,8 +1819,7 @@ function renderCardNonFinancials(data) {
   if (data.activeCards) {
     root.appendChild(buildTable(null,
       [{ key: "product", label: "Product" }, { key: "count", label: "Current Month Count", numeric: true },
-       { key: "prevMonth", label: "Previous Month Count", numeric: true }, { key: "changeDisplay", label: "MoM Change" },
-       { key: "fee", label: "Annual Fee", currency: true }],
+       { key: "prevMonth", label: "Previous Month Count", numeric: true }, { key: "changeDisplay", label: "MoM Change" }],
       data.activeCards.map(function (r) { return Object.assign({}, r, { changeDisplay: calculateComparisons(r.count, r.prevMonth, true, true).html }); })
     ));
   } else {
@@ -2125,7 +2139,8 @@ function renderReconciliation(data) {
     const totalCount = sumBy(agingSource, "txnCount"), totalAmount = sumBy(agingSource, "amount");
     root.appendChild(buildTable(null,
       [{ key: "bucket", label: "Aging Bucket" }, { key: "txnCount", label: "Transaction Count", numeric: true },
-       { key: "amount", label: "Transaction Amount", currency: true }, { key: "share", label: "Share %", percent: true }],
+       { key: "amount", label: "Transaction Amount", currency: true },
+       { key: "share", label: "Share %", percent: true, title: "Share % represents this aging bucket's proportion of the total reconciliation balance." }],
       agingSource.concat([{ bucket: "Total", txnCount: totalCount, amount: totalAmount, share: 100 }])));
   } else {
     root.appendChild(el("div", { class: "no-data-note", text: "No data available for aging buckets." }));
