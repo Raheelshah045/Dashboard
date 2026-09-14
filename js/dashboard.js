@@ -203,7 +203,8 @@ function buildTable(caption, columns, rows, emptyMessage) {
   const thead = el("thead");
   const headRow = el("tr");
   columns.forEach(function (c) {
-    const attrs = { class: c.numeric || c.percent || c.currency ? "num" : "", text: c.label };
+    const isNum = c.numeric || c.percent || c.currency || c.rightAlign;
+    const attrs = { class: isNum ? "num" : "", text: c.label };
     if (c.title) attrs.title = c.title;
     headRow.appendChild(el("th", attrs));
   });
@@ -215,13 +216,25 @@ function buildTable(caption, columns, rows, emptyMessage) {
     columns.forEach(function (c) {
       let text;
       const raw = row[c.key];
-      if (c.currency) text = formatCurrency(raw);
-      else if (c.percent) text = formatPercentage(raw);
-      else if (c.numeric) text = formatNumber(raw, c.decimals);
-      else text = (raw === null || raw === undefined || raw === "") ? "\u2014" : raw;
+      
+      const isHtmlStr = typeof raw === "string" && (raw.indexOf("<") !== -1 || raw === "\u2014");
+      
+      if (isHtmlStr) {
+        text = raw;
+      } else if (c.currency) {
+        text = formatCurrency(raw);
+      } else if (c.percent) {
+        text = formatPercentage(raw);
+      } else if (c.numeric) {
+        text = formatNumber(raw, c.decimals);
+      } else {
+        text = (raw === null || raw === undefined || raw === "") ? "\u2014" : raw;
+      }
+      
       text = String(text);
-      const isMarkup = text.indexOf("<span") !== -1 || text.indexOf("<strong") !== -1;
-      const td = el("td", isMarkup ? { class: c.numeric ? "num" : "", html: text } : { class: c.numeric ? "num" : "", text: text });
+      const isMarkup = text.indexOf("<") !== -1;
+      const isNum = c.numeric || c.percent || c.currency || c.rightAlign;
+      const td = el("td", isMarkup ? { class: isNum ? "num" : "", html: text } : { class: isNum ? "num" : "", text: text });
       if (c.numeric && typeof raw === "number") td.setAttribute("title", fullValueTitle(raw, !!c.currency));
       tr.appendChild(td);
     });
@@ -249,10 +262,10 @@ function generateIllustrativeData() {
     meta: { missingSheets: [], dataQualityMessages: [], source: "illustrative" },
 
     atm: {
-      totalATMs: 1240, uptimeToday: 97.8, uptimeYesterday: 97.1,
+      totalATMs: 1240, uptimeToday: 97.8, uptimeYesterday: 97.1, uptimeMTD: 97.4, uptimePrevMTD: 96.9,
       withdrawalCountToday: 68450, withdrawalCountYesterday: 65210, withdrawalCountMTD: 1452000, withdrawalCountPrevMTD: 1398000,
       withdrawalAmountToday: 812000000, withdrawalAmountYesterday: 779000000, withdrawalAmountMTD: 17650000000, withdrawalAmountPrevMTD: 16920000000,
-      failedTxnToday: 1120, failedTxnYesterday: 1340,
+      failedTxnToday: 1120, failedTxnYesterday: 1340, failedTxnMTD: 24600,
       disputesToday: 42, disputesMTD: 610,
       capturedCardsToday: 18, capturedCardsMTD: 260,
       retractTxnToday: 65, retractTxnMTD: 940
@@ -1819,7 +1832,7 @@ function renderCardNonFinancials(data) {
   if (data.activeCards) {
     root.appendChild(buildTable(null,
       [{ key: "product", label: "Product" }, { key: "count", label: "Current Month Count", numeric: true },
-       { key: "prevMonth", label: "Previous Month Count", numeric: true }, { key: "changeDisplay", label: "MoM Change" }],
+       { key: "prevMonth", label: "Previous Month Count", numeric: true }, { key: "changeDisplay", label: "MoM Change", rightAlign: true }],
       data.activeCards.map(function (r) { return Object.assign({}, r, { changeDisplay: calculateComparisons(r.count, r.prevMonth, true, true).html }); })
     ));
   } else {
@@ -1961,7 +1974,7 @@ function renderCardFinancials(data) {
   if (data.spendByChannel) {
     root.appendChild(buildTable(null,
       [{ key: "channel", label: "Channel" }, { key: "current", label: "Current Month", currency: true },
-       { key: "previous", label: "Previous Month", currency: true }, { key: "changeDisplay", label: "MoM Change" }],
+       { key: "previous", label: "Previous Month", currency: true }, { key: "changeDisplay", label: "MoM Change", rightAlign: true }],
       data.spendByChannel.map(function (r) { return { channel: r.channel, current: r.current, previous: r.previous, changeDisplay: calculateComparisons(r.current, r.previous, true, true).html }; })
     ));
   } else {
