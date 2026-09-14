@@ -1696,6 +1696,41 @@ table.ov-adc-table tbody tr:hover { background: var(--ov-blue-xlight); }
   }
 }
 
+/* ---------- Card Financials Toggle Bar ---------- */
+.card-fin-toggle-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+  background: var(--brand-light);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  width: fit-content;
+  border: 1px solid var(--brand-border);
+}
+
+.fin-toggle-btn {
+  background: transparent;
+  border: none;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand-dark);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.fin-toggle-btn:hover {
+  background: rgba(17, 122, 191, 0.12);
+}
+
+.fin-toggle-btn.active {
+  background: var(--brand);
+  color: var(--white);
+  box-shadow: var(--shadow-sm);
+}
+
 /* ---------- Accessibility: Prefers Reduced Motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
@@ -1703,4 +1738,5 @@ table.ov-adc-table tbody tr:hover { background: var(--ov-blue-xlight); }
     transition: none !important;
   }
 }
+
 

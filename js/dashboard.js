@@ -27,7 +27,7 @@ const SHEET_NAMES = [
 /* Column alias map: normalized key -> array of header variants to match (case/space-insensitive) */
 const COLUMN_ALIASES = {
   txnCount: ["txn count", "transaction count", "transactions", "count"],
-  txnAmount: ["txn amount", "transaction amount", "value", "amount"],
+  txnAmount: ["txn amount", "transaction amount", "value", "amount", "volume"],
   complaintCount: ["complaint count", "complaints"],
   capturedCards: ["captured cards", "card captures", "cards captured"],
   gl: ["gl", "gl no", "gl number"],
@@ -37,7 +37,9 @@ const COLUMN_ALIASES = {
   mtd: ["mtd", "month to date"],
   prevMtd: ["previous mtd", "prev mtd", "pmtd"],
   currentMonth: ["current month", "this month"],
-  previousMonth: ["previous month", "last month"]
+  previousMonth: ["previous month", "last month"],
+  enr: ["enr", "ending net receivables", "earning net revenue"],
+  mcc: ["mcc", "merchant category code", "category code"]
 };
 
 /* ---------------------------------------------------------------------
@@ -53,6 +55,9 @@ const appState = {
   lastUpdated: null
 };
 
+let cardFinancialsActiveTab = "credit"; // "credit" | "debit" (NO "all")
+let chargebackActiveTab = "credit";       // "credit" | "debit" (NO "all")
+
 /* Cached DOM references, populated in init() */
 const dom = {};
 
@@ -65,9 +70,8 @@ function formatNumber(value, decimals) {
   const n = Number(value);
   const abs = Math.abs(n);
   const d = decimals !== undefined ? decimals : (abs % 1 === 0 ? 0 : 2);
-  if (abs >= 1e9) return (n / 1e9).toFixed(decimals !== undefined ? decimals : 2) + " Billion";
-  if (abs >= 1e6) return (n / 1e6).toFixed(decimals !== undefined ? decimals : 2) + " Million";
-  if (abs >= 1e5) return (n / 1e3).toFixed(decimals !== undefined ? decimals : 1) + " Thousand";
+  if (abs >= 1e9) return (n / 1e9).toFixed(decimals !== undefined ? decimals : 2) + " Bn";
+  if (abs >= 1e6) return (n / 1e6).toFixed(decimals !== undefined ? decimals : 2) + " Mn";
   return n.toLocaleString("en-US", { maximumFractionDigits: d });
 }
 
@@ -77,10 +81,9 @@ function formatCurrency(value, currency) {
   const n = Number(value);
   const abs = Math.abs(n);
   let short;
-  if (abs >= 1e9) short = (n / 1e9).toFixed(2) + " Billion";
-  else if (abs >= 1e6) short = (n / 1e6).toFixed(2) + " Million";
-  else if (abs >= 1e5) short = (n / 1e3).toFixed(1) + " Thousand";
-  else short = n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  if (abs >= 1e9) short = (n / 1e9).toFixed(2) + " Bn";
+  else if (abs >= 1e6) short = (n / 1e6).toFixed(2) + " Mn";
+  else short = cur + " " + n.toLocaleString("en-US", { maximumFractionDigits: 0 });
   return cur + " " + short;
 }
 
@@ -97,7 +100,7 @@ function fullValueTitle(value, isCurrency, currency) {
 }
 
 /* Builds a small ▲ / ▼ / — indicator with correct positive/negative colour class */
-function indicatorHTML(current, previous, higherIsBetter) {
+function indicatorHTML(current, previous, higherIsBetter, isMoM) {
   if (previous === null || previous === undefined || previous === 0 || isNaN(previous)) {
     return '<span class="indicator flat">&mdash;</span>N/A';
   }
@@ -107,36 +110,52 @@ function indicatorHTML(current, previous, higherIsBetter) {
   const change = current - previous;
   const pct = (change / Math.abs(previous)) * 100;
   const better = higherIsBetter === undefined ? true : higherIsBetter;
+  const labelSuffix = isMoM ? " MoM" : "";
   if (Math.abs(change) < 1e-9) {
-    return '<span class="indicator flat">&mdash;</span>0.00%';
+    return '<span class="indicator flat">&mdash;</span>0.00%' + labelSuffix;
   }
   const isUp = change > 0;
   const goodDirection = isUp ? better : !better;
   const cls = (isUp ? "up" : "down") + " " + (goodDirection ? "positive" : "negative");
   const arrow = isUp ? "&#9650;" : "&#9660;";
-  return '<span class="indicator ' + cls + '">' + arrow + '</span>' + Math.abs(pct).toFixed(2) + "%";
+  const sign = isUp ? "+" : "-";
+  return '<span class="indicator ' + cls + '">' + arrow + '</span>' + sign + Math.abs(pct).toFixed(2) + "%" + labelSuffix;
+}
+
+/* Specific helper for ATM Uptime Today vs Yesterday actuals + visual diff */
+function formatUptimeComparison(today, yesterday) {
+  if (today === null || today === undefined || isNaN(today)) {
+    return { todayStr: "N/A", yesterdayStr: "N/A", html: '<span class="indicator flat">&mdash;</span>' };
+  }
+  const tStr = Number(today).toFixed(1) + "%";
+  if (yesterday === null || yesterday === undefined || isNaN(yesterday)) {
+    return { todayStr: tStr, yesterdayStr: "N/A", html: '<span class="indicator flat">&mdash;</span>' };
+  }
+  const yStr = Number(yesterday).toFixed(1) + "%";
+  const diff = today - yesterday;
+  const isUp = diff > 0;
+  const isFlat = Math.abs(diff) < 0.01;
+  if (isFlat) {
+    return { todayStr: tStr, yesterdayStr: yStr, html: '<span class="indicator flat">&mdash; 0.0%</span>' };
+  }
+  const cls = (isUp ? "up" : "down") + " " + (isUp ? "positive" : "negative");
+  const arrow = isUp ? "&#9650;" : "&#9660;";
+  const sign = isUp ? "+" : "-";
+  const diffStr = sign + Math.abs(diff).toFixed(1) + "%";
+  const html = '<span class="indicator ' + cls + '">' + arrow + ' ' + diffStr + '</span>';
+  return { todayStr: tStr, yesterdayStr: yStr, html: html };
 }
 
 /* Returns { change, changePct, indicatorHTML } for use in KPI cards */
-function calculateComparisons(current, previous, higherIsBetter) {
+function calculateComparisons(current, previous, higherIsBetter, isMoM) {
   const hasPrev = previous !== null && previous !== undefined && !isNaN(previous) && previous !== 0;
   const change = hasPrev ? current - previous : null;
   const changePct = hasPrev ? (change / Math.abs(previous)) * 100 : null;
   return {
     change: change,
     changePct: changePct,
-    html: indicatorHTML(current, previous, higherIsBetter)
+    html: indicatorHTML(current, previous, higherIsBetter, isMoM)
   };
-}
-
-function sparklineSVG(values) {
-  if (!values || !values.length) return "";
-  const max = Math.max.apply(null, values);
-  const bars = values.map(function (v) {
-    const h = max > 0 ? Math.max(2, Math.round((v / max) * 20)) : 2;
-    return '<span class="bar" style="height:' + h + 'px"></span>';
-  }).join("");
-  return '<span class="sparkline" title="7-day trend">' + bars + '</span>';
 }
 
 /* ---------------------------------------------------------------------
@@ -173,8 +192,7 @@ function statusBadge(status) {
   return '<span class="status-badge ' + cls + '">' + status + '</span>';
 }
 
-/* Renders a data table from column defs + rows into a wrapper div.
-   columns: [{key, label, numeric, currency}]  rows: array of objects */
+/* Renders a data table from column defs + rows into a wrapper div. */
 function buildTable(caption, columns, rows, emptyMessage) {
   const wrap = el("div", { class: "table-wrap" });
   if (!rows || rows.length === 0) {
@@ -223,8 +241,6 @@ function dataQualityNote(text) {
 
 /* ---------------------------------------------------------------------
    4. ILLUSTRATIVE (DEMO) DATA
-   Used only before a real workbook is loaded, so the dashboard is never
-   blank. Shape matches exactly what normalizeWorkbookData() produces.
    --------------------------------------------------------------------- */
 
 function generateIllustrativeData() {
@@ -256,37 +272,39 @@ function generateIllustrativeData() {
     ],
 
     raast: {
-      successCountToday: 41200, successAmountToday: 1980000000,
-      successCountMTD: 895000, successAmountMTD: 41200000000,
-      successRateToday: 98.6, successRateMTD: 98.2,
-      failedCountToday: 590, complaintsToday: 14, complaintsMTD: 210
+      successCountToday: 41200, successCountYesterday: 39500, successCountMTD: 895000,
+      successAmountToday: 1980000000, successAmountYesterday: 1880000000, successAmountMTD: 41200000000,
+      successRateToday: 98.6, successRateYesterday: 98.1, successRateMTD: 98.2,
+      failedCountToday: 590, failedCountYesterday: 640, failedCountMTD: 12800,
+      complaintsToday: 14, complaintsYesterday: 18, complaintsMTD: 210
     },
     ibft: {
-      successCountToday: 27800, successAmountToday: 3120000000,
-      successCountMTD: 601000, successAmountMTD: 66800000000,
-      successRateToday: 97.9, successRateMTD: 97.5,
-      failureCountToday: 620, failureCountMTD: 11800,
-      complaintsToday: 9, complaintsMTD: 158
+      successCountToday: 27800, successCountYesterday: 26400, successCountMTD: 601000,
+      successAmountToday: 3120000000, successAmountYesterday: 2950000000, successAmountMTD: 66800000000,
+      successRateToday: 97.9, successRateYesterday: 97.4, successRateMTD: 97.5,
+      failureCountToday: 620, failureCountYesterday: 680, failureCountMTD: 11800,
+      complaintsToday: 9, complaintsYesterday: 12, complaintsMTD: 158
     },
     ibftFailures: [
-      { reason: "Beneficiary invalid", today: 180, mtd: 3550 },
-      { reason: "Timeout", today: 150, mtd: 2890 },
-      { reason: "Insufficient funds", today: 140, mtd: 2650 },
-      { reason: "Core banking issue", today: 90, mtd: 1620 },
-      { reason: "Network error", today: 60, mtd: 1090 }
+      { reason: "Beneficiary invalid", today: 180, yesterday: 195, mtd: 3550 },
+      { reason: "Timeout", today: 150, yesterday: 162, mtd: 2890 },
+      { reason: "Insufficient funds", today: 140, yesterday: 132, mtd: 2650 },
+      { reason: "Core banking issue", today: 90, yesterday: 105, mtd: 1620 },
+      { reason: "Network error", today: 60, yesterday: 68, mtd: 1090 }
     ],
 
+    /* Card Non-Financials: explicit "Card" terminology (Rule 3) & preserved Personalized Ready Stock Card (Rule 4) */
     cardInventory: [
-      { category: "Blank Debit", qty: 82000, avgMonthlyUse: 9500, minStock: 30000 },
-      { category: "Blank Credit", qty: 21000, avgMonthlyUse: 4200, minStock: 12000 },
-      { category: "Personalized Ready Stock", qty: 15500, avgMonthlyUse: 6100, minStock: 15000 },
-      { category: "Debit Classic", qty: 40000, avgMonthlyUse: 7000, minStock: 18000 },
-      { category: "Debit Gold", qty: 18000, avgMonthlyUse: 3100, minStock: 9000 },
-      { category: "Debit Platinum", qty: 9200, avgMonthlyUse: 2600, minStock: 8000 },
-      { category: "Credit Classic", qty: 12600, avgMonthlyUse: 2900, minStock: 9000 },
-      { category: "Credit Gold", qty: 7100, avgMonthlyUse: 1800, minStock: 6000 },
-      { category: "Credit Platinum", qty: 3200, avgMonthlyUse: 1450, minStock: 4500 },
-      { category: "World Elite", qty: 640, avgMonthlyUse: 260, minStock: 800 }
+      { category: "Blank Debit Card", qty: 82000, avgMonthlyUse: 9500, minStock: 30000 },
+      { category: "Blank Credit Card", qty: 21000, avgMonthlyUse: 4200, minStock: 12000 },
+      { category: "Personalized Ready Stock Card", qty: 15500, avgMonthlyUse: 6100, minStock: 15000 },
+      { category: "Debit Classic Card", qty: 40000, avgMonthlyUse: 7000, minStock: 18000 },
+      { category: "Debit Gold Card", qty: 18000, avgMonthlyUse: 3100, minStock: 9000 },
+      { category: "Debit Platinum Card", qty: 9200, avgMonthlyUse: 2600, minStock: 8000 },
+      { category: "Credit Classic Card", qty: 12600, avgMonthlyUse: 2900, minStock: 9000 },
+      { category: "Credit Gold Card", qty: 7100, avgMonthlyUse: 1800, minStock: 6000 },
+      { category: "Credit Platinum Card", qty: 3200, avgMonthlyUse: 1450, minStock: 4500 },
+      { category: "World Elite Card", qty: 640, avgMonthlyUse: 260, minStock: 800 }
     ],
     cardStationery: [
       { item: "Envelopes", qty: 96000, avgMonthlyUse: 21000, minStock: 63000 },
@@ -295,84 +313,107 @@ function generateIllustrativeData() {
       { item: "Welcome packs", qty: 26000, avgMonthlyUse: 8600, minStock: 25800 }
     ],
     activeCards: [
-      { product: "Debit Classic", count: 612000, prevMonth: 601500, fee: 0 },
-      { product: "Debit Gold", count: 188000, prevMonth: 184200, fee: 1500 },
-      { product: "Debit Platinum", count: 63500, prevMonth: 61900, fee: 3500 },
-      { product: "Credit Classic", count: 94000, prevMonth: 92100, fee: 2500 },
-      { product: "Credit Gold", count: 41200, prevMonth: 40100, fee: 6000 },
-      { product: "Credit Platinum", count: 15800, prevMonth: 15200, fee: 12000 },
-      { product: "World Elite", count: 2650, prevMonth: 2500, fee: 35000 }
+      { product: "Debit Classic Card", count: 612000, prevMonth: 601500, fee: 0 },
+      { product: "Debit Gold Card", count: 188000, prevMonth: 184200, fee: 1500 },
+      { product: "Debit Platinum Card", count: 63500, prevMonth: 61900, fee: 3500 },
+      { product: "Credit Classic Card", count: 94000, prevMonth: 92100, fee: 2500 },
+      { product: "Credit Gold Card", count: 41200, prevMonth: 40100, fee: 6000 },
+      { product: "Credit Platinum Card", count: 15800, prevMonth: 15200, fee: 12000 },
+      { product: "World Elite Card", count: 2650, prevMonth: 2500, fee: 35000 }
     ],
 
+    /* Card Financials data with full Current and Previous Month fields (No FX Income) */
     cardFinancials: {
       credit: {
-        cif: 148600, aif: 115200,
+        cif: 148600, cifPrevious: 142000,
+        aif: 115200, aifPrevious: 111000,
         spendCurrent: 24600000000, spendPrevious: 23100000000,
-        annualFeeIncome: 410000000,
-        domesticTxnCount: 1850000, domesticTxnAmount: 19800000000,
-        intlTxnCount: 96000, intlTxnAmount: 4800000000,
-        oifIncome: 62000000,
-        domesticInterchange: 288000000, intlInterchange: 94000000,
-        mdrIncome: 145000000, fxIncome: 71000000
+        annualFeeIncome: 410000000, annualFeeIncomePrevious: 395000000,
+        domesticTxnCount: 1850000, domesticTxnCountPrevious: 1780000,
+        domesticTxnAmount: 19800000000, domesticTxnAmountPrevious: 18600000000,
+        intlTxnCount: 96000, intlTxnCountPrevious: 91000,
+        intlTxnAmount: 4800000000, intlTxnAmountPrevious: 4500000000,
+        oifIncome: 62000000, oifIncomePrevious: 57000000,
+        domesticInterchange: 288000000, domesticInterchangePrevious: 275000000,
+        intlInterchange: 94000000, intlInterchangePrevious: 89000000,
+        mdrIncome: 145000000, mdrIncomePrevious: 139000000,
+        enr: 12500000000, enrPrevious: 11800000000
       },
       debit: {
         spendCurrent: 41200000000, spendPrevious: 39500000000,
-        annualFeeIncome: 320000000,
-        domesticTxnCount: 5250000, domesticTxnAmount: 38100000000,
-        intlTxnCount: 61000, intlTxnAmount: 3100000000,
-        domesticInterchange: 198000000, intlInterchange: 52000000,
-        oifIncome: 28000000, mdrIncome: 0, fxIncome: 41000000
+        annualFeeIncome: 320000000, annualFeeIncomePrevious: 305000000,
+        domesticTxnCount: 5250000, domesticTxnCountPrevious: 5010000,
+        domesticTxnAmount: 38100000000, domesticTxnAmountPrevious: 36500000000,
+        intlTxnCount: 61000, intlTxnCountPrevious: 58000,
+        intlTxnAmount: 3100000000, intlTxnAmountPrevious: 3000000000,
+        domesticInterchange: 198000000, domesticInterchangePrevious: 187000000,
+        intlInterchange: 52000000, intlInterchangePrevious: 49000000,
+        oifIncome: 28000000, oifIncomePrevious: 26000000,
+        mdrIncome: 0, mdrIncomePrevious: 0,
+        enr: null, enrPrevious: null
       }
     },
     spendByProduct: [
-      { product: "Debit", currentBn: 41.2, previousBn: 39.5 },
-      { product: "Credit", currentBn: 24.6, previousBn: 23.1 }
+      { product: "Debit Card", currentBn: 41.2, previousBn: 39.5 },
+      { product: "Credit Card", currentBn: 24.6, previousBn: 23.1 }
     ],
     spendByChannel: [
       { channel: "E-Commerce", current: 18600000000, previous: 17100000000 },
       { channel: "ATM", current: 17650000000, previous: 16920000000 },
       { channel: "POS", current: 29550000000, previous: 28580000000 }
     ],
+    /* Merchant tables using MCC instead of Channel (Rule 2) */
     topMerchants: [
-      { rank: 1, merchant: "Merchant Group A", channel: "E-Commerce", txnCount: 92000, spend: 2100000000, share: 8.1 },
-      { rank: 2, merchant: "Merchant Group B", channel: "POS", txnCount: 78500, spend: 1850000000, share: 7.1 },
-      { rank: 3, merchant: "Merchant Group C", channel: "POS", txnCount: 65200, spend: 1520000000, share: 5.8 },
-      { rank: 4, merchant: "Merchant Group D", channel: "E-Commerce", txnCount: 54000, spend: 1210000000, share: 4.6 },
-      { rank: 5, merchant: "Merchant Group E", channel: "ATM", txnCount: 48900, spend: 980000000, share: 3.8 }
+      { rank: 1, merchant: "Merchant Group A", mcc: "5411", txnCount: 92000, spend: 2100000000, share: 8.1 },
+      { rank: 2, merchant: "Merchant Group B", mcc: "5812", txnCount: 78500, spend: 1850000000, share: 7.1 },
+      { rank: 3, merchant: "Merchant Group C", mcc: "4722", txnCount: 65200, spend: 1520000000, share: 5.8 },
+      { rank: 4, merchant: "Merchant Group D", mcc: "5311", txnCount: 54000, spend: 1210000000, share: 4.6 },
+      { rank: 5, merchant: "Merchant Group E", mcc: "5541", txnCount: 48900, spend: 980000000, share: 3.8 }
     ],
     revenueComposition: [
       { item: "Interchange Income (Domestic)", current: 486000000, previous: 462000000 },
       { item: "Interchange Income (International)", current: 146000000, previous: 138000000 },
       { item: "Annual Fees", current: 730000000, previous: 715000000 },
-      { item: "FX Income", current: 112000000, previous: 104000000 },
       { item: "OIF Income", current: 90000000, previous: 83000000 },
       { item: "MDR Income", current: 145000000, previous: 139000000 }
     ],
     netInterchange: { income: 632000000, expense: 210000000 },
     sbpCrossBorder: { customerCountCurrent: 186, customerCountPrevious: 171 },
 
+    /* Chargeback broken down by Credit vs Debit cards (Rule 13) */
     chargeback: {
-      domestic: { count: 1240, amount: 86000000, prevCount: 1180, prevAmount: 81500000 },
-      international: { count: 380, amount: 41000000, prevCount: 410, prevAmount: 44200000 },
-      pos: { count: 690, amount: 52000000, prevCount: 655, prevAmount: 49800000 },
-      ecommerce: { count: 930, amount: 75000000, prevCount: 935, prevAmount: 75800000 },
-      preArbRaised: { count: 82, amount: 9800000, prevCount: 76, prevAmount: 9100000 },
-      preArbReceived: { count: 58, amount: 6900000, prevCount: 63, prevAmount: 7400000 },
-      highAging: { count: 47, amount: 8100000, prevCount: 52, prevAmount: 8900000 }
+      credit: {
+        domestic: { count: 820, amount: 58000000, prevCount: 780, prevAmount: 54000000 },
+        international: { count: 290, amount: 32000000, prevCount: 310, prevAmount: 34000000 },
+        pos: { count: 420, amount: 35000000, prevCount: 400, prevAmount: 33000000 },
+        ecommerce: { count: 690, amount: 55000000, prevCount: 690, prevAmount: 55000000 },
+        preArbRaised: { count: 62, amount: 7800000, prevCount: 56, prevAmount: 7100000 },
+        preArbReceived: { count: 42, amount: 5200000, prevCount: 45, prevAmount: 5600000 },
+        highAging: { count: 32, amount: 5900000, prevCount: 36, prevAmount: 6400000 }
+      },
+      debit: {
+        domestic: { count: 420, amount: 28000000, prevCount: 400, prevAmount: 27500000 },
+        international: { count: 90, amount: 9000000, prevCount: 100, prevAmount: 10200000 },
+        pos: { count: 270, amount: 17000000, prevCount: 255, prevAmount: 16800000 },
+        ecommerce: { count: 240, amount: 20000000, prevCount: 245, prevAmount: 20800000 },
+        preArbRaised: { count: 20, amount: 2000000, prevCount: 20, prevAmount: 2000000 },
+        preArbReceived: { count: 16, amount: 1700000, prevCount: 18, prevAmount: 1800000 },
+        highAging: { count: 15, amount: 2200000, prevCount: 16, prevAmount: 2500000 }
+      }
     },
     chargebackMerchantsByCount: [
-      { rank: 1, merchant: "Merchant Group F", disputeCount: 145, disputedAmount: 12100000, share: 9.2 },
-      { rank: 2, merchant: "Merchant Group G", disputeCount: 118, disputedAmount: 10200000, share: 7.5 },
-      { rank: 3, merchant: "Merchant Group H", disputeCount: 96, disputedAmount: 8600000, share: 6.1 },
-      { rank: 4, merchant: "Merchant Group I", disputeCount: 84, disputedAmount: 7400000, share: 5.3 },
-      { rank: 5, merchant: "Merchant Group J", disputeCount: 71, disputedAmount: 6300000, share: 4.5 }
+      { rank: 1, merchant: "Merchant Group F", mcc: "5999", disputeCount: 145, disputedAmount: 12100000, share: 9.2 },
+      { rank: 2, merchant: "Merchant Group G", mcc: "5812", disputeCount: 118, disputedAmount: 10200000, share: 7.5 },
+      { rank: 3, merchant: "Merchant Group H", mcc: "5411", disputeCount: 96, disputedAmount: 8600000, share: 6.1 },
+      { rank: 4, merchant: "Merchant Group I", mcc: "4722", disputeCount: 84, disputedAmount: 7400000, share: 5.3 },
+      { rank: 5, merchant: "Merchant Group J", mcc: "5311", disputeCount: 71, disputedAmount: 6300000, share: 4.5 }
     ],
     chargebackMerchantsByAmount: [
-      { rank: 1, merchant: "Merchant Group F", chargebackCount: 145, chargebackAmount: 12100000, share: 9.2 },
-      { rank: 2, merchant: "Merchant Group K", chargebackCount: 62, chargebackAmount: 11400000, share: 8.6 },
-      { rank: 3, merchant: "Merchant Group G", chargebackCount: 118, chargebackAmount: 10200000, share: 7.5 },
-      { rank: 4, merchant: "Merchant Group H", chargebackCount: 96, chargebackAmount: 8600000, share: 6.1 },
-      { rank: 5, merchant: "Merchant Group L", chargebackCount: 54, chargebackAmount: 7900000, share: 5.9 }
+      { rank: 1, merchant: "Merchant Group F", mcc: "5999", chargebackCount: 145, chargebackAmount: 12100000, share: 9.2 },
+      { rank: 2, merchant: "Merchant Group K", mcc: "5541", chargebackCount: 62, chargebackAmount: 11400000, share: 8.6 },
+      { rank: 3, merchant: "Merchant Group G", mcc: "5812", chargebackCount: 118, chargebackAmount: 10200000, share: 7.5 },
+      { rank: 4, merchant: "Merchant Group H", mcc: "5411", chargebackCount: 96, chargebackAmount: 8600000, share: 6.1 },
+      { rank: 5, merchant: "Merchant Group L", mcc: "5732", chargebackCount: 54, chargebackAmount: 7900000, share: 5.9 }
     ],
     chargebackGL: [
       { gl: "GL-71200", txnCount: 320, amount: 26000000 },
@@ -399,26 +440,15 @@ function generateIllustrativeData() {
       ]
     },
     nostro: [
-      { gl: "NOSTRO-USD-01", balance: 18600000, fundingRequirement: 15200000, buffer: 3400000, reportingDate: "" },
-      { gl: "NOSTRO-EUR-01", balance: 6200000, fundingRequirement: 5100000, buffer: 1100000, reportingDate: "" }
+      { currency: "USD", gl: "NOSTRO-USD-01", balance: 18600000, reportingDate: "" },
+      { currency: "AED", gl: "NOSTRO-AED-01", balance: 6200000, reportingDate: "" }
     ],
     rejected: {
       gl: "GL-60010", rejectedCount: 62, rejectedAmount: 8900000,
       repostedCount: 48, repostedAmount: 6800000,
       pendingCount: 14, pendingAmount: 2100000
     },
-    oif: { caseCountCurrent: 96, valueCurrent: 62000000, caseCountPrevious: 88, valuePrevious: 55500000 },
-
-    /* 7-day total ADC transaction count trend (ATM + RAAST + IBFT) */
-    adcTrend7Day: [
-      { date: "05-Sep", count: 128900 },
-      { date: "06-Sep", count: 134200 },
-      { date: "07-Sep", count: 131500 },
-      { date: "08-Sep", count: 138700 },
-      { date: "09-Sep", count: 142300 },
-      { date: "10-Sep", count: 139200 },
-      { date: "11-Sep", count: 137450 }
-    ]
+    oif: { caseCountCurrent: 96, valueCurrent: 62000000, caseCountPrevious: 88, valuePrevious: 55500000 }
   };
 }
 
@@ -430,8 +460,7 @@ function normalizeHeader(h) {
   return String(h || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-/* Resolves a normalized column key from a raw row object using COLUMN_ALIASES,
-   falling back to a direct case-insensitive match on candidateKey. */
+/* Resolves a normalized column key from a raw row object using COLUMN_ALIASES */
 function getAliasedValue(row, canonicalKey, directKeys) {
   const aliasList = COLUMN_ALIASES[canonicalKey] || [];
   const normalizedRowKeys = {};
@@ -449,13 +478,11 @@ function getAliasedValue(row, canonicalKey, directKeys) {
 function toNumber(v) {
   if (v === null || v === undefined || v === "") return null;
   if (typeof v === "number") return v;
-  const cleaned = String(v).replace(/[,%\s]/g, "").replace(/^PKR|USD/i, "");
+  const cleaned = String(v).replace(/[,%\s]/g, "").replace(/^PKR|USD|AED/i, "");
   const n = parseFloat(cleaned);
   return isNaN(n) ? null : n;
 }
 
-/* Minimal built-in CSV parser (handles quoted fields), used when the CSV
-   path is taken directly — independent of the bundled xlsx library. */
 function parseCSV(text) {
   const rows = [];
   let row = [], field = "", inQuotes = false;
@@ -487,15 +514,10 @@ function parseCSV(text) {
   });
 }
 
-/* Reads sheet-like arrays-of-objects out of a parsed workbook (from the
-   xlsx library) or a single CSV table, keyed by the SHEET_NAMES list. */
 function extractRawSheets(workbookOrRows, isCSV) {
   const rawSheets = {};
   const missingSheets = [];
   if (isCSV) {
-    /* A CSV file only ever contains one table — treat it as the Overview sheet
-       plus best-effort detection is not attempted; user should use xlsx for
-       the full multi-sheet workbook. */
     rawSheets["Overview"] = workbookOrRows;
     SHEET_NAMES.forEach(function (name) { if (name !== "Overview") missingSheets.push(name); });
   } else {
@@ -513,10 +535,6 @@ function extractRawSheets(workbookOrRows, isCSV) {
   return { rawSheets: rawSheets, missingSheets: missingSheets };
 }
 
-/* normalizeWorkbookData(): converts raw per-sheet row arrays into the
-   canonical shape consumed by the render functions. Only sheets that are
-   present are transformed; everything else is left null so pages can show
-   a "No data available" message instead of crashing. */
 function normalizeWorkbookData(rawSheets, missingSheets) {
   const data = { meta: { missingSheets: missingSheets, dataQualityMessages: [], source: "excel" } };
 
@@ -528,11 +546,11 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
       totalATMs: num(r, "totalATMs", ["Total ATMs"]),
       uptimeToday: num(r, "uptimeToday", ["Uptime Today", "ATM Uptime"]),
       uptimeYesterday: num(r, "uptimeYesterday", ["Uptime Yesterday"]),
-      withdrawalCountToday: num(r, "today", ["Withdrawal Count Today"]),
+      withdrawalCountToday: num(r, "today", ["Withdrawal Count Today", "Withdrawal Count"]),
       withdrawalCountYesterday: num(r, "yesterday", ["Withdrawal Count Yesterday"]),
       withdrawalCountMTD: num(r, "mtd", ["Withdrawal Count MTD"]),
       withdrawalCountPrevMTD: num(r, "prevMtd", ["Withdrawal Count Previous MTD"]),
-      withdrawalAmountToday: num(r, "txnAmount", ["Withdrawal Amount Today"]),
+      withdrawalAmountToday: num(r, "txnAmount", ["Withdrawal Amount Today", "Withdrawal Amount"]),
       withdrawalAmountYesterday: num(r, null, ["Withdrawal Amount Yesterday"]),
       withdrawalAmountMTD: num(r, null, ["Withdrawal Amount MTD"]),
       withdrawalAmountPrevMTD: num(r, null, ["Withdrawal Amount Previous MTD"]),
@@ -566,13 +584,21 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
     const r = rawSheets["RAAST"][0] || {};
     data.raast = {
       successCountToday: num(r, "today", ["Successful Transaction Count Today"]),
+      successCountYesterday: num(r, "yesterday", ["Successful Transaction Count Yesterday"]),
       successAmountToday: num(r, null, ["Successful Transaction Amount Today"]),
+      successAmountYesterday: num(r, null, ["Successful Transaction Amount Yesterday"]),
       successCountMTD: num(r, "mtd", ["Successful Transaction Count MTD"]),
       successAmountMTD: num(r, null, ["Successful Transaction Amount MTD"]),
+      successCountPrevMTD: num(r, "prevMtd", ["Successful Transaction Count Previous MTD"]),
+      successAmountPrevMTD: num(r, null, ["Successful Transaction Amount Previous MTD"]),
       successRateToday: num(r, null, ["Success Rate Today"]),
+      successRateYesterday: num(r, null, ["Success Rate Yesterday"]),
       successRateMTD: num(r, null, ["Success Rate MTD"]),
       failedCountToday: num(r, null, ["Failed Transaction Count Today"]),
+      failedCountYesterday: num(r, null, ["Failed Transaction Count Yesterday"]),
+      failedCountMTD: num(r, null, ["Failed Transaction Count MTD"]),
       complaintsToday: num(r, "complaintCount", ["Complaints Today"]),
+      complaintsYesterday: num(r, null, ["Complaints Yesterday"]),
       complaintsMTD: num(r, null, ["Complaints MTD"])
     };
   }
@@ -581,14 +607,21 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
     const r = rawSheets["IBFT"][0] || {};
     data.ibft = {
       successCountToday: num(r, "today", ["Successful Transaction Count Today"]),
+      successCountYesterday: num(r, "yesterday", ["Successful Transaction Count Yesterday"]),
       successAmountToday: num(r, null, ["Successful Transaction Amount Today"]),
+      successAmountYesterday: num(r, null, ["Successful Transaction Amount Yesterday"]),
       successCountMTD: num(r, "mtd", ["Successful Transaction Count MTD"]),
       successAmountMTD: num(r, null, ["Successful Transaction Amount MTD"]),
+      successCountPrevMTD: num(r, "prevMtd", ["Successful Transaction Count Previous MTD"]),
+      successAmountPrevMTD: num(r, null, ["Successful Transaction Amount Previous MTD"]),
       successRateToday: num(r, null, ["Success Rate Today"]),
+      successRateYesterday: num(r, null, ["Success Rate Yesterday"]),
       successRateMTD: num(r, null, ["Success Rate MTD"]),
       failureCountToday: num(r, null, ["Failure Count Today"]),
+      failureCountYesterday: num(r, null, ["Failure Count Yesterday"]),
       failureCountMTD: num(r, null, ["Failure Count MTD"]),
       complaintsToday: num(r, "complaintCount", ["Complaints Today"]),
+      complaintsYesterday: num(r, null, ["Complaints Yesterday"]),
       complaintsMTD: num(r, null, ["Complaints MTD"])
     };
   }
@@ -597,6 +630,7 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
       return {
         reason: getAliasedValue(row, null, ["Failure Reason"]) || "Other",
         today: num(row, null, ["Today Count"]),
+        yesterday: num(row, null, ["Yesterday Count"]),
         mtd: num(row, null, ["MTD Count"])
       };
     });
@@ -604,8 +638,12 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
 
   if (rawSheets["Card_Inventory"] && rawSheets["Card_Inventory"].length) {
     data.cardInventory = rawSheets["Card_Inventory"].map(function (row) {
+      let rawCat = getAliasedValue(row, null, ["Plastic Category", "Category"]) || "Other";
+      if (rawCat.indexOf("Card") === -1 && !/envelope|mailer|pack/i.test(rawCat)) {
+        rawCat = rawCat + " Card";
+      }
       return {
-        category: getAliasedValue(row, null, ["Plastic Category", "Category"]) || "Other",
+        category: rawCat,
         qty: num(row, null, ["Current Quantity", "Quantity"]),
         avgMonthlyUse: num(row, null, ["Average Monthly Consumption", "Avg Monthly Consumption"]),
         minStock: num(row, null, ["Required Minimum Stock", "Minimum Stock"])
@@ -624,8 +662,10 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
   }
   if (rawSheets["Active_Cards"] && rawSheets["Active_Cards"].length) {
     data.activeCards = rawSheets["Active_Cards"].map(function (row) {
+      let rawProd = getAliasedValue(row, null, ["Product"]) || "Other";
+      if (rawProd.indexOf("Card") === -1) rawProd = rawProd + " Card";
       return {
-        product: getAliasedValue(row, null, ["Product"]) || "Other",
+        product: rawProd,
         count: num(row, "currentMonth", ["Active Card Count", "Current Month"]),
         prevMonth: num(row, "previousMonth", ["Previous Month"]),
         fee: num(row, null, ["Annual Fee"])
@@ -640,27 +680,41 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
     function buildFin(r) {
       return {
         cif: num(r, null, ["Credit Card CIF", "CIF"]),
+        cifPrevious: num(r, null, ["Credit Card CIF Previous", "CIF Previous"]),
         aif: num(r, null, ["Credit Card AIF", "AIF"]),
-        spendCurrent: num(r, "currentMonth", ["Current Month Spend"]),
-        spendPrevious: num(r, "previousMonth", ["Previous Month Spend"]),
+        aifPrevious: num(r, null, ["Credit Card AIF Previous", "AIF Previous"]),
+        spendCurrent: num(r, "currentMonth", ["Current Month Spend", "Spend Current"]),
+        spendPrevious: num(r, "previousMonth", ["Previous Month Spend", "Spend Previous"]),
         annualFeeIncome: num(r, null, ["Annual Fee Income"]),
+        annualFeeIncomePrevious: num(r, null, ["Annual Fee Income Previous"]),
         domesticTxnCount: num(r, null, ["Domestic Transaction Count"]),
+        domesticTxnCountPrevious: num(r, null, ["Domestic Transaction Count Previous"]),
         domesticTxnAmount: num(r, null, ["Domestic Transaction Amount"]),
+        domesticTxnAmountPrevious: num(r, null, ["Domestic Transaction Amount Previous"]),
         intlTxnCount: num(r, null, ["International Transaction Count"]),
+        intlTxnCountPrevious: num(r, null, ["International Transaction Count Previous"]),
         intlTxnAmount: num(r, null, ["International Transaction Amount"]),
+        intlTxnAmountPrevious: num(r, null, ["International Transaction Amount Previous"]),
         oifIncome: num(r, null, ["OIF Income", "OIF Earned"]),
+        oifIncomePrevious: num(r, null, ["OIF Income Previous"]),
         domesticInterchange: num(r, null, ["Domestic Interchange Income"]),
+        domesticInterchangePrevious: num(r, null, ["Domestic Interchange Income Previous"]),
         intlInterchange: num(r, null, ["International Interchange Income"]),
+        intlInterchangePrevious: num(r, null, ["International Interchange Income Previous"]),
         mdrIncome: num(r, null, ["MDR Income"]),
-        fxIncome: num(r, null, ["FX Income"])
+        mdrIncomePrevious: num(r, null, ["MDR Income Previous"]),
+        enr: num(r, "enr", ["ENR", "Ending Net Receivables", "Earning Net Revenue"]),
+        enrPrevious: num(r, null, ["ENR Previous", "Ending Net Receivables Previous"])
       };
     }
     data.cardFinancials = { credit: buildFin(creditRow), debit: buildFin(debitRow) };
   }
   if (rawSheets["Spend_By_Product"] && rawSheets["Spend_By_Product"].length) {
     data.spendByProduct = rawSheets["Spend_By_Product"].map(function (row) {
+      let rawP = getAliasedValue(row, null, ["Product"]) || "Other";
+      if (rawP.indexOf("Card") === -1) rawP = rawP + " Card";
       return {
-        product: getAliasedValue(row, null, ["Product"]) || "Other",
+        product: rawP,
         currentBn: num(row, "currentMonth", ["Current Month Spend"]),
         previousBn: num(row, "previousMonth", ["Previous Month Spend"])
       };
@@ -680,7 +734,7 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
       return {
         rank: i + 1,
         merchant: getAliasedValue(row, null, ["Merchant Name", "Merchant"]) || "N/A",
-        channel: getAliasedValue(row, null, ["Channel"]) || "N/A",
+        mcc: getAliasedValue(row, "mcc", ["MCC", "Merchant Category Code"]) || "N/A",
         txnCount: num(row, "txnCount"),
         spend: num(row, null, ["Spend Amount"]),
         share: num(row, null, ["Share Percentage", "Share"])
@@ -698,7 +752,7 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
         prevCount: num(row, null, ["Previous Count"]), prevAmount: num(row, null, ["Previous Amount"])
       };
     }
-    data.chargeback = {
+    const baseCb = {
       domestic: findMetric("Domestic Disputes"),
       international: findMetric("International Disputes"),
       pos: findMetric("POS Disputes"),
@@ -707,6 +761,7 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
       preArbReceived: findMetric("Pre-Arbitration Received"),
       highAging: findMetric("High-Aging Disputes")
     };
+    data.chargeback = { credit: baseCb, debit: baseCb };
   }
   if (rawSheets["Chargeback_Merchants"] && rawSheets["Chargeback_Merchants"].length) {
     const rows = rawSheets["Chargeback_Merchants"];
@@ -715,6 +770,7 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
     }).slice(0, 5).map(function (row, i) {
       return {
         rank: i + 1, merchant: getAliasedValue(row, null, ["Merchant"]) || "N/A",
+        mcc: getAliasedValue(row, "mcc", ["MCC", "Merchant Category Code"]) || "N/A",
         disputeCount: num(row, null, ["Dispute Count"]), disputedAmount: num(row, null, ["Disputed Amount"]),
         share: num(row, null, ["Share Percentage", "Share"])
       };
@@ -724,6 +780,7 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
     }).slice(0, 5).map(function (row, i) {
       return {
         rank: i + 1, merchant: getAliasedValue(row, null, ["Merchant"]) || "N/A",
+        mcc: getAliasedValue(row, "mcc", ["MCC", "Merchant Category Code"]) || "N/A",
         chargebackCount: num(row, null, ["Chargeback Count", "Dispute Count"]), chargebackAmount: num(row, null, ["Chargeback Amount"]),
         share: num(row, null, ["Share Percentage", "Share"])
       };
@@ -748,17 +805,25 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
       agingBuckets: null
     };
   }
+
+  /* NOSTRO: Restricted strictly to USD and AED available balances */
   if (rawSheets["Nostro"] && rawSheets["Nostro"].length) {
-    data.nostro = rawSheets["Nostro"].map(function (row) {
+    const filteredNostro = rawSheets["Nostro"].filter(function (row) {
+      const glStr = String(getAliasedValue(row, "gl", ["Nostro GL", "GL", "Currency"]) || "").toUpperCase();
+      return glStr.indexOf("USD") !== -1 || glStr.indexOf("AED") !== -1;
+    });
+    data.nostro = (filteredNostro.length ? filteredNostro : rawSheets["Nostro"].slice(0, 2)).map(function (row) {
+      const gl = getAliasedValue(row, "gl", ["Nostro GL", "GL"]) || "N/A";
+      const cur = /usd/i.test(gl) ? "USD" : (/aed/i.test(gl) ? "AED" : "USD");
       return {
-        gl: getAliasedValue(row, "gl", ["Nostro GL"]) || "N/A",
-        balance: num(row, null, ["Nostro Balance"]),
-        fundingRequirement: num(row, null, ["Funding Requirement"]),
-        buffer: num(row, null, ["Buffer Available"]),
+        currency: cur,
+        gl: gl,
+        balance: num(row, null, ["Nostro Balance", "Available Balance", "Balance"]),
         reportingDate: getAliasedValue(row, null, ["Reporting Date"]) || ""
       };
     });
   }
+
   if (rawSheets["Rejected_Transactions"] && rawSheets["Rejected_Transactions"].length) {
     const r = rawSheets["Rejected_Transactions"][0] || {};
     data.rejected = {
@@ -788,7 +853,6 @@ function validateWorkbookData(data) {
   return issues;
 }
 
-/* parseWorkbookOnce(): the single place workbook parsing happens. */
 function parseWorkbookOnce(fileResult, fileName) {
   const isCSV = /\.csv$/i.test(fileName);
   let extraction;
@@ -806,7 +870,6 @@ function parseWorkbookOnce(fileResult, fileName) {
   return { normalized: normalized, rawSheets: extraction.rawSheets };
 }
 
-/* loadWorkbook(): wires the file picker to parseWorkbookOnce + state update. */
 function loadWorkbook(file) {
   if (!file) return;
   const isCSV = /\.csv$/i.test(file.name);
@@ -837,14 +900,13 @@ function loadWorkbook(file) {
       renderActivePage();
     } catch (err) {
       if (err && err.message === "XLSX_LIBRARY_MISSING") {
-        showMessage("The xlsx.min.js library was not found in the js/ folder, so .xlsx and .xls files cannot be parsed. CSV files work without it. See README.txt for how to add the library.", "error");
+        showMessage("The xlsx.min.js library was not found in the js/ folder, so .xlsx and .xls files cannot be parsed. CSV files work without it.", "error");
       } else {
         showMessage("The file could not be parsed. Please confirm it is a valid Excel or CSV workbook.", "error");
       }
     }
   };
-  if (isCSV) reader.readAsArrayBuffer(file);
-  else reader.readAsArrayBuffer(file);
+  reader.readAsArrayBuffer(file);
 }
 
 /* ---------------------------------------------------------------------
@@ -961,7 +1023,7 @@ function renderActivePage() {
 }
 
 /* ---------------------------------------------------------------------
-   8. ALERTS — BOTTOM-RIGHT NOTIFICATION SYSTEM (WITH SESSION STORAGE MEMORY)
+   10. ALERTS — BOTTOM-RIGHT NOTIFICATION SYSTEM
    --------------------------------------------------------------------- */
 
 function getDismissedAlerts() {
@@ -1035,32 +1097,17 @@ function evaluateAndShowToastAlerts(data) {
   }
 
   /* 4. Chargeback High Aging Disputes */
-  if (data.chargeback && data.chargeback.highAging && data.chargeback.highAging.count > 0) {
+  const activeCb = data.chargeback ? (data.chargeback.credit || data.chargeback) : null;
+  if (activeCb && activeCb.highAging && activeCb.highAging.count > 0) {
     rawAlerts.push({
       id: "toast_cb_high_aging",
       severity: "WARNING",
       title: "High-Aging Chargeback Disputes",
-      detail: data.chargeback.highAging.count + " pending cases (" + formatCurrency(data.chargeback.highAging.amount) + ")",
+      detail: activeCb.highAging.count + " pending cases (" + formatCurrency(activeCb.highAging.amount) + ")",
       page: "chargeback"
     });
   }
 
-  /* 5. NOSTRO Deficit Alert */
-  if (data.nostro) {
-    data.nostro.forEach(function (n) {
-      if (n.buffer < 0) {
-        rawAlerts.push({
-          id: "toast_nostro_" + String(n.gl).replace(/\s+/g, "_"),
-          severity: "CRITICAL",
-          title: "NOSTRO Deficit: " + n.gl,
-          detail: "Balance: " + formatCurrency(n.balance) + " (Req: " + formatCurrency(n.fundingRequirement) + ")",
-          page: "reconciliation"
-        });
-      }
-    });
-  }
-
-  /* Filter out alerts dismissed during this session */
   const dismissed = getDismissedAlerts();
   const activeAlerts = rawAlerts.filter(function (a) { return dismissed.indexOf(a.id) === -1; });
 
@@ -1089,13 +1136,11 @@ function evaluateAndShowToastAlerts(data) {
       + '</div>'
       + '<button class="toast-close" type="button" aria-label="Dismiss alert">&times;</button>';
 
-    /* Clicking body navigates to page */
     toast.addEventListener("click", function (e) {
       if (e.target.classList.contains("toast-close")) return;
       navigateToPage(a.page);
     });
 
-    /* Clicking close button dismisses and remembers in sessionStorage */
     const closeBtn = toast.querySelector(".toast-close");
     closeBtn.addEventListener("click", function (e) {
       e.stopPropagation();
@@ -1112,7 +1157,7 @@ function evaluateAndShowToastAlerts(data) {
 }
 
 /* =====================================================================
-   10. PAGE 1 — OVERVIEW (EXECUTIVE COMMAND CENTER)
+   11. PAGE 1 — OVERVIEW (EXECUTIVE COMMAND CENTER)
    ===================================================================== */
 
 function renderOverview(data) {
@@ -1123,42 +1168,41 @@ function renderOverview(data) {
     data.meta.dataQualityMessages.forEach(function (m) { root.appendChild(dataQualityNote(m)); });
   }
 
-  renderOvKpiStrip(root, data);   /* Level 1: Executive KPI strip       */
-  renderOvNostro(root, data);     /* NOSTRO Position Status             */
-  renderOvAdcSummary(root, data); /* Level 2: ADC operational table      */
-  renderOvCharts(root, data);     /* Level 3: Visual management widgets */
-  renderOvModules(root, data);    /* Level 4: Module summary panels     */
+  renderOvKpiStrip(root, data);   /* Executive KPI strip */
+  renderOvNostro(root, data);     /* NOSTRO Available Balances (USD & AED) */
+  renderOvAdcSummary(root, data); /* ADC Operational summary */
+  renderOvCharts(root, data);     /* Visual management widgets */
+  renderOvModules(root, data);    /* Module summary panels */
 }
 
-/* ── NOSTRO Position Status on Overview ────────────────────────────── */
-
+/* NOSTRO Position Status on Overview (USD & AED Available Balances Only) */
 function renderOvNostro(root, data) {
   if (!data.nostro || !data.nostro.length) return;
 
   const section = el("div", { class: "ov-section" });
-  section.appendChild(el("div", { class: "ov-section-heading", text: "NOSTRO Account Positions & Reserve Buffer" }));
+  section.appendChild(el("div", { class: "ov-section-heading", text: "NOSTRO Account Positions" }));
 
   const grid = el("div", { class: "kpi-grid" });
   data.nostro.forEach(function (n) {
-    const sub = "Funding Req: " + formatCurrency(n.fundingRequirement) + " | Buffer: " + formatCurrency(n.buffer);
-    const title = n.gl + " Position";
-    grid.appendChild(kpiCard(title, formatCurrency(n.balance), sub));
+    const cur = n.currency || (n.gl.indexOf("USD") !== -1 ? "USD" : "AED");
+    const title = cur + " Available Balance";
+    grid.appendChild(kpiCard(title, formatCurrency(n.balance, cur), "GL: " + n.gl));
   });
 
   section.appendChild(grid);
   root.appendChild(section);
 }
 
-/* ── Level 1: Executive KPI Strip ─────────────────────────────────── */
-
+/* Executive KPI Strip */
 function renderOvKpiStrip(root, data) {
   const strip = el("div", { class: "ov-kpi-strip" });
 
-  /* 1. ATM Uptime */
-  const uptime    = data.atm ? data.atm.uptimeToday : null;
-  const uptimeY   = data.atm ? data.atm.uptimeYesterday : null;
-  strip.appendChild(ovExecCard("ATM Uptime", formatPercentage(uptime),
-    indicatorHTML(uptime, uptimeY, true), "vs Yesterday", "DAILY",
+  /* 1. ATM Uptime Today vs Yesterday */
+  const uptime  = data.atm ? data.atm.uptimeToday : null;
+  const uptimeY = data.atm ? data.atm.uptimeYesterday : null;
+  const uptComp = formatUptimeComparison(uptime, uptimeY);
+  strip.appendChild(ovExecCard("ATM Uptime", uptComp.todayStr,
+    'Yesterday: ' + uptComp.yesterdayStr + ' &nbsp;|&nbsp; ' + uptComp.html, "vs Yesterday", "DAILY",
     fullValueTitle(uptime)));
 
   /* 2. Total ADC Transaction Count */
@@ -1166,23 +1210,23 @@ function renderOvKpiStrip(root, data) {
                   + (data.raast ? data.raast.successCountToday || 0 : 0)
                   + (data.ibft ? data.ibft.successCountToday || 0 : 0);
   const adcCntY   = data.atm ? data.atm.withdrawalCountYesterday : null;
-  strip.appendChild(ovExecCard("Total ADC Transactions", formatNumber(adcCntTdy, 0),
-    indicatorHTML(adcCntTdy, adcCntY, true), "vs Yesterday", "DAILY"));
+  strip.appendChild(ovExecCard("Total ADC Transaction Count", formatNumber(adcCntTdy, 0),
+    indicatorHTML(adcCntTdy, adcCntY, true, false), "vs Yesterday", "DAILY"));
 
   /* 3. Total ADC Transaction Amount */
   const adcAmtTdy = (data.atm ? data.atm.withdrawalAmountToday || 0 : 0)
                   + (data.raast ? data.raast.successAmountToday || 0 : 0)
                   + (data.ibft ? data.ibft.successAmountToday || 0 : 0);
   const adcAmtY   = data.atm ? data.atm.withdrawalAmountYesterday : null;
-  strip.appendChild(ovExecCard("Total ADC Amount", formatCurrency(adcAmtTdy),
-    indicatorHTML(adcAmtTdy, adcAmtY, true), "vs Yesterday", "DAILY",
+  strip.appendChild(ovExecCard("Total ADC Transaction Amount", formatCurrency(adcAmtTdy),
+    indicatorHTML(adcAmtTdy, adcAmtY, true, false), "vs Yesterday", "DAILY",
     fullValueTitle(adcAmtTdy, true)));
 
   /* 4. Active Cards */
   const activeTot = data.activeCards ? sumBy(data.activeCards, "count") : null;
   const activePrv = data.activeCards ? sumBy(data.activeCards, "prevMonth") : null;
-  strip.appendChild(ovExecCard("Active Cards", formatNumber(activeTot, 0),
-    indicatorHTML(activeTot, activePrv, true), "vs Last Month", "MONTHLY"));
+  strip.appendChild(ovExecCard("Active Cards Count", formatNumber(activeTot, 0),
+    indicatorHTML(activeTot, activePrv, true, true), "vs Previous Month", "MONTHLY"));
 
   /* 5. Total Card Spend */
   const spend     = data.cardFinancials
@@ -1190,14 +1234,14 @@ function renderOvKpiStrip(root, data) {
   const spendPrv  = data.cardFinancials
     ? (data.cardFinancials.credit.spendPrevious || 0) + (data.cardFinancials.debit.spendPrevious || 0) : null;
   strip.appendChild(ovExecCard("Total Card Spend", formatCurrency(spend),
-    indicatorHTML(spend, spendPrv, true), "vs Last Month", "MONTHLY",
+    indicatorHTML(spend, spendPrv, true, true), "vs Previous Month", "MONTHLY",
     fullValueTitle(spend, true)));
 
   /* 6. Reconciliation Exposure > 30d */
   const exposure  = data.reconciliation
     ? sumBy(data.reconciliation.receivables, "amount") + sumBy(data.reconciliation.payables, "amount") : null;
   strip.appendChild(ovExecCard("Recon Exposure > 30d", formatCurrency(exposure),
-    '<span class="indicator flat">\u2014</span>', "", "DAILY",
+    '<span class="indicator flat">&mdash;</span>', "", "DAILY",
     fullValueTitle(exposure, true)));
 
   root.appendChild(strip);
@@ -1216,8 +1260,7 @@ function ovExecCard(label, value, indicHtml, vsLabel, freq, titleAttr) {
   return card;
 }
 
-/* ── Level 2: ADC Operations Summary ──────────────────────────────── */
-
+/* ADC Operations Summary */
 function renderOvAdcSummary(root, data) {
   const section = el("div", { class: "ov-section" });
   section.appendChild(el("div", { class: "ov-section-heading", text: "ADC Operations Summary" }));
@@ -1231,24 +1274,25 @@ function renderOvAdcSummary(root, data) {
   const rows = [];
   if (data.atm) {
     const a = data.atm;
-    rows.push({ kpi: "ATM Withdrawals",   today: formatNumber(a.withdrawalCountToday, 0), mtd: formatNumber(a.withdrawalCountMTD, 0), change: indicatorHTML(a.withdrawalCountToday, a.withdrawalCountYesterday, true) });
-    rows.push({ kpi: "ATM Disputes",      today: formatNumber(a.disputesToday, 0),         mtd: formatNumber(a.disputesMTD, 0),         change: indicatorHTML(a.disputesToday, a.disputesMTD > 0 ? a.disputesMTD / 30 : null, false) });
-    rows.push({ kpi: "Cards Captured",    today: formatNumber(a.capturedCardsToday, 0),    mtd: formatNumber(a.capturedCardsMTD, 0),    change: "\u2014" });
+    rows.push({ kpi: "ATM Withdrawals Count", today: formatNumber(a.withdrawalCountToday, 0), mtd: formatNumber(a.withdrawalCountMTD, 0), change: indicatorHTML(a.withdrawalCountToday, a.withdrawalCountYesterday, true, false) });
+    rows.push({ kpi: "ATM Withdrawal Amount", today: formatCurrency(a.withdrawalAmountToday), mtd: formatCurrency(a.withdrawalAmountMTD), change: indicatorHTML(a.withdrawalAmountToday, a.withdrawalAmountYesterday, true, false) });
+    rows.push({ kpi: "ATM Disputes Count",    today: formatNumber(a.disputesToday, 0),         mtd: formatNumber(a.disputesMTD, 0),         change: indicatorHTML(a.disputesToday, a.disputesMTD > 0 ? a.disputesMTD / 30 : null, false, false) });
+    rows.push({ kpi: "Cards Captured Count",  today: formatNumber(a.capturedCardsToday, 0),    mtd: formatNumber(a.capturedCardsMTD, 0),    change: "\u2014" });
   }
   if (data.raast) {
     const r = data.raast;
-    rows.push({ kpi: "RAAST Transactions", today: formatNumber(r.successCountToday, 0), mtd: formatNumber(r.successCountMTD, 0), change: indicatorHTML(r.successRateToday, r.successRateMTD, true) });
+    rows.push({ kpi: "RAAST Transaction Count", today: formatNumber(r.successCountToday, 0), mtd: formatNumber(r.successCountMTD, 0), change: indicatorHTML(r.successRateToday, r.successRateMTD, true, false) });
   }
   if (data.ibft) {
     const i = data.ibft;
-    rows.push({ kpi: "IBFT Transactions",  today: formatNumber(i.successCountToday, 0),  mtd: formatNumber(i.successCountMTD, 0),  change: indicatorHTML(i.successRateToday, i.successRateMTD, true) });
+    rows.push({ kpi: "IBFT Transaction Count",  today: formatNumber(i.successCountToday, 0),  mtd: formatNumber(i.successCountMTD, 0),  change: indicatorHTML(i.successRateToday, i.successRateMTD, true, false) });
   }
 
   const wrap = el("div", { class: "ov-adc-table-wrap" });
   const table = el("table", { class: "ov-adc-table" });
   const thead = el("thead");
   const hr = el("tr");
-  ["KPI", "Today", "MTD", "Change"].forEach(function (h, i) {
+  ["KPI", "Today", "Current Month", "Change"].forEach(function (h, i) {
     hr.appendChild(el("th", { class: i > 0 ? "num" : "", text: h }));
   });
   thead.appendChild(hr);
@@ -1270,8 +1314,7 @@ function renderOvAdcSummary(root, data) {
   root.appendChild(section);
 }
 
-/* ── Level 3: Executive Visual Widgets ─────────────────────────────── */
-
+/* Executive Visual Widgets */
 function renderOvCharts(root, data) {
   const row = el("div", { class: "ov-charts-row" });
   row.appendChild(buildOvNostroChart(data));
@@ -1287,28 +1330,24 @@ function ovChartCard(title, bodyEl) {
   return card;
 }
 
-/* NOSTRO Position & Liquidity Buffer Widget (Replaces removed 7-Day trend chart) */
+/* NOSTRO Position Widget (USD & AED Available Balances) */
 function buildOvNostroChart(data) {
   const body = el("div", { class: "ov-chart-body" });
   if (!data.nostro || !data.nostro.length) {
     body.appendChild(el("div", { class: "no-data-note", text: "No NOSTRO position data available." }));
-    return ovChartCard("NOSTRO Position & Liquidity Buffer", body);
+    return ovChartCard("NOSTRO Account Positions", body);
   }
   const items = data.nostro.map(function (n) {
-    const statusCls = n.buffer >= 0 ? "ok" : "critical";
-    const statusTxt = n.buffer >= 0 ? "Sufficient Buffer" : "Deficit Alert";
+    const cur = n.currency || (n.gl.indexOf("USD") !== -1 ? "USD" : "AED");
     return '<div class="nostro-card-item">'
-      + '<div class="nostro-item-title"><strong>' + n.gl + '</strong> <span class="status-badge ' + statusCls + '">' + statusTxt + '</span></div>'
-      + '<div class="nostro-item-row"><span>Balance:</span> <strong>' + formatCurrency(n.balance) + '</strong></div>'
-      + '<div class="nostro-item-row"><span>Funding Req:</span> <span>' + formatCurrency(n.fundingRequirement) + '</span></div>'
-      + '<div class="nostro-item-row"><span>Buffer Available:</span> <strong style="color:var(--brand-dark);">' + formatCurrency(n.buffer) + '</strong></div>'
+      + '<div class="nostro-item-title"><strong>' + cur + ' Account</strong> (' + n.gl + ')</div>'
+      + '<div class="nostro-item-row"><span>Available Balance:</span> <strong>' + formatCurrency(n.balance, cur) + '</strong></div>'
       + '</div>';
   }).join("");
   body.innerHTML = '<div class="nostro-card-list">' + items + '</div>';
-  return ovChartCard("NOSTRO Position & Liquidity Buffer", body);
+  return ovChartCard("NOSTRO Account Positions", body);
 }
 
-/* Chart 2 — Card spend composition (stacked horizontal bar SVG) */
 function buildOvSpendChart(data) {
   const body = el("div", { class: "ov-chart-body" });
   if (!data.cardFinancials) {
@@ -1321,7 +1360,6 @@ function buildOvSpendChart(data) {
   return ovChartCard("Card Spend \u2013 Current Month", body);
 }
 
-/* Chart 3 — Reconciliation aging composition (segmented bar SVG) */
 function buildOvAgingChart(data) {
   const body = el("div", { class: "ov-chart-body" });
   const buckets = data.reconciliation && data.reconciliation.agingBuckets;
@@ -1330,7 +1368,6 @@ function buildOvAgingChart(data) {
     return ovChartCard("Reconciliation Aging Composition", body);
   }
   const COLORS = { "Current": "#D0E5F3", "30+": "#90C4E4", "60+": "#6FAED2", "90+": "#117ABF", "120+": "#0D5F92" };
-  /* 90+ and 120+ exceeding PKR 10 Mn are treated as alerts */
   const ALERT_THRESHOLD = 10000000;
   const mapped = buckets.map(function (b) {
     return {
@@ -1342,44 +1379,6 @@ function buildOvAgingChart(data) {
   });
   body.innerHTML = svgAgingBar(mapped);
   return ovChartCard("Reconciliation Aging Composition", body);
-}
-
-/* ── SVG Chart Primitives ──────────────────────────────────────────── */
-
-function svgLineChart(points, labels, chartId, ariaLabel) {
-  var W = 340, H = 160, padL = 14, padR = 14, padT = 14, padB = 34;
-  var cW = W - padL - padR, cH = H - padT - padB, n = points.length;
-  var max = Math.max.apply(null, points), min = Math.min.apply(null, points);
-  var range = (max - min) || 1;
-  var yMin = min - range * 0.12, yRange = (max - yMin) || 1;
-  var gradId = "ag_" + chartId;
-  var xs = points.map(function (_, i) { return padL + (i / (n - 1)) * cW; });
-  var ys = points.map(function (v) { return padT + cH - ((v - yMin) / yRange) * cH; });
-  var linePts = xs.map(function (x, i) { return (i === 0 ? "M" : "L") + x.toFixed(1) + "," + ys[i].toFixed(1); }).join(" ");
-  var areaPts = linePts + " L" + xs[n - 1].toFixed(1) + "," + (padT + cH) + " L" + padL.toFixed(1) + "," + (padT + cH) + " Z";
-  var grids = [0.33, 0.67, 1.0].map(function (f) {
-    var y = (padT + (1 - f) * cH).toFixed(1);
-    return '<line x1="' + padL + '" y1="' + y + '" x2="' + (W - padR) + '" y2="' + y + '" stroke="#E2E8F0" stroke-width="0.8" stroke-dasharray="3,3"/>';
-  }).join("");
-  var xlabels = xs.map(function (x, i) {
-    if (n > 5 && i % 2 !== 0 && i !== n - 1) return "";
-    return '<text x="' + x.toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10" font-weight="500" fill="#64748B">' + labels[i] + '</text>';
-  }).join("");
-  var dots = xs.map(function (x, i) {
-    var valFmt = formatNumber(points[i]);
-    var tooltipText = (labels[i] ? labels[i] + ": " : "") + valFmt + " txns";
-    return '<circle cx="' + x.toFixed(1) + '" cy="' + ys[i].toFixed(1) + '" r="4" fill="#FFFFFF" stroke="#117ABF" stroke-width="2" class="chart-point-node"><title>' + tooltipText + '</title></circle>';
-  }).join("");
-  return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg"'
-    + ' role="img" aria-label="' + (ariaLabel || "Chart") + '" style="width:100%;max-height:160px;display:block;overflow:visible">'
-    + '<defs><linearGradient id="' + gradId + '" x1="0" y1="0" x2="0" y2="1">'
-    + '<stop offset="0%" stop-color="#117ABF" stop-opacity="0.25"/>'
-    + '<stop offset="100%" stop-color="#117ABF" stop-opacity="0.0"/></linearGradient></defs>'
-    + grids
-    + '<path d="' + areaPts + '" fill="url(#' + gradId + ')"/>'
-    + '<path d="' + linePts + '" fill="none" stroke="#117ABF" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'
-    + dots
-    + xlabels + '</svg>';
 }
 
 function svgStackedBar(debitVal, creditVal) {
@@ -1396,10 +1395,8 @@ function svgStackedBar(debitVal, creditVal) {
     + ' style="width:100%;max-height:95px;display:block">'
     + '<rect x="' + padX + '" y="2" width="' + dW.toFixed(1) + '" height="' + (barH - 4) + '" fill="#117ABF" rx="4" class="chart-bar-seg"><title>Debit Card Spend: ' + formatCurrency(debitVal) + ' (' + dPct + '%)</title></rect>'
     + '<rect x="' + cX.toFixed(1) + '" y="2" width="' + cW.toFixed(1) + '" height="' + (barH - 4) + '" fill="#6FAED2" rx="4" class="chart-bar-seg"><title>Credit Card Spend: ' + formatCurrency(creditVal) + ' (' + cPct + '%)</title></rect>'
-    /* Legend row 1 — Debit */
     + '<rect x="' + padX + '" y="' + ly1 + '" width="10" height="10" fill="#117ABF" rx="2"/>'
     + '<text x="' + (padX + 16) + '" y="' + (ly1 + 9) + '" font-size="11" fill="#334155" font-weight="600">Debit \u2014 ' + formatCurrency(debitVal) + ' (' + dPct + '%)</text>'
-    /* Legend row 2 — Credit */
     + '<rect x="' + padX + '" y="' + ly2 + '" width="10" height="10" fill="#6FAED2" rx="2"/>'
     + '<text x="' + (padX + 16) + '" y="' + (ly2 + 9) + '" font-size="11" fill="#334155" font-weight="600">Credit \u2014 ' + formatCurrency(creditVal) + ' (' + cPct + '%)</text>'
     + '</svg>';
@@ -1432,8 +1429,7 @@ function svgAgingBar(buckets) {
     + rects + legends + '</svg>';
 }
 
-/* ── Level 4: Five Module Summary Panels ──────────────────────────── */
-
+/* Module Summary Panels */
 function renderOvModules(root, data) {
   root.appendChild(el("div", { class: "ov-section-heading", text: "Module Summaries" }));
   const grid = el("div", { class: "ov-modules-grid" });
@@ -1445,7 +1441,6 @@ function renderOvModules(root, data) {
   root.appendChild(grid);
 }
 
-/* Build one module panel. rows: array of [label, valueHTML, optionalCssClass] */
 function ovModuleCard(title, page, rows) {
   const card = el("div", { class: "ov-module-card" });
 
@@ -1478,12 +1473,13 @@ function ovModuleCard(title, page, rows) {
 function ovAdcRows(data) {
   if (!data.atm) return null;
   const a = data.atm;
+  const uptComp = formatUptimeComparison(a.uptimeToday, a.uptimeYesterday);
   return [
-    ["ATM Uptime",          formatPercentage(a.uptimeToday)],
-    ["ATM Withdrawal Count",formatNumber(a.withdrawalCountToday)],
-    ["ATM Withdrawal Amount",formatCurrency(a.withdrawalAmountToday)],
-    ["RAAST Success Rate",  data.raast ? formatPercentage(data.raast.successRateToday)  : "N/A"],
-    ["IBFT Success Rate",   data.ibft  ? formatPercentage(data.ibft.successRateToday)   : "N/A"]
+    ["ATM Uptime Today",        uptComp.todayStr + " (Yesterday: " + uptComp.yesterdayStr + ")"],
+    ["ATM Withdrawal Count",    formatNumber(a.withdrawalCountToday)],
+    ["ATM Withdrawal Amount",   formatCurrency(a.withdrawalAmountToday)],
+    ["RAAST Success Rate",      data.raast ? formatPercentage(data.raast.successRateToday)  : "N/A"],
+    ["IBFT Success Rate",       data.ibft  ? formatPercentage(data.ibft.successRateToday)   : "N/A"]
   ];
 }
 
@@ -1495,11 +1491,11 @@ function ovCardNFRows(data) {
   const env  = stat.find(function (s) { return /envelope/i.test(s.item); });
   const mail = stat.find(function (s) { return /mailer/i.test(s.item) && !/pin/i.test(s.item); });
   return [
-    ["Active Cards",           data.activeCards ? formatNumber(sumBy(data.activeCards, "count")) : "N/A"],
-    ["Lowest Plastic Cover",   lowest ? lowest.monthsCover.toFixed(1) + " months" : "N/A"],
-    ["Urgent Attention",       lowest ? statusBadge(lowest.status) + " " + lowest.category : "N/A"],
-    ["Envelopes Cover",        env  ? env.monthsCover.toFixed(1)  + " months " + statusBadge(env.status)  : "N/A"],
-    ["Mailers Cover",          mail ? mail.monthsCover.toFixed(1) + " months " + statusBadge(mail.status) : "N/A"]
+    ["Active Cards Count",              data.activeCards ? formatNumber(sumBy(data.activeCards, "count")) : "N/A"],
+    ["Lowest Card Plastic Availability", lowest ? lowest.monthsCover.toFixed(1) + " months" : "N/A"],
+    ["Urgent Attention",                lowest ? statusBadge(lowest.status) + " " + lowest.category : "N/A"],
+    ["Envelopes Cover",                 env  ? env.monthsCover.toFixed(1)  + " months " + statusBadge(env.status)  : "N/A"],
+    ["Mailers Cover",                   mail ? mail.monthsCover.toFixed(1) + " months " + statusBadge(mail.status) : "N/A"]
   ];
 }
 
@@ -1518,26 +1514,28 @@ function ovCardFRows(data) {
 function ovCbRows(data) {
   if (!data.chargeback) return null;
   const cb = data.chargeback;
-  const tot = ["domestic","international"].reduce(function (s,k) { return s + (cb[k] ? cb[k].count||0 : 0); }, 0);
-  const amt = ["domestic","international"].reduce(function (s,k) { return s + (cb[k] ? cb[k].amount||0 : 0); }, 0);
+  const activeCb = cb.credit || cb;
+  const tot = ["domestic","international"].reduce(function (s,k) { return s + (activeCb[k] ? activeCb[k].count||0 : 0); }, 0);
+  const amt = ["domestic","international"].reduce(function (s,k) { return s + (activeCb[k] ? activeCb[k].amount||0 : 0); }, 0);
   return [
-    ["Total Disputes",       formatNumber(tot)],
+    ["Total Disputes Count", formatNumber(tot)],
     ["Total Disputed Amount",formatCurrency(amt)],
-    ["Pre-Arb Raised",       cb.preArbRaised   ? formatNumber(cb.preArbRaised.count)   : "N/A"],
-    ["Pre-Arb Received",     cb.preArbReceived  ? formatNumber(cb.preArbReceived.count) : "N/A"],
-    ["High-Aging Disputes",  cb.highAging       ? formatNumber(cb.highAging.count)      : "N/A"]
+    ["Pre-Arb Raised Count", activeCb.preArbRaised   ? formatNumber(activeCb.preArbRaised.count)   : "N/A"],
+    ["Pre-Arb Received Count",activeCb.preArbReceived  ? formatNumber(activeCb.preArbReceived.count) : "N/A"],
+    ["High-Aging Disputes",  activeCb.highAging       ? formatNumber(activeCb.highAging.count)      : "N/A"]
   ];
 }
 
 function ovReconRows(data) {
   if (!data.reconciliation) return null;
   const rec = data.reconciliation;
+  const usdBal = data.nostro ? (data.nostro.find(function(n){ return n.currency === "USD"; }) || {}).balance : null;
+  const aedBal = data.nostro ? (data.nostro.find(function(n){ return n.currency === "AED"; }) || {}).balance : null;
   return [
-    ["Receivables > 30d",    formatCurrency(sumBy(rec.receivables, "amount"))],
-    ["Payables > 30d",       formatCurrency(sumBy(rec.payables, "amount"))],
-    ["Nostro Balance",       data.nostro ? formatCurrency(sumBy(data.nostro, "balance")) : "N/A"],
-    ["Funding Requirement",  data.nostro ? formatCurrency(sumBy(data.nostro, "fundingRequirement")) : "N/A"],
-    ["Available Buffer",     data.nostro ? formatCurrency(sumBy(data.nostro, "buffer")) : "N/A"]
+    ["Receivables > 30d Amount", formatCurrency(sumBy(rec.receivables, "amount"))],
+    ["Payables > 30d Amount",    formatCurrency(sumBy(rec.payables, "amount"))],
+    ["USD Available Balance",    usdBal !== null && usdBal !== undefined ? formatCurrency(usdBal, "USD") : "N/A"],
+    ["AED Available Balance",    aedBal !== null && aedBal !== undefined ? formatCurrency(aedBal, "AED") : "N/A"]
   ];
 }
 
@@ -1556,17 +1554,23 @@ function renderADCOperations(data) {
   root.appendChild(sectionTitle("ATM Operations"));
   if (data.atm) {
     const a = data.atm;
+    const uptComp = formatUptimeComparison(a.uptimeToday, a.uptimeYesterday);
+
     const grid = el("div", { class: "kpi-grid" });
-    grid.appendChild(kpiCard("Total ATMs", formatNumber(a.totalATMs)));
-    grid.appendChild(kpiCard("ATM Uptime (Today)", formatPercentage(a.uptimeToday), calculateComparisons(a.uptimeToday, a.uptimeYesterday, true).html + " vs yesterday"));
-    grid.appendChild(kpiCard("Withdrawal Count (Today)", formatNumber(a.withdrawalCountToday), calculateComparisons(a.withdrawalCountToday, a.withdrawalCountYesterday, true).html + " vs yesterday"));
-    grid.appendChild(kpiCard("Withdrawal Count (MTD)", formatNumber(a.withdrawalCountMTD), calculateComparisons(a.withdrawalCountMTD, a.withdrawalCountPrevMTD, true).html + " vs prev. MTD"));
-    grid.appendChild(kpiCard("Withdrawal Amount (Today)", formatCurrency(a.withdrawalAmountToday), calculateComparisons(a.withdrawalAmountToday, a.withdrawalAmountYesterday, true).html + " vs yesterday", fullValueTitle(a.withdrawalAmountToday, true)));
-    grid.appendChild(kpiCard("Withdrawal Amount (MTD)", formatCurrency(a.withdrawalAmountMTD), calculateComparisons(a.withdrawalAmountMTD, a.withdrawalAmountPrevMTD, true).html + " vs prev. MTD", fullValueTitle(a.withdrawalAmountMTD, true)));
-    grid.appendChild(kpiCard("Failed ATM Transactions (Today)", formatNumber(a.failedTxnToday), calculateComparisons(a.failedTxnToday, a.failedTxnYesterday, false).html + " vs yesterday"));
-    grid.appendChild(kpiCard("ATM Disputes / Claims (MTD)", formatNumber(a.disputesMTD)));
-    grid.appendChild(kpiCard("Cards Captured (MTD)", formatNumber(a.capturedCardsMTD)));
-    grid.appendChild(kpiCard("Cash-Retract Transactions (MTD)", formatNumber(a.retractTxnMTD)));
+    grid.appendChild(kpiCard("Total ATMs Count", formatNumber(a.totalATMs)));
+
+    /* ATM Uptime Card rendering Today vs Yesterday actuals + visual change */
+    const uptimeSubHTML = "Yesterday: " + uptComp.yesterdayStr + " &nbsp;|&nbsp; " + uptComp.html;
+    grid.appendChild(kpiCard("ATM Uptime (Today vs Yesterday)", uptComp.todayStr + " (Today)", uptimeSubHTML));
+
+    grid.appendChild(kpiCard("Withdrawal Transaction Count (Today)", formatNumber(a.withdrawalCountToday), calculateComparisons(a.withdrawalCountToday, a.withdrawalCountYesterday, true, false).html + " vs Yesterday"));
+    grid.appendChild(kpiCard("Withdrawal Transaction Count (Month to Date)", formatNumber(a.withdrawalCountMTD), calculateComparisons(a.withdrawalCountMTD, a.withdrawalCountPrevMTD, true, true).html + " vs Previous Month"));
+    grid.appendChild(kpiCard("Withdrawal Transaction Amount (Today)", formatCurrency(a.withdrawalAmountToday), calculateComparisons(a.withdrawalAmountToday, a.withdrawalAmountYesterday, true, false).html + " vs Yesterday", fullValueTitle(a.withdrawalAmountToday, true)));
+    grid.appendChild(kpiCard("Withdrawal Transaction Amount (Month to Date)", formatCurrency(a.withdrawalAmountMTD), calculateComparisons(a.withdrawalAmountMTD, a.withdrawalAmountPrevMTD, true, true).html + " vs Previous Month", fullValueTitle(a.withdrawalAmountMTD, true)));
+    grid.appendChild(kpiCard("Failed ATM Transactions Count (Today)", formatNumber(a.failedTxnToday), calculateComparisons(a.failedTxnToday, a.failedTxnYesterday, false, false).html + " vs Yesterday"));
+    grid.appendChild(kpiCard("ATM Disputes / Claims Count (Month to Date)", formatNumber(a.disputesMTD)));
+    grid.appendChild(kpiCard("Cards Captured Count (Month to Date)", formatNumber(a.capturedCardsMTD)));
+    grid.appendChild(kpiCard("Cash-Retract Transactions Count (Month to Date)", formatNumber(a.retractTxnMTD)));
     root.appendChild(grid);
 
     root.appendChild(sectionTitle("ATM Performance"));
@@ -1582,40 +1586,125 @@ function renderADCOperations(data) {
     root.appendChild(el("div", { class: "no-data-note", text: "ATM sheet is missing. No data available for ATM Operations." }));
   }
 
-  root.appendChild(sectionTitle("RAAST"));
+  /* Shared Column Structure for 3 Target ADC Tables: Metric | Today | Yesterday | Change | Current Month */
+  const adcThreeTableColumns = [
+    { key: "kpi", label: "Metric" },
+    { key: "today", label: "Today", numeric: true },
+    { key: "yesterday", label: "Yesterday", numeric: true },
+    { key: "change", label: "Change", numeric: true },
+    { key: "mtd", label: "Current Month", numeric: true }
+  ];
+
+  /* 1. RAAST Operations Table */
+  root.appendChild(sectionTitle("RAAST Operations"));
   if (data.raast) {
     const r = data.raast;
-    root.appendChild(buildTable(null,
-      [{ key: "kpi", label: "KPI" }, { key: "today", label: "Today", numeric: true }, { key: "mtd", label: "MTD", numeric: true }, { key: "change", label: "Change" }],
-      [
-        { kpi: "Successful transaction count", today: r.successCountToday, mtd: r.successCountMTD, change: calculateComparisons(r.successCountMTD, r.successCountMTD * 0.9, true).html },
-        { kpi: "Successful transaction amount (PKR)", today: r.successAmountToday, mtd: r.successAmountMTD, change: "\u2014" },
-        { kpi: "Success rate (%)", today: r.successRateToday, mtd: r.successRateMTD, change: calculateComparisons(r.successRateToday, r.successRateMTD, true).html },
-        { kpi: "Failed transaction count", today: r.failedCountToday, mtd: "\u2014", change: "\u2014" },
-        { kpi: "Complaints", today: r.complaintsToday, mtd: r.complaintsMTD, change: "\u2014" }
-      ]
-    ));
+    const raastRows = [
+      {
+        kpi: "Successful Transaction Count",
+        today: formatNumber(r.successCountToday),
+        yesterday: formatNumber(r.successCountYesterday),
+        change: calculateComparisons(r.successCountToday, r.successCountYesterday, true, false).html,
+        mtd: formatNumber(r.successCountMTD)
+      },
+      {
+        kpi: "Successful Transaction Amount",
+        today: formatCurrency(r.successAmountToday),
+        yesterday: formatCurrency(r.successAmountYesterday),
+        change: calculateComparisons(r.successAmountToday, r.successAmountYesterday, true, false).html,
+        mtd: formatCurrency(r.successAmountMTD)
+      },
+      {
+        kpi: "Success Rate (%)",
+        today: formatPercentage(r.successRateToday),
+        yesterday: formatPercentage(r.successRateYesterday),
+        change: calculateComparisons(r.successRateToday, r.successRateYesterday, true, false).html,
+        mtd: formatPercentage(r.successRateMTD)
+      },
+      {
+        kpi: "Failed Transaction Count",
+        today: formatNumber(r.failedCountToday),
+        yesterday: formatNumber(r.failedCountYesterday),
+        change: calculateComparisons(r.failedCountToday, r.failedCountYesterday, false, false).html,
+        mtd: formatNumber(r.failedCountMTD)
+      },
+      {
+        kpi: "Complaints Count",
+        today: formatNumber(r.complaintsToday),
+        yesterday: formatNumber(r.complaintsYesterday),
+        change: calculateComparisons(r.complaintsToday, r.complaintsYesterday, false, false).html,
+        mtd: formatNumber(r.complaintsMTD)
+      }
+    ];
+
+    root.appendChild(buildTable(null, adcThreeTableColumns, raastRows));
   } else {
     root.appendChild(el("div", { class: "no-data-note", text: "RAAST sheet is missing. No data available for RAAST." }));
   }
 
-  root.appendChild(sectionTitle("IBFT"));
+  /* 2. IBFT Operations Table */
+  root.appendChild(sectionTitle("IBFT Operations"));
   if (data.ibft) {
     const i = data.ibft;
-    root.appendChild(buildTable(null,
-      [{ key: "kpi", label: "KPI" }, { key: "today", label: "Today", numeric: true }, { key: "mtd", label: "MTD", numeric: true }, { key: "change", label: "Change" }],
-      [
-        { kpi: "Successful transaction count", today: i.successCountToday, mtd: i.successCountMTD, change: "\u2014" },
-        { kpi: "Successful transaction amount (PKR)", today: i.successAmountToday, mtd: i.successAmountMTD, change: "\u2014" },
-        { kpi: "Success rate (%)", today: i.successRateToday, mtd: i.successRateMTD, change: calculateComparisons(i.successRateToday, i.successRateMTD, true).html },
-        { kpi: "Failure count", today: i.failureCountToday, mtd: i.failureCountMTD, change: "\u2014" },
-        { kpi: "Complaints", today: i.complaintsToday, mtd: i.complaintsMTD, change: "\u2014" }
-      ]
-    ));
-    const totalMTD = sumBy(data.ibftFailures, "mtd") || 1;
-    root.appendChild(buildTable("IBFT Failure Reasons",
-      [{ key: "reason", label: "Failure Reason" }, { key: "today", label: "Today Count", numeric: true }, { key: "mtd", label: "MTD Count", numeric: true }, { key: "share", label: "Share %", percent: true }],
-      (data.ibftFailures || []).map(function (f) { return { reason: f.reason, today: f.today, mtd: f.mtd, share: (f.mtd / totalMTD) * 100 }; })
+    const ibftRows = [
+      {
+        kpi: "Successful Transaction Count",
+        today: formatNumber(i.successCountToday),
+        yesterday: formatNumber(i.successCountYesterday),
+        change: calculateComparisons(i.successCountToday, i.successCountYesterday, true, false).html,
+        mtd: formatNumber(i.successCountMTD)
+      },
+      {
+        kpi: "Successful Transaction Amount",
+        today: formatCurrency(i.successAmountToday),
+        yesterday: formatCurrency(i.successAmountYesterday),
+        change: calculateComparisons(i.successAmountToday, i.successAmountYesterday, true, false).html,
+        mtd: formatCurrency(i.successAmountMTD)
+      },
+      {
+        kpi: "Success Rate (%)",
+        today: formatPercentage(i.successRateToday),
+        yesterday: formatPercentage(i.successRateYesterday),
+        change: calculateComparisons(i.successRateToday, i.successRateYesterday, true, false).html,
+        mtd: formatPercentage(i.successRateMTD)
+      },
+      {
+        kpi: "Failure Count",
+        today: formatNumber(i.failureCountToday),
+        yesterday: formatNumber(i.failureCountYesterday),
+        change: calculateComparisons(i.failureCountToday, i.failureCountYesterday, false, false).html,
+        mtd: formatNumber(i.failureCountMTD)
+      },
+      {
+        kpi: "Complaints Count",
+        today: formatNumber(i.complaintsToday),
+        yesterday: formatNumber(i.complaintsYesterday),
+        change: calculateComparisons(i.complaintsToday, i.complaintsYesterday, false, false).html,
+        mtd: formatNumber(i.complaintsMTD)
+      }
+    ];
+
+    root.appendChild(buildTable(null, adcThreeTableColumns, ibftRows));
+
+    /* 3. IBFT Failure Reasons Table (Same Column Structure: Metric | Today | Yesterday | Change | Current Month) */
+    const failureCols = [
+      { key: "reason", label: "Failure Reason Category" },
+      { key: "today", label: "Today", numeric: true },
+      { key: "yesterday", label: "Yesterday", numeric: true },
+      { key: "change", label: "Change", numeric: true },
+      { key: "mtd", label: "Current Month", numeric: true }
+    ];
+
+    root.appendChild(buildTable("IBFT Failure Reasons", failureCols,
+      (data.ibftFailures || []).map(function (f) {
+        return {
+          reason: f.reason,
+          today: formatNumber(f.today),
+          yesterday: formatNumber(f.yesterday),
+          change: calculateComparisons(f.today, f.yesterday, false, false).html,
+          mtd: formatNumber(f.mtd)
+        };
+      })
     ));
   } else {
     root.appendChild(el("div", { class: "no-data-note", text: "IBFT sheet is missing. No data available for IBFT." }));
@@ -1646,12 +1735,13 @@ function renderCardNonFinancials(data) {
   const root = document.getElementById("card-non-financials-body");
   root.innerHTML = "";
 
-  root.appendChild(sectionTitle("Card-Plastic Inventory"));
+  /* Card Plastic Availability terminology (Rule 3) */
+  root.appendChild(sectionTitle("Card Plastic Availability"));
   if (data.cardInventory) {
     const rows = data.cardInventory.map(computeInventoryStatus);
     const urgent = rows.slice().sort(function (a, b) { return a.monthsCover - b.monthsCover; })[0];
     if (urgent) {
-      root.appendChild(el("div", { class: "kpi-sub", html: "Requires urgent attention: <strong>" + urgent.category + "</strong> " + statusBadge(urgent.status) }));
+      root.appendChild(el("div", { class: "kpi-sub", html: "Requires urgent attention (Lowest Card Plastic Availability): <strong>" + urgent.category + "</strong> " + statusBadge(urgent.status) }));
     }
     const wrap = buildTable(null,
       [{ key: "category", label: "Plastic Category" }, { key: "qty", label: "Current Quantity", numeric: true },
@@ -1661,7 +1751,7 @@ function renderCardNonFinancials(data) {
     );
     root.appendChild(wrap);
   } else {
-    root.appendChild(el("div", { class: "no-data-note", text: "Card_Inventory sheet is missing. No data available for card-plastic inventory." }));
+    root.appendChild(el("div", { class: "no-data-note", text: "Card_Inventory sheet is missing. No data available for card plastic availability." }));
   }
 
   root.appendChild(sectionTitle("Card Stationery"));
@@ -1681,10 +1771,10 @@ function renderCardNonFinancials(data) {
   root.appendChild(sectionTitle("Cards in Force"));
   if (data.activeCards) {
     root.appendChild(buildTable(null,
-      [{ key: "product", label: "Product" }, { key: "count", label: "Current Month", numeric: true },
-       { key: "prevMonth", label: "Previous Month", numeric: true }, { key: "changeDisplay", label: "Change" },
+      [{ key: "product", label: "Product" }, { key: "count", label: "Current Month Count", numeric: true },
+       { key: "prevMonth", label: "Previous Month Count", numeric: true }, { key: "changeDisplay", label: "MoM Change" },
        { key: "fee", label: "Annual Fee", currency: true }],
-      data.activeCards.map(function (r) { return Object.assign({}, r, { changeDisplay: calculateComparisons(r.count, r.prevMonth, true).html }); })
+      data.activeCards.map(function (r) { return Object.assign({}, r, { changeDisplay: calculateComparisons(r.count, r.prevMonth, true, true).html }); })
     ));
   } else {
     root.appendChild(el("div", { class: "no-data-note", text: "Active_Cards sheet is missing. No data available for cards in force." }));
@@ -1692,20 +1782,8 @@ function renderCardNonFinancials(data) {
 }
 
 /* ---------------------------------------------------------------------
-   13. PAGE 4 — CARD FINANCIALS
+   13. PAGE 4 — CARD FINANCIALS ([ Credit Cards ] [ Debit Cards ] ONLY)
    --------------------------------------------------------------------- */
-
-function financialsKPITable(f, isCredit) {
-  const rows = [];
-  if (isCredit) {
-    rows.push({ kpi: "Credit-Card CIF", value: formatNumber(f.cif, 0) });
-    rows.push({ kpi: "Credit-Card AIF", value: formatNumber(f.aif, 0) });
-  }
-  rows.push({ kpi: "Domestic Transaction Count", value: formatNumber(f.domesticTxnCount, 0) });
-  rows.push({ kpi: "International Transaction Count", value: formatNumber(f.intlTxnCount, 0) });
-  rows.push({ kpi: "Total Transaction Count", value: formatNumber((f.domesticTxnCount || 0) + (f.intlTxnCount || 0), 0) });
-  return rows;
-}
 
 function renderCardFinancials(data) {
   const root = document.getElementById("card-financials-body");
@@ -1720,103 +1798,152 @@ function renderCardFinancials(data) {
   const c = cf.credit || {};
   const d = cf.debit || {};
 
-  /* Build ONE Comprehensive Management Financial Table */
   root.appendChild(sectionTitle("Comprehensive Card Financial Performance & Revenue Summary"));
 
-  const compRows = [
-    { item: "Credit Card Spend", current: c.spendCurrent, previous: c.spendPrevious },
-    { item: "Debit Card Spend", current: d.spendCurrent, previous: d.spendPrevious },
-    { item: "Total Card Spend", current: (c.spendCurrent || 0) + (d.spendCurrent || 0), previous: (c.spendPrevious || 0) + (d.spendPrevious || 0) },
-    { item: "Domestic Transaction Volume", current: (c.domesticTxnAmount || 0) + (d.domesticTxnAmount || 0), previous: null },
-    { item: "International Transaction Volume", current: (c.intlTxnAmount || 0) + (d.intlTxnAmount || 0), previous: null },
-    { item: "Interchange Income (Domestic)", current: (c.domesticInterchange || 0) + (d.domesticInterchange || 0), previous: data.revenueComposition ? (data.revenueComposition.find(function(r){ return r.item.indexOf("Domestic") !== -1; }) || {}).previous : null },
-    { item: "Interchange Income (International)", current: (c.intlInterchange || 0) + (d.intlInterchange || 0), previous: data.revenueComposition ? (data.revenueComposition.find(function(r){ return r.item.indexOf("International") !== -1; }) || {}).previous : null },
-    { item: "Annual Fee Income", current: (c.annualFeeIncome || 0) + (d.annualFeeIncome || 0), previous: data.revenueComposition ? (data.revenueComposition.find(function(r){ return r.item.indexOf("Annual") !== -1; }) || {}).previous : null },
-    { item: "FX Income", current: (c.fxIncome || 0) + (d.fxIncome || 0), previous: data.revenueComposition ? (data.revenueComposition.find(function(r){ return r.item.indexOf("FX") !== -1; }) || {}).previous : null },
-    { item: "OIF Income", current: (c.oifIncome || 0) + (d.oifIncome || 0), previous: data.revenueComposition ? (data.revenueComposition.find(function(r){ return r.item.indexOf("OIF") !== -1; }) || {}).previous : null },
-    { item: "MDR Income", current: (c.mdrIncome || 0) + (d.mdrIncome || 0), previous: data.revenueComposition ? (data.revenueComposition.find(function(r){ return r.item.indexOf("MDR") !== -1; }) || {}).previous : null }
-  ].map(function (row) {
-    return {
-      item: row.item,
-      current: row.current,
-      previous: row.previous,
-      changeDisplay: calculateComparisons(row.current, row.previous, true).html
-    };
-  });
+  /* Tabs: ONLY Credit Cards and Debit Cards (Rule 11 - NO "All Cards" button) */
+  const toggleWrap = el("div", { class: "card-fin-toggle-bar" });
+  const btnCredit = el("button", { class: "fin-toggle-btn" + (cardFinancialsActiveTab === "credit" ? " active" : ""), type: "button", text: "Credit Cards" });
+  const btnDebit = el("button", { class: "fin-toggle-btn" + (cardFinancialsActiveTab === "debit" ? " active" : ""), type: "button", text: "Debit Cards" });
 
-  root.appendChild(buildTable(null,
-    [{ key: "item", label: "Financial Metric" }, { key: "current", label: "Current Period", currency: true },
-     { key: "previous", label: "Previous Period", currency: true }, { key: "changeDisplay", label: "MoM Change" }],
-    compRows
-  ));
+  toggleWrap.appendChild(btnCredit);
+  toggleWrap.appendChild(btnDebit);
+  root.appendChild(toggleWrap);
 
-  if (data.netInterchange) {
-    const grid = el("div", { class: "kpi-grid" });
-    grid.appendChild(kpiCard("Total Interchange Income", formatCurrency(data.netInterchange.income)));
-    grid.appendChild(kpiCard("Less: Interchange Expense", formatCurrency(data.netInterchange.expense)));
-    grid.appendChild(kpiCard("Net Interchange Profit", formatCurrency(data.netInterchange.income - data.netInterchange.expense)));
-    root.appendChild(grid);
+  const tableContainer = el("div", { id: "comprehensiveFinancialTableContainer" });
+  root.appendChild(tableContainer);
+
+  function renderComprehensiveTable() {
+    tableContainer.innerHTML = "";
+    const tab = cardFinancialsActiveTab === "debit" ? "debit" : "credit";
+    const selectedData = tab === "debit" ? d : c;
+    const isCredit = tab === "credit";
+    const compRows = [];
+
+    if (isCredit) {
+      if (c.cif !== undefined && c.cif !== null) compRows.push({ item: "Credit Card CIF", current: c.cif, previous: c.cifPrevious, isCount: true });
+      if (c.aif !== undefined && c.aif !== null) compRows.push({ item: "Credit Card AIF", current: c.aif, previous: c.aifPrevious, isCount: true });
+      compRows.push({ item: "Credit Card Spend", current: c.spendCurrent, previous: c.spendPrevious, isCurrency: true });
+    } else {
+      compRows.push({ item: "Debit Card Spend", current: d.spendCurrent, previous: d.spendPrevious, isCurrency: true });
+    }
+
+    compRows.push({ item: "Domestic Transaction Count", current: selectedData.domesticTxnCount, previous: selectedData.domesticTxnCountPrevious, isCount: true });
+    compRows.push({ item: "Domestic Transaction Amount", current: selectedData.domesticTxnAmount, previous: selectedData.domesticTxnAmountPrevious, isCurrency: true });
+    compRows.push({ item: "International Transaction Count", current: selectedData.intlTxnCount, previous: selectedData.intlTxnCountPrevious, isCount: true });
+    compRows.push({ item: "International Transaction Amount", current: selectedData.intlTxnAmount, previous: selectedData.intlTxnAmountPrevious, isCurrency: true });
+
+    const totCountCurrent = (selectedData.domesticTxnCount || 0) + (selectedData.intlTxnCount || 0);
+    const totCountPrev = (selectedData.domesticTxnCountPrevious || 0) + (selectedData.intlTxnCountPrevious || 0);
+    compRows.push({ item: "Total Transaction Count", current: totCountCurrent, previous: totCountPrev || null, isCount: true });
+
+    const totAmtCurrent = (selectedData.domesticTxnAmount || 0) + (selectedData.intlTxnAmount || 0);
+    const totAmtPrev = (selectedData.domesticTxnAmountPrevious || 0) + (selectedData.intlTxnAmountPrevious || 0);
+    compRows.push({ item: "Total Transaction Amount", current: totAmtCurrent, previous: totAmtPrev || null, isCurrency: true });
+
+    compRows.push({ item: "Domestic Interchange Income", current: selectedData.domesticInterchange, previous: selectedData.domesticInterchangePrevious, isCurrency: true });
+    compRows.push({ item: "International Interchange Income", current: selectedData.intlInterchange, previous: selectedData.intlInterchangePrevious, isCurrency: true });
+
+    const totInterCurrent = (selectedData.domesticInterchange || 0) + (selectedData.intlInterchange || 0);
+    const totInterPrev = (selectedData.domesticInterchangePrevious || 0) + (selectedData.intlInterchangePrevious || 0);
+    compRows.push({ item: "Total Interchange Income", current: totInterCurrent, previous: totInterPrev || null, isCurrency: true });
+
+    compRows.push({ item: "Annual Fee Income", current: selectedData.annualFeeIncome, previous: selectedData.annualFeeIncomePrevious, isCurrency: true });
+    compRows.push({ item: "OIF Income", current: selectedData.oifIncome, previous: selectedData.oifIncomePrevious, isCurrency: true });
+    compRows.push({ item: "MDR Income", current: selectedData.mdrIncome, previous: selectedData.mdrIncomePrevious, isCurrency: true });
+    if (selectedData.enr !== undefined && selectedData.enr !== null) compRows.push({ item: "ENR (Ending Net Receivables)", current: selectedData.enr, previous: selectedData.enrPrevious, isCurrency: true });
+
+    const formattedRows = compRows.map(function (row) {
+      let valDisp, prevDisp;
+      if (row.isCount) {
+        valDisp = formatNumber(row.current);
+        prevDisp = row.previous !== undefined && row.previous !== null ? formatNumber(row.previous) : "\u2014";
+      } else if (row.isCurrency) {
+        valDisp = formatCurrency(row.current);
+        prevDisp = row.previous !== undefined && row.previous !== null ? formatCurrency(row.previous) : "\u2014";
+      } else {
+        valDisp = String(row.current || "N/A");
+        prevDisp = row.previous ? String(row.previous) : "\u2014";
+      }
+
+      return {
+        item: row.item,
+        currentDisplay: valDisp,
+        previousDisplay: prevDisp,
+        changeDisplay: calculateComparisons(row.current, row.previous, true, true).html
+      };
+    });
+
+    const wrap = buildTable(null,
+      [{ key: "item", label: "Financial / Performance Metric" },
+       { key: "currentDisplay", label: "Current Month", numeric: true },
+       { key: "previousDisplay", label: "Previous Month", numeric: true },
+       { key: "changeDisplay", label: "MoM Change", numeric: true }],
+      formattedRows
+    );
+    tableContainer.appendChild(wrap);
   }
 
-  /* Product-Specific Operational Details Tabs */
-  root.appendChild(sectionTitle("Product Operational Metrics"));
-  const tabs = el("div", { class: "subsection-tabs" });
-  const creditBtn = el("button", { class: "subtab-btn active", type: "button", text: "Credit Cards" });
-  const debitBtn = el("button", { class: "subtab-btn", type: "button", text: "Debit Cards" });
-  tabs.appendChild(creditBtn); tabs.appendChild(debitBtn);
-  root.appendChild(tabs);
+  renderComprehensiveTable();
 
-  const creditPanel = el("div", { class: "subtab-panel active" });
-  const wrapC = buildTable(null, [{ key: "kpi", label: "Operational Metric" }, { key: "value", label: "Count / Status" }], financialsKPITable(data.cardFinancials.credit, true));
-  creditPanel.appendChild(wrapC);
-
-  const debitPanel = el("div", { class: "subtab-panel" });
-  const wrapD = buildTable(null, [{ key: "kpi", label: "Operational Metric" }, { key: "value", label: "Count / Status" }], financialsKPITable(data.cardFinancials.debit, false));
-  debitPanel.appendChild(wrapD);
-
-  root.appendChild(creditPanel);
-  root.appendChild(debitPanel);
-
-  creditBtn.addEventListener("click", function () {
-    creditBtn.classList.add("active"); debitBtn.classList.remove("active");
-    creditPanel.classList.add("active"); debitPanel.classList.remove("active");
+  btnCredit.addEventListener("click", function () {
+    cardFinancialsActiveTab = "credit";
+    btnCredit.classList.add("active"); btnDebit.classList.remove("active");
+    renderComprehensiveTable();
   });
-  debitBtn.addEventListener("click", function () {
-    debitBtn.classList.add("active"); creditBtn.classList.remove("active");
-    debitPanel.classList.add("active"); creditPanel.classList.remove("active");
+  btnDebit.addEventListener("click", function () {
+    cardFinancialsActiveTab = "debit";
+    btnDebit.classList.add("active"); btnCredit.classList.remove("active");
+    renderComprehensiveTable();
   });
 
+  /* Small Combined Summary Boxes with Full Narration (Rule 11) */
+  root.appendChild(sectionTitle("Combined Card Performance Summaries"));
+  const totSpendBoth = (c.spendCurrent || 0) + (d.spendCurrent || 0);
+  const totOifBoth   = (c.oifIncome || 0) + (d.oifIncome || 0);
+  const netProfitBoth = data.netInterchange ? data.netInterchange.income - data.netInterchange.expense : null;
+
+  const grid = el("div", { class: "kpi-grid" });
+  grid.appendChild(kpiCard("Total Spend Across Both Cards", formatCurrency(totSpendBoth)));
+  grid.appendChild(kpiCard("Total OIF Earned Across Both Cards", formatCurrency(totOifBoth)));
+  if (netProfitBoth !== null) {
+    grid.appendChild(kpiCard("Total Net Interchange Profit Across Both Cards", formatCurrency(netProfitBoth)));
+  }
+  root.appendChild(grid);
+
+  /* Spend by Channel */
   root.appendChild(sectionTitle("Spend by Channel"));
   if (data.spendByChannel) {
     root.appendChild(buildTable(null,
-      [{ key: "channel", label: "Channel" }, { key: "current", label: "Current Period", currency: true },
-       { key: "previous", label: "Previous Period", currency: true }, { key: "changeDisplay", label: "MoM Change" }],
-      data.spendByChannel.map(function (r) { return { channel: r.channel, current: r.current, previous: r.previous, changeDisplay: calculateComparisons(r.current, r.previous, true).html }; })
+      [{ key: "channel", label: "Channel" }, { key: "current", label: "Current Month", currency: true },
+       { key: "previous", label: "Previous Month", currency: true }, { key: "changeDisplay", label: "MoM Change" }],
+      data.spendByChannel.map(function (r) { return { channel: r.channel, current: r.current, previous: r.previous, changeDisplay: calculateComparisons(r.current, r.previous, true, true).html }; })
     ));
   } else {
     root.appendChild(el("div", { class: "no-data-note", text: "Spend_By_Channel sheet is missing. No data available." }));
   }
 
+  /* Top 5 Merchants by Spend: MCC Column (Rule 2) */
   root.appendChild(sectionTitle("Top 5 Merchants by Spend"));
   root.appendChild(buildTable(null,
-    [{ key: "rank", label: "Rank", numeric: true }, { key: "merchant", label: "Merchant" }, { key: "channel", label: "Channel" },
-     { key: "txnCount", label: "Txn Count", numeric: true }, { key: "spend", label: "Spend", currency: true }, { key: "share", label: "Share %", percent: true }],
+    [{ key: "rank", label: "Rank", numeric: true }, { key: "merchant", label: "Merchant" }, { key: "mcc", label: "MCC" },
+     { key: "txnCount", label: "Transaction Count", numeric: true }, { key: "spend", label: "Transaction Amount", currency: true }, { key: "share", label: "Share %", percent: true }],
     data.topMerchants));
 
+  /* SBP Cross-Border Monitoring */
   root.appendChild(sectionTitle("SBP Cross-Border Monitoring (USD 30,000 threshold)"));
   if (data.sbpCrossBorder) {
-    const grid = el("div", { class: "kpi-grid" });
-    grid.appendChild(kpiCard("Customers Reaching Threshold (Current Period)", formatNumber(data.sbpCrossBorder.customerCountCurrent, 0)));
-    grid.appendChild(kpiCard("Previous Period", formatNumber(data.sbpCrossBorder.customerCountPrevious, 0),
-      calculateComparisons(data.sbpCrossBorder.customerCountCurrent, data.sbpCrossBorder.customerCountPrevious, false).html));
-    root.appendChild(grid);
+    const sbpGrid = el("div", { class: "kpi-grid" });
+    sbpGrid.appendChild(kpiCard("Customers Reaching Threshold (Current Month)", formatNumber(data.sbpCrossBorder.customerCountCurrent, 0)));
+    sbpGrid.appendChild(kpiCard("Previous Month", formatNumber(data.sbpCrossBorder.customerCountPrevious, 0),
+      calculateComparisons(data.sbpCrossBorder.customerCountCurrent, data.sbpCrossBorder.customerCountPrevious, false, true).html));
+    root.appendChild(sbpGrid);
   } else {
     root.appendChild(el("div", { class: "no-data-note", text: "No data available for SBP cross-border monitoring." }));
   }
 }
 
 /* ---------------------------------------------------------------------
-   14. PAGE 5 — CHARGEBACK
+   14. PAGE 5 — CHARGEBACK ([ Credit Cards ] [ Debit Cards ] ONLY)
    --------------------------------------------------------------------- */
 
 function renderChargeback(data) {
@@ -1825,47 +1952,109 @@ function renderChargeback(data) {
 
   if (!data.chargeback) {
     root.appendChild(el("div", { class: "no-data-note", text: "Chargeback sheet is missing. No data available for Chargeback." }));
-  } else {
-    const cb = data.chargeback;
+    return;
+  }
+
+  root.appendChild(sectionTitle("Chargeback & Dispute Summary"));
+
+  /* Tabs: ONLY Credit Cards and Debit Cards (Rule 13 - NO "All Cards" button) */
+  const toggleWrap = el("div", { class: "card-fin-toggle-bar" });
+  const btnCredit = el("button", { class: "fin-toggle-btn" + (chargebackActiveTab === "credit" ? " active" : ""), type: "button", text: "Credit Cards" });
+  const btnDebit = el("button", { class: "fin-toggle-btn" + (chargebackActiveTab === "debit" ? " active" : ""), type: "button", text: "Debit Cards" });
+
+  toggleWrap.appendChild(btnCredit);
+  toggleWrap.appendChild(btnDebit);
+  root.appendChild(toggleWrap);
+
+  const tableContainer = el("div", { id: "chargebackTableContainer" });
+  root.appendChild(tableContainer);
+
+  const cbData = data.chargeback;
+  const creditCb = cbData.credit || cbData;
+  const debitCb  = cbData.debit || cbData;
+
+  function renderChargebackTable() {
+    tableContainer.innerHTML = "";
+    const activeCb = chargebackActiveTab === "debit" ? debitCb : creditCb;
+
     function metricRow(label, m) {
       return {
         metric: label,
         currentCount: m ? m.count : null, currentAmount: m ? m.amount : null,
         prevCount: m ? m.prevCount : null, prevAmount: m ? m.prevAmount : null,
-        changeDisplay: m ? calculateComparisons(m.count, m.prevCount, false).html : "N/A"
+        changeDisplay: m ? calculateComparisons(m.count, m.prevCount, false, true).html : "N/A"
       };
     }
+
+    const rows = [
+      metricRow("Domestic Disputes", activeCb.domestic),
+      metricRow("International Disputes", activeCb.international),
+      metricRow("POS Disputes", activeCb.pos),
+      metricRow("E-Commerce Disputes", activeCb.ecommerce),
+      metricRow("Pre-Arbitration Raised", activeCb.preArbRaised),
+      metricRow("Pre-Arbitration Received", activeCb.preArbReceived),
+      metricRow("High-Aging Disputes", activeCb.highAging)
+    ];
+
     const wrap = buildTable(null,
-      [{ key: "metric", label: "Metric" }, { key: "currentCount", label: "Current Count", numeric: true }, { key: "currentAmount", label: "Current Amount", currency: true },
-       { key: "prevCount", label: "Previous Count", numeric: true }, { key: "prevAmount", label: "Previous Amount", currency: true }, { key: "changeDisplay", label: "Change" }],
-      [
-        metricRow("Domestic Disputes", cb.domestic),
-        metricRow("International Disputes", cb.international),
-        metricRow("POS Disputes", cb.pos),
-        metricRow("E-Commerce Disputes", cb.ecommerce),
-        metricRow("Pre-Arbitration Raised", cb.preArbRaised),
-        metricRow("Pre-Arbitration Received", cb.preArbReceived),
-        metricRow("High-Aging Disputes", cb.highAging)
-      ]
+      [{ key: "metric", label: "Dispute / Claim Metric" },
+       { key: "currentCount", label: "Current Month Count", numeric: true },
+       { key: "currentAmount", label: "Current Month Amount", currency: true },
+       { key: "prevCount", label: "Previous Month Count", numeric: true },
+       { key: "prevAmount", label: "Previous Month Amount", currency: true },
+       { key: "changeDisplay", label: "MoM Change", numeric: true }],
+      rows
     );
-    root.appendChild(wrap);
+    tableContainer.appendChild(wrap);
   }
 
+  renderChargebackTable();
+
+  btnCredit.addEventListener("click", function () {
+    chargebackActiveTab = "credit";
+    btnCredit.classList.add("active"); btnDebit.classList.remove("active");
+    renderChargebackTable();
+  });
+  btnDebit.addEventListener("click", function () {
+    chargebackActiveTab = "debit";
+    btnDebit.classList.add("active"); btnCredit.classList.remove("active");
+    renderChargebackTable();
+  });
+
+  /* Small Combined Credit + Debit Summary Boxes below table (Rule 13) */
+  root.appendChild(sectionTitle("Combined Dispute Summaries"));
+  const totDisputesBoth = (creditCb.domestic ? creditCb.domestic.count || 0 : 0)
+                        + (creditCb.international ? creditCb.international.count || 0 : 0)
+                        + (debitCb.domestic ? debitCb.domestic.count || 0 : 0)
+                        + (debitCb.international ? debitCb.international.count || 0 : 0);
+  const totDisputedAmtBoth = (creditCb.domestic ? creditCb.domestic.amount || 0 : 0)
+                           + (creditCb.international ? creditCb.international.amount || 0 : 0)
+                           + (debitCb.domestic ? debitCb.domestic.amount || 0 : 0)
+                           + (debitCb.international ? debitCb.international.amount || 0 : 0);
+
+  const grid = el("div", { class: "kpi-grid" });
+  grid.appendChild(kpiCard("Total Disputes Count Across Both Cards", formatNumber(totDisputesBoth)));
+  grid.appendChild(kpiCard("Total Disputed Amount Across Both Cards", formatCurrency(totDisputedAmtBoth)));
+  root.appendChild(grid);
+
+  /* Merchant tables with MCC column (Rule 2) */
   root.appendChild(sectionTitle("Top 5 Merchants by Dispute Count"));
   root.appendChild(buildTable(null,
-    [{ key: "rank", label: "Rank", numeric: true }, { key: "merchant", label: "Merchant" }, { key: "disputeCount", label: "Dispute Count", numeric: true },
-     { key: "disputedAmount", label: "Disputed Amount", currency: true }, { key: "share", label: "Share %", percent: true }],
+    [{ key: "rank", label: "Rank", numeric: true }, { key: "merchant", label: "Merchant" }, { key: "mcc", label: "MCC" },
+     { key: "disputeCount", label: "Dispute Count", numeric: true }, { key: "disputedAmount", label: "Disputed Amount", currency: true },
+     { key: "share", label: "Share %", percent: true }],
     data.chargebackMerchantsByCount));
 
   root.appendChild(sectionTitle("Top 5 Merchants by Chargeback Amount"));
   root.appendChild(buildTable(null,
-    [{ key: "rank", label: "Rank", numeric: true }, { key: "merchant", label: "Merchant" }, { key: "chargebackCount", label: "Chargeback Count", numeric: true },
-     { key: "chargebackAmount", label: "Chargeback Amount", currency: true }, { key: "share", label: "Share %", percent: true }],
+    [{ key: "rank", label: "Rank", numeric: true }, { key: "merchant", label: "Merchant" }, { key: "mcc", label: "MCC" },
+     { key: "chargebackCount", label: "Chargeback Count", numeric: true }, { key: "chargebackAmount", label: "Chargeback Amount", currency: true },
+     { key: "share", label: "Share %", percent: true }],
     data.chargebackMerchantsByAmount));
 
   root.appendChild(sectionTitle("Temporary-Credit GL Summary"));
   root.appendChild(buildTable(null,
-    [{ key: "gl", label: "GL Number" }, { key: "txnCount", label: "Transaction Count", numeric: true }, { key: "amount", label: "Amount", currency: true }],
+    [{ key: "gl", label: "GL Number" }, { key: "txnCount", label: "Transaction Count", numeric: true }, { key: "amount", label: "Transaction Amount", currency: true }],
     data.chargebackGL, "No temporary-credit GL data available."));
 }
 
@@ -1881,7 +2070,7 @@ function renderReconciliation(data) {
   if (data.reconciliation && data.reconciliation.receivables) {
     root.appendChild(buildTable(null,
       [{ key: "gl", label: "GL Number" }, { key: "description", label: "GL Description" }, { key: "txnCount", label: "Transaction Count", numeric: true },
-       { key: "amount", label: "Amount", currency: true }, { key: "bucket", label: "Aging Bucket" }],
+       { key: "amount", label: "Transaction Amount", currency: true }, { key: "bucket", label: "Aging Bucket" }],
       data.reconciliation.receivables));
   } else {
     root.appendChild(el("div", { class: "no-data-note", text: "Reconciliation sheet is missing. No data available for receivables." }));
@@ -1891,7 +2080,7 @@ function renderReconciliation(data) {
   if (data.reconciliation && data.reconciliation.payables) {
     root.appendChild(buildTable(null,
       [{ key: "gl", label: "GL Number" }, { key: "description", label: "GL Description" }, { key: "txnCount", label: "Transaction Count", numeric: true },
-       { key: "amount", label: "Amount", currency: true }, { key: "bucket", label: "Aging Bucket" }],
+       { key: "amount", label: "Transaction Amount", currency: true }, { key: "bucket", label: "Aging Bucket" }],
       data.reconciliation.payables));
   } else {
     root.appendChild(el("div", { class: "no-data-note", text: "Reconciliation sheet is missing. No data available for payables." }));
@@ -1904,17 +2093,11 @@ function renderReconciliation(data) {
     const totalCount = sumBy(agingSource, "txnCount"), totalAmount = sumBy(agingSource, "amount");
     root.appendChild(buildTable(null,
       [{ key: "bucket", label: "Aging Bucket" }, { key: "txnCount", label: "Transaction Count", numeric: true },
-       { key: "amount", label: "Amount", currency: true }, { key: "share", label: "Share %", percent: true }],
+       { key: "amount", label: "Transaction Amount", currency: true }, { key: "share", label: "Share %", percent: true }],
       agingSource.concat([{ bucket: "Total", txnCount: totalCount, amount: totalAmount, share: 100 }])));
   } else {
     root.appendChild(el("div", { class: "no-data-note", text: "No data available for aging buckets." }));
   }
-
-  root.appendChild(sectionTitle("Nostro Position"));
-  root.appendChild(buildTable(null,
-    [{ key: "gl", label: "Nostro GL" }, { key: "balance", label: "Nostro Balance", currency: true }, { key: "fundingRequirement", label: "Funding Requirement", currency: true },
-     { key: "buffer", label: "Buffer Available", currency: true }, { key: "reportingDate", label: "Reporting Date" }],
-    data.nostro, "Nostro sheet is missing. No data available for Nostro position."));
 
   root.appendChild(sectionTitle("Rejected Transactions and Reposting"));
   if (data.rejected) {
@@ -1931,10 +2114,10 @@ function renderReconciliation(data) {
   root.appendChild(sectionTitle("OIF Monitoring"));
   if (data.oif) {
     const grid = el("div", { class: "kpi-grid" });
-    grid.appendChild(kpiCard("OIF Case Count (Current Period)", formatNumber(data.oif.caseCountCurrent),
-      calculateComparisons(data.oif.caseCountCurrent, data.oif.caseCountPrevious, false).html + " vs previous period"));
-    grid.appendChild(kpiCard("OIF Value (Current Period)", formatCurrency(data.oif.valueCurrent),
-      calculateComparisons(data.oif.valueCurrent, data.oif.valuePrevious, false).html + " vs previous period"));
+    grid.appendChild(kpiCard("OIF Case Count (Current Month)", formatNumber(data.oif.caseCountCurrent),
+      calculateComparisons(data.oif.caseCountCurrent, data.oif.caseCountPrevious, false, true).html + " vs Previous Month"));
+    grid.appendChild(kpiCard("OIF Value (Current Month)", formatCurrency(data.oif.valueCurrent),
+      calculateComparisons(data.oif.valueCurrent, data.oif.valuePrevious, false, true).html + " vs Previous Month"));
     root.appendChild(grid);
   } else {
     root.appendChild(el("div", { class: "no-data-note", text: "No data available for OIF monitoring." }));
@@ -2017,7 +2200,7 @@ function init() {
   if (!window.location.hash) window.location.hash = "#overview";
   handleHashChange();
   if (typeof XLSX === "undefined") {
-    showMessage("Note: js/xlsx.min.js was not found, so only CSV files can be loaded until the library is added. See README.txt.", "info");
+    showMessage("Note: js/xlsx.min.js was not found, so only CSV files can be loaded until the library is added.", "info");
   }
 }
 
