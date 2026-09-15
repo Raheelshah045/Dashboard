@@ -271,18 +271,18 @@ function generateIllustrativeData() {
       retractTxnToday: 65, retractTxnMTD: 940
     },
     atmTop5Best: [
-      { rank: 1, atmId: "ATM-0142", location: "Gulberg Main, Lahore", txnCount: 2450, successRate: 99.4, uptime: 99.8 },
-      { rank: 2, atmId: "ATM-0087", location: "Clifton Block 5, Karachi", txnCount: 2310, successRate: 99.1, uptime: 99.6 },
-      { rank: 3, atmId: "ATM-0311", location: "F-10 Markaz, Islamabad", txnCount: 2185, successRate: 98.9, uptime: 99.5 },
-      { rank: 4, atmId: "ATM-0206", location: "DHA Phase 6, Lahore", txnCount: 2050, successRate: 98.7, uptime: 99.3 },
-      { rank: 5, atmId: "ATM-0455", location: "Saddar, Rawalpindi", txnCount: 1990, successRate: 98.5, uptime: 99.1 }
+      { rank: 1, atmId: "ATM-0142", location: "Gulberg Main, Lahore", txnCount: 2450, txnAmount: 28600000, successRate: 99.4, uptime: 99.8 },
+      { rank: 2, atmId: "ATM-0087", location: "Clifton Block 5, Karachi", txnCount: 2310, txnAmount: 26800000, successRate: 99.1, uptime: 99.6 },
+      { rank: 3, atmId: "ATM-0311", location: "F-10 Markaz, Islamabad", txnCount: 2185, txnAmount: 25100000, successRate: 98.9, uptime: 99.5 },
+      { rank: 4, atmId: "ATM-0206", location: "DHA Phase 6, Lahore", txnCount: 2050, txnAmount: 23800000, successRate: 98.7, uptime: 99.3 },
+      { rank: 5, atmId: "ATM-0455", location: "Saddar, Rawalpindi", txnCount: 1990, txnAmount: 22900000, successRate: 98.5, uptime: 99.1 }
     ],
     atmBottom5: [
-      { rank: 1, atmId: "ATM-0902", location: "Korangi Industrial Area", txnCount: 180, successRate: 82.1, uptime: 84.2 },
-      { rank: 2, atmId: "ATM-0765", location: "Hub Chowki", txnCount: 210, successRate: 84.5, uptime: 86.0 },
-      { rank: 3, atmId: "ATM-0633", location: "Mianwali Cantt", txnCount: 240, successRate: 86.2, uptime: 88.4 },
-      { rank: 4, atmId: "ATM-0518", location: "Muzaffargarh Bypass", txnCount: 265, successRate: 87.0, uptime: 89.1 },
-      { rank: 5, atmId: "ATM-0399", location: "Kotli AJK", txnCount: 290, successRate: 88.4, uptime: 90.0 }
+      { rank: 1, atmId: "ATM-0902", location: "Korangi Industrial Area", txnCount: 180, txnAmount: 1900000, successRate: 82.1, uptime: 84.2 },
+      { rank: 2, atmId: "ATM-0765", location: "Hub Chowki", txnCount: 210, txnAmount: 2300000, successRate: 84.5, uptime: 86.0 },
+      { rank: 3, atmId: "ATM-0633", location: "Mianwali Cantt", txnCount: 240, txnAmount: 2700000, successRate: 86.2, uptime: 88.4 },
+      { rank: 4, atmId: "ATM-0518", location: "Muzaffargarh Bypass", txnCount: 265, txnAmount: 3100000, successRate: 87.0, uptime: 89.1 },
+      { rank: 5, atmId: "ATM-0399", location: "Kotli AJK", txnCount: 290, txnAmount: 3400000, successRate: 88.4, uptime: 90.0 }
     ],
 
     raast: {
@@ -462,7 +462,52 @@ function generateIllustrativeData() {
       repostedCount: 48, repostedAmount: 6800000,
       pendingCount: 14, pendingAmount: 2100000
     },
-    oif: { caseCountCurrent: 96, valueCurrent: 62000000, caseCountPrevious: 88, valuePrevious: 55500000 }
+    oif: { caseCountCurrent: 96, valueCurrent: 62000000, caseCountPrevious: 88, valuePrevious: 55500000 },
+
+    secureOperations: {
+      totalTxnToday: 34500, totalTxnYesterday: 33200, totalTxnMTD: 785000, totalTxnPrevMTD: 752000,
+      successTxnToday: 33900, successTxnYesterday: 32550, successTxnMTD: 770500, successTxnPrevMTD: 738000,
+      failedTxnToday: 600, failedTxnYesterday: 650, failedTxnMTD: 14500, failedTxnPrevMTD: 14000,
+      successRateToday: 98.26, successRateYesterday: 98.04, successRateMTD: 98.15, successRatePrevMTD: 98.14,
+      totalAmountToday: 2450000000, totalAmountYesterday: 2310000000, totalAmountMTD: 54200000000, totalAmountPrevMTD: 51800000000,
+      pendingItemsToday: 45, pendingItemsYesterday: 52, pendingItemsMTD: 980, pendingItemsPrevMTD: 1050
+    },
+    secureOpsBreakdown: [
+      { channel: "3DS 2.0 Mobile Biometric", txnCount: 18400, amount: 1350000000, successRate: 99.1, pendingItems: 12 },
+      { channel: "3DS 2.0 Web OTP", txnCount: 11200, amount: 780000000, successRate: 97.5, pendingItems: 21 },
+      { channel: "Chip & PIN Terminal", txnCount: 3500, amount: 250000000, successRate: 98.8, pendingItems: 8 },
+      { channel: "Tokenized Contactless (NFC)", txnCount: 1400, amount: 70000000, successRate: 99.4, pendingItems: 4 }
+    ],
+
+    unsecuredOperations: {
+      totalTxnToday: 22100, totalTxnYesterday: 21400, totalTxnMTD: 498000, totalTxnPrevMTD: 475000,
+      successTxnToday: 21450, successTxnYesterday: 20720, successTxnMTD: 482500, successTxnPrevMTD: 460000,
+      failedTxnToday: 650, failedTxnYesterday: 680, failedTxnMTD: 15500, failedTxnPrevMTD: 15000,
+      successRateToday: 97.06, successRateYesterday: 96.82, successRateMTD: 96.89, successRatePrevMTD: 96.84,
+      totalAmountToday: 1680000000, totalAmountYesterday: 1590000000, totalAmountMTD: 37500000000, totalAmountPrevMTD: 35600000000,
+      pendingItemsToday: 82, pendingItemsYesterday: 90, pendingItemsMTD: 1840, pendingItemsPrevMTD: 1950
+    },
+    unsecuredOpsBreakdown: [
+      { product: "Personal Instant Credit", txnCount: 9200, amount: 720000000, successRate: 97.4, pendingItems: 34 },
+      { product: "Virtual Card E-Com", txnCount: 7400, amount: 510000000, successRate: 96.8, pendingItems: 28 },
+      { product: "Digital Overdraft Ops", txnCount: 3100, amount: 310000000, successRate: 96.2, pendingItems: 14 },
+      { product: "BNPL / Installments", txnCount: 1750, amount: 140000000, successRate: 98.1, pendingItems: 6 }
+    ],
+
+    banca: {
+      totalTxnToday: 8450, totalTxnYesterday: 8100, totalTxnMTD: 186000, totalTxnPrevMTD: 178000,
+      successTxnToday: 8240, successTxnYesterday: 7890, successTxnMTD: 181200, successTxnPrevMTD: 173400,
+      failedTxnToday: 210, failedTxnYesterday: 210, failedTxnMTD: 4800, failedTxnPrevMTD: 4600,
+      successRateToday: 97.51, successRateYesterday: 97.41, successRateMTD: 97.42, successRatePrevMTD: 97.42,
+      totalAmountToday: 940000000, totalAmountYesterday: 890000000, totalAmountMTD: 20800000000, totalAmountPrevMTD: 19600000000,
+      pendingItemsToday: 18, pendingItemsYesterday: 22, pendingItemsMTD: 410, pendingItemsPrevMTD: 440
+    },
+    bancaOpsBreakdown: [
+      { product: "Life Insurance Premium Collect", txnCount: 3800, amount: 420000000, successRate: 98.2, pendingItems: 7 },
+      { product: "Health & Takaful Plan Ops", txnCount: 2400, amount: 280000000, successRate: 97.1, pendingItems: 6 },
+      { product: "Auto & Credit Shield Ops", txnCount: 1250, amount: 150000000, successRate: 96.8, pendingItems: 3 },
+      { product: "Investment Assurance Ops", txnCount: 790, amount: 90000000, successRate: 97.8, pendingItems: 2 }
+    ]
   };
 }
 
@@ -588,7 +633,8 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
       rank: i + 1,
       atmId: getAliasedValue(row, null, ["ATM ID"]) || "ATM-0000",
       location: getAliasedValue(row, null, ["ATM Location", "Location"]) || "Branch",
-      txnCount: num(row, "txnCount"),
+      txnCount: num(row, "txnCount", ["Txn Count", "Transaction Count"]),
+      txnAmount: num(row, "txnAmount", ["Txn Amount", "Transaction Amount", "Amount"]),
       successRate: num(row, null, ["Success Rate"]),
       uptime: num(row, null, ["Uptime"])
     };
@@ -963,7 +1009,7 @@ function updateHeaderStatus() {
    7. NAVIGATION
    --------------------------------------------------------------------- */
 
-const VALID_PAGES = ["overview", "adc-operations", "card-non-financials", "card-financials", "chargeback", "reconciliation"];
+const VALID_PAGES = ["overview", "adc-operations", "card-non-financials", "card-financials", "chargeback", "reconciliation", "secure-operations", "unsecured-operations", "banca"];
 
 function navigateToPage(pageId) {
   if (VALID_PAGES.indexOf(pageId) === -1) pageId = "overview";
@@ -1033,6 +1079,9 @@ function renderActivePage() {
     case "card-financials": renderCardFinancials(data); break;
     case "chargeback": renderChargeback(data); break;
     case "reconciliation": renderReconciliation(data); break;
+    case "secure-operations": renderSecureOperations(data); break;
+    case "unsecured-operations": renderUnsecuredOperations(data); break;
+    case "banca": renderBanca(data); break;
   }
 }
 
@@ -1485,6 +1534,9 @@ function renderOvModules(root, data) {
   grid.appendChild(ovModuleCard("ADC Operations",     "adc-operations",      ovAdcRows(data)));
   grid.appendChild(ovModuleCard("Card Non-Financials","card-non-financials", ovCardNFRows(data)));
   grid.appendChild(ovModuleCard("Card Financials",    "card-financials",     ovCardFRows(data)));
+  grid.appendChild(ovModuleCard("Secure Operations",  "secure-operations",  ovSecOpsRows(data)));
+  grid.appendChild(ovModuleCard("Unsecured Operations","unsecured-operations",ovUnsecOpsRows(data)));
+  grid.appendChild(ovModuleCard("Banca",               "banca",               ovBancaRows(data)));
   grid.appendChild(ovModuleCard("Chargeback",         "chargeback",          ovCbRows(data)));
   grid.appendChild(ovModuleCard("Reconciliation",     "reconciliation",      ovReconRows(data)));
   root.appendChild(grid);
@@ -1579,6 +1631,36 @@ function ovCardFRows(data) {
   ];
 }
 
+function ovSecOpsRows(data) {
+  const s = data.secureOperations || (generateIllustrativeData().secureOperations);
+  return [
+    ["Secure Transactions Count", formatNumber(s.successTxnToday)],
+    ["Secure Success Rate", formatPercentage(s.successRateToday)],
+    ["Secure Transaction Amount", formatCurrency(s.totalAmountToday)],
+    ["Pending / Exception Items", formatNumber(s.pendingItemsToday)]
+  ];
+}
+
+function ovUnsecOpsRows(data) {
+  const u = data.unsecuredOperations || (generateIllustrativeData().unsecuredOperations);
+  return [
+    ["Unsecured Transactions Count", formatNumber(u.successTxnToday)],
+    ["Unsecured Success Rate", formatPercentage(u.successRateToday)],
+    ["Unsecured Transaction Amount", formatCurrency(u.totalAmountToday)],
+    ["Pending / Exception Items", formatNumber(u.pendingItemsToday)]
+  ];
+}
+
+function ovBancaRows(data) {
+  const b = data.banca || (generateIllustrativeData().banca);
+  return [
+    ["Banca Transactions Count", formatNumber(b.successTxnToday)],
+    ["Banca Success Rate", formatPercentage(b.successRateToday)],
+    ["Banca Transaction Amount", formatCurrency(b.totalAmountToday)],
+    ["Pending / Exception Items", formatNumber(b.pendingItemsToday)]
+  ];
+}
+
 function ovCbRows(data) {
   if (!data.chargeback) return null;
   const cb = data.chargeback;
@@ -1644,11 +1726,11 @@ function renderADCOperations(data) {
     root.appendChild(sectionTitle("ATM Performance"));
     root.appendChild(buildTable("Top 5 Performing ATMs",
       [{ key: "rank", label: "Rank", numeric: true }, { key: "atmId", label: "ATM ID" }, { key: "location", label: "Location" },
-       { key: "txnCount", label: "Txn Count", numeric: true }, { key: "successRate", label: "Success Rate", percent: true }, { key: "uptime", label: "Uptime", percent: true }],
+       { key: "txnCount", label: "Txn Count", numeric: true }, { key: "txnAmount", label: "Txn Amount", currency: true }, { key: "successRate", label: "Success Rate", percent: true }, { key: "uptime", label: "Uptime", percent: true }],
       data.atmTop5Best));
     root.appendChild(buildTable("Top 5 Low-Performing ATMs",
       [{ key: "rank", label: "Rank", numeric: true }, { key: "atmId", label: "ATM ID" }, { key: "location", label: "Location" },
-       { key: "txnCount", label: "Txn Count", numeric: true }, { key: "successRate", label: "Success Rate", percent: true }, { key: "uptime", label: "Uptime", percent: true }],
+       { key: "txnCount", label: "Txn Count", numeric: true }, { key: "txnAmount", label: "Txn Amount", currency: true }, { key: "successRate", label: "Success Rate", percent: true }, { key: "uptime", label: "Uptime", percent: true }],
       data.atmBottom5));
   } else {
     root.appendChild(el("div", { class: "no-data-note", text: "ATM sheet is missing. No data available for ATM Operations." }));
@@ -1906,7 +1988,6 @@ function renderCardFinancials(data) {
     const totInterPrev = (selectedData.domesticInterchangePrevious || 0) + (selectedData.intlInterchangePrevious || 0);
     compRows.push({ item: "Total Interchange Income", current: totInterCurrent, previous: totInterPrev || null, isCurrency: true });
 
-    compRows.push({ item: "Annual Fee Income", current: selectedData.annualFeeIncome, previous: selectedData.annualFeeIncomePrevious, isCurrency: true });
     compRows.push({ item: "OIF Income", current: selectedData.oifIncome, previous: selectedData.oifIncomePrevious, isCurrency: true });
     compRows.push({ item: "MDR Income", current: selectedData.mdrIncome, previous: selectedData.mdrIncomePrevious, isCurrency: true });
     if (selectedData.enr !== undefined && selectedData.enr !== null) compRows.push({ item: "ENR (Ending Net Receivables)", current: selectedData.enr, previous: selectedData.enrPrevious, isCurrency: true });
@@ -2196,6 +2277,417 @@ function deriveAgingBuckets(rec) {
   const total = sumBy(arr, "amount") || 1;
   arr.forEach(function (b) { b.share = (b.amount / total) * 100; });
   return arr.length ? arr : null;
+}
+
+/* ---------------------------------------------------------------------
+   17. PAGE 7 — SECURE OPERATIONS
+   --------------------------------------------------------------------- */
+
+function renderSecureOperations(data) {
+  const root = document.getElementById("secure-operations-body");
+  if (!root) return;
+  root.innerHTML = "";
+
+  const sec = data.secureOperations || generateIllustrativeData().secureOperations;
+  const breakdown = data.secureOpsBreakdown || generateIllustrativeData().secureOpsBreakdown;
+
+  root.appendChild(sectionTitle("Secure Operations Executive Summary"));
+
+  const grid = el("div", { class: "kpi-grid" });
+  grid.appendChild(kpiCard("Total Secure Transactions (Today)", formatNumber(sec.totalTxnToday),
+    "Yesterday: " + formatNumber(sec.totalTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.totalTxnToday, sec.totalTxnYesterday, true, false).html));
+
+  grid.appendChild(kpiCard("Successful Transactions (Today)", formatNumber(sec.successTxnToday),
+    "Yesterday: " + formatNumber(sec.successTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.successTxnToday, sec.successTxnYesterday, true, false).html));
+
+  grid.appendChild(kpiCard("Secure Success Rate (Today)", formatPercentage(sec.successRateToday),
+    "Yesterday: " + formatPercentage(sec.successRateYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.successRateToday, sec.successRateYesterday, true, false).html));
+
+  grid.appendChild(kpiCard("Total Transaction Amount (Today)", formatCurrency(sec.totalAmountToday),
+    "Yesterday: " + formatCurrency(sec.totalAmountYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.totalAmountToday, sec.totalAmountYesterday, true, false).html, fullValueTitle(sec.totalAmountToday, true)));
+
+  grid.appendChild(kpiCard("Failed Transactions (Today)", formatNumber(sec.failedTxnToday),
+    "Yesterday: " + formatNumber(sec.failedTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.failedTxnToday, sec.failedTxnYesterday, false, false).html));
+
+  grid.appendChild(kpiCard("Pending / Exception Items (Today)", formatNumber(sec.pendingItemsToday),
+    "Yesterday: " + formatNumber(sec.pendingItemsYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.pendingItemsToday, sec.pendingItemsYesterday, false, false).html));
+
+  root.appendChild(grid);
+
+  root.appendChild(sectionTitle("Daily Operational Comparison"));
+  const dailyColumns = [
+    { key: "metric", label: "Metric" },
+    { key: "today", label: "Today", numeric: true },
+    { key: "yesterday", label: "Yesterday", numeric: true },
+    { key: "change", label: "Change", numeric: true },
+    { key: "currentMonth", label: "Current Month", numeric: true }
+  ];
+
+  const dailyRows = [
+    {
+      metric: "Successful Secure Transactions Count",
+      today: formatNumber(sec.successTxnToday),
+      yesterday: formatNumber(sec.successTxnYesterday),
+      change: calculateComparisons(sec.successTxnToday, sec.successTxnYesterday, true, false).html,
+      currentMonth: formatNumber(sec.successTxnMTD)
+    },
+    {
+      metric: "Successful Transaction Amount",
+      today: formatCurrency(sec.totalAmountToday),
+      yesterday: formatCurrency(sec.totalAmountYesterday),
+      change: calculateComparisons(sec.totalAmountToday, sec.totalAmountYesterday, true, false).html,
+      currentMonth: formatCurrency(sec.totalAmountMTD)
+    },
+    {
+      metric: "Secure Success Rate (%)",
+      today: formatPercentage(sec.successRateToday),
+      yesterday: formatPercentage(sec.successRateYesterday),
+      change: calculateComparisons(sec.successRateToday, sec.successRateYesterday, true, false).html,
+      currentMonth: formatPercentage(sec.successRateMTD)
+    },
+    {
+      metric: "Failed Transactions Count",
+      today: formatNumber(sec.failedTxnToday),
+      yesterday: formatNumber(sec.failedTxnYesterday),
+      change: calculateComparisons(sec.failedTxnToday, sec.failedTxnYesterday, false, false).html,
+      currentMonth: formatNumber(sec.failedTxnMTD)
+    },
+    {
+      metric: "Pending / Exception Items",
+      today: formatNumber(sec.pendingItemsToday),
+      yesterday: formatNumber(sec.pendingItemsYesterday),
+      change: calculateComparisons(sec.pendingItemsToday, sec.pendingItemsYesterday, false, false).html,
+      currentMonth: formatNumber(sec.pendingItemsMTD)
+    }
+  ];
+
+  root.appendChild(buildTable(null, dailyColumns, dailyRows));
+
+  root.appendChild(sectionTitle("Authentication Channel Breakdown"));
+  const breakdownColumns = [
+    { key: "channel", label: "Authentication Channel" },
+    { key: "txnCount", label: "Transaction Count", numeric: true },
+    { key: "amount", label: "Transaction Amount", currency: true },
+    { key: "successRate", label: "Success Rate (%)", percent: true },
+    { key: "pendingItems", label: "Pending Items", numeric: true }
+  ];
+
+  root.appendChild(buildTable(null, breakdownColumns, breakdown));
+
+  root.appendChild(sectionTitle("Channel Volume & Success Rate Insight"));
+  const chartCard = el("div", { class: "ov-chart-card" });
+  chartCard.appendChild(el("div", { class: "ov-chart-title", text: "Secure Operations Channel Share" }));
+  const chartBody = el("div", { class: "ov-chart-body" });
+  chartBody.innerHTML = buildSecOpsChartSVG(breakdown);
+  chartCard.appendChild(chartBody);
+  root.appendChild(chartCard);
+}
+
+function buildSecOpsChartSVG(breakdown) {
+  var total = breakdown.reduce(function (s, b) { return s + b.txnCount; }, 0) || 1;
+  var COLORS = ["#117ABF", "#6FAED2", "#90C4E4", "#D0E5F3"];
+  var W = 600, barH = 28, padX = 10, gapY = 14, legH = 20;
+  var H = barH + gapY + legH * Math.ceil(breakdown.length / 2) + 10;
+  var barW = W - 2 * padX;
+  var x = padX, rects = "";
+
+  breakdown.forEach(function (b, i) {
+    var w = Math.max(4, (b.txnCount / total) * barW);
+    var color = COLORS[i % COLORS.length];
+    var pct = ((b.txnCount / total) * 100).toFixed(1);
+    rects += '<rect x="' + x.toFixed(1) + '" y="4" width="' + w.toFixed(1) + '" height="' + barH + '" fill="' + color + '" rx="3" class="chart-bar-seg">'
+      + '<title>' + b.channel + ': ' + formatNumber(b.txnCount) + ' (' + pct + '%)</title></rect>';
+    x += w;
+  });
+
+  var legends = breakdown.map(function (b, i) {
+    var col = i % 2;
+    var row = Math.floor(i / 2);
+    var lx = padX + col * 290;
+    var ly = barH + gapY + row * legH + 6;
+    var color = COLORS[i % COLORS.length];
+    var pct = ((b.txnCount / total) * 100).toFixed(1);
+    return '<rect x="' + lx + '" y="' + ly + '" width="12" height="12" fill="' + color + '" rx="2"/>'
+      + '<text x="' + (lx + 18) + '" y="' + (ly + 10) + '" font-size="11.5" fill="#1F2937" font-weight="600">' + b.channel + '</text>'
+      + '<text x="' + (lx + 180) + '" y="' + (ly + 10) + '" font-size="11.5" fill="#6B7280">' + formatNumber(b.txnCount) + ' (' + pct + '%)</text>';
+  }).join("");
+
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Secure Operations Breakdown" style="width:100%;max-height:160px;display:block">'
+    + rects + legends + '</svg>';
+}
+
+/* ---------------------------------------------------------------------
+   18. PAGE 8 — UNSECURED OPERATIONS
+   --------------------------------------------------------------------- */
+
+function renderUnsecuredOperations(data) {
+  const root = document.getElementById("unsecured-operations-body");
+  if (!root) return;
+  root.innerHTML = "";
+
+  const unsec = data.unsecuredOperations || generateIllustrativeData().unsecuredOperations;
+  const breakdown = data.unsecuredOpsBreakdown || generateIllustrativeData().unsecuredOpsBreakdown;
+
+  root.appendChild(sectionTitle("Unsecured Operations Executive Summary"));
+
+  const grid = el("div", { class: "kpi-grid" });
+  grid.appendChild(kpiCard("Total Transactions (Today)", formatNumber(unsec.totalTxnToday),
+    "Yesterday: " + formatNumber(unsec.totalTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.totalTxnToday, unsec.totalTxnYesterday, true, false).html));
+
+  grid.appendChild(kpiCard("Successful Transactions (Today)", formatNumber(unsec.successTxnToday),
+    "Yesterday: " + formatNumber(unsec.successTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.successTxnToday, unsec.successTxnYesterday, true, false).html));
+
+  grid.appendChild(kpiCard("Success Rate (Today)", formatPercentage(unsec.successRateToday),
+    "Yesterday: " + formatPercentage(unsec.successRateYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.successRateToday, unsec.successRateYesterday, true, false).html));
+
+  grid.appendChild(kpiCard("Transaction Amount (Today)", formatCurrency(unsec.totalAmountToday),
+    "Yesterday: " + formatCurrency(unsec.totalAmountYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.totalAmountToday, unsec.totalAmountYesterday, true, false).html, fullValueTitle(unsec.totalAmountToday, true)));
+
+  grid.appendChild(kpiCard("Failed Transactions (Today)", formatNumber(unsec.failedTxnToday),
+    "Yesterday: " + formatNumber(unsec.failedTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.failedTxnToday, unsec.failedTxnYesterday, false, false).html));
+
+  grid.appendChild(kpiCard("Pending / Exception Items (Today)", formatNumber(unsec.pendingItemsToday),
+    "Yesterday: " + formatNumber(unsec.pendingItemsYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.pendingItemsToday, unsec.pendingItemsYesterday, false, false).html));
+
+  root.appendChild(grid);
+
+  root.appendChild(sectionTitle("Daily Operational Comparison"));
+  const dailyColumns = [
+    { key: "metric", label: "Metric" },
+    { key: "today", label: "Today", numeric: true },
+    { key: "yesterday", label: "Yesterday", numeric: true },
+    { key: "change", label: "Change", numeric: true },
+    { key: "currentMonth", label: "Current Month", numeric: true }
+  ];
+
+  const dailyRows = [
+    {
+      metric: "Successful Unsecured Transactions Count",
+      today: formatNumber(unsec.successTxnToday),
+      yesterday: formatNumber(unsec.successTxnYesterday),
+      change: calculateComparisons(unsec.successTxnToday, unsec.successTxnYesterday, true, false).html,
+      currentMonth: formatNumber(unsec.successTxnMTD)
+    },
+    {
+      metric: "Transaction Amount",
+      today: formatCurrency(unsec.totalAmountToday),
+      yesterday: formatCurrency(unsec.totalAmountYesterday),
+      change: calculateComparisons(unsec.totalAmountToday, unsec.totalAmountYesterday, true, false).html,
+      currentMonth: formatCurrency(unsec.totalAmountMTD)
+    },
+    {
+      metric: "Success Rate (%)",
+      today: formatPercentage(unsec.successRateToday),
+      yesterday: formatPercentage(unsec.successRateYesterday),
+      change: calculateComparisons(unsec.successRateToday, unsec.successRateYesterday, true, false).html,
+      currentMonth: formatPercentage(unsec.successRateMTD)
+    },
+    {
+      metric: "Failed Transactions Count",
+      today: formatNumber(unsec.failedTxnToday),
+      yesterday: formatNumber(unsec.failedTxnYesterday),
+      change: calculateComparisons(unsec.failedTxnToday, unsec.failedTxnYesterday, false, false).html,
+      currentMonth: formatNumber(unsec.failedTxnMTD)
+    },
+    {
+      metric: "Pending / Exception Items",
+      today: formatNumber(unsec.pendingItemsToday),
+      yesterday: formatNumber(unsec.pendingItemsYesterday),
+      change: calculateComparisons(unsec.pendingItemsToday, unsec.pendingItemsYesterday, false, false).html,
+      currentMonth: formatNumber(unsec.pendingItemsMTD)
+    }
+  ];
+
+  root.appendChild(buildTable(null, dailyColumns, dailyRows));
+
+  root.appendChild(sectionTitle("Unsecured Product Performance Breakdown"));
+  const breakdownColumns = [
+    { key: "product", label: "Product Category" },
+    { key: "txnCount", label: "Transaction Count", numeric: true },
+    { key: "amount", label: "Transaction Amount", currency: true },
+    { key: "successRate", label: "Success Rate (%)", percent: true },
+    { key: "pendingItems", label: "Pending Items", numeric: true }
+  ];
+
+  root.appendChild(buildTable(null, breakdownColumns, breakdown));
+
+  root.appendChild(sectionTitle("Unsecured Product Volume & Distribution"));
+  const chartCard = el("div", { class: "ov-chart-card" });
+  chartCard.appendChild(el("div", { class: "ov-chart-title", text: "Unsecured Product Volume Share" }));
+  const chartBody = el("div", { class: "ov-chart-body" });
+  chartBody.innerHTML = buildUnsecOpsChartSVG(breakdown);
+  chartCard.appendChild(chartBody);
+  root.appendChild(chartCard);
+}
+
+function buildUnsecOpsChartSVG(breakdown) {
+  var total = breakdown.reduce(function (s, b) { return s + b.amount; }, 0) || 1;
+  var COLORS = ["#117ABF", "#6FAED2", "#90C4E4", "#D0E5F3"];
+  var W = 600, barH = 28, padX = 10, gapY = 14, legH = 20;
+  var H = barH + gapY + legH * Math.ceil(breakdown.length / 2) + 10;
+  var barW = W - 2 * padX;
+  var x = padX, rects = "";
+
+  breakdown.forEach(function (b, i) {
+    var w = Math.max(4, (b.amount / total) * barW);
+    var color = COLORS[i % COLORS.length];
+    var pct = ((b.amount / total) * 100).toFixed(1);
+    rects += '<rect x="' + x.toFixed(1) + '" y="4" width="' + w.toFixed(1) + '" height="' + barH + '" fill="' + color + '" rx="3" class="chart-bar-seg">'
+      + '<title>' + b.product + ': ' + formatCurrency(b.amount) + ' (' + pct + '%)</title></rect>';
+    x += w;
+  });
+
+  var legends = breakdown.map(function (b, i) {
+    var col = i % 2;
+    var row = Math.floor(i / 2);
+    var lx = padX + col * 290;
+    var ly = barH + gapY + row * legH + 6;
+    var color = COLORS[i % COLORS.length];
+    var pct = ((b.amount / total) * 100).toFixed(1);
+    return '<rect x="' + lx + '" y="' + ly + '" width="12" height="12" fill="' + color + '" rx="2"/>'
+      + '<text x="' + (lx + 18) + '" y="' + (ly + 10) + '" font-size="11.5" fill="#1F2937" font-weight="600">' + b.product + '</text>'
+      + '<text x="' + (lx + 180) + '" y="' + (ly + 10) + '" font-size="11.5" fill="#6B7280">' + formatCurrency(b.amount) + ' (' + pct + '%)</text>';
+  }).join("");
+
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Unsecured Operations Breakdown" style="width:100%;max-height:160px;display:block">'
+    + rects + legends + '</svg>';
+}
+
+/* ---------------------------------------------------------------------
+   19. PAGE 9 — BANCA
+   --------------------------------------------------------------------- */
+
+function renderBanca(data) {
+  const root = document.getElementById("banca-body");
+  if (!root) return;
+  root.innerHTML = "";
+
+  const ban = data.banca || generateIllustrativeData().banca;
+  const breakdown = data.bancaOpsBreakdown || generateIllustrativeData().bancaOpsBreakdown;
+
+  root.appendChild(sectionTitle("Banca Operations Executive Summary"));
+
+  const grid = el("div", { class: "kpi-grid" });
+  grid.appendChild(kpiCard("Total Banca Transactions (Today)", formatNumber(ban.totalTxnToday),
+    "Yesterday: " + formatNumber(ban.totalTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(ban.totalTxnToday, ban.totalTxnYesterday, true, false).html));
+
+  grid.appendChild(kpiCard("Successful Transactions (Today)", formatNumber(ban.successTxnToday),
+    "Yesterday: " + formatNumber(ban.successTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(ban.successTxnToday, ban.successTxnYesterday, true, false).html));
+
+  grid.appendChild(kpiCard("Success Rate (Today)", formatPercentage(ban.successRateToday),
+    "Yesterday: " + formatPercentage(ban.successRateYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(ban.successRateToday, ban.successRateYesterday, true, false).html));
+
+  grid.appendChild(kpiCard("Transaction Amount (Today)", formatCurrency(ban.totalAmountToday),
+    "Yesterday: " + formatCurrency(ban.totalAmountYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(ban.totalAmountToday, ban.totalAmountYesterday, true, false).html, fullValueTitle(ban.totalAmountToday, true)));
+
+  grid.appendChild(kpiCard("Failed Transactions (Today)", formatNumber(ban.failedTxnToday),
+    "Yesterday: " + formatNumber(ban.failedTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(ban.failedTxnToday, ban.failedTxnYesterday, false, false).html));
+
+  grid.appendChild(kpiCard("Pending / Exception Items (Today)", formatNumber(ban.pendingItemsToday),
+    "Yesterday: " + formatNumber(ban.pendingItemsYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(ban.pendingItemsToday, ban.pendingItemsYesterday, false, false).html));
+
+  root.appendChild(grid);
+
+  root.appendChild(sectionTitle("Daily Operational Comparison"));
+  const dailyColumns = [
+    { key: "metric", label: "Metric" },
+    { key: "today", label: "Today", numeric: true },
+    { key: "yesterday", label: "Yesterday", numeric: true },
+    { key: "change", label: "Change", numeric: true },
+    { key: "currentMonth", label: "Current Month", numeric: true }
+  ];
+
+  const dailyRows = [
+    {
+      metric: "Successful Banca Transactions Count",
+      today: formatNumber(ban.successTxnToday),
+      yesterday: formatNumber(ban.successTxnYesterday),
+      change: calculateComparisons(ban.successTxnToday, ban.successTxnYesterday, true, false).html,
+      currentMonth: formatNumber(ban.successTxnMTD)
+    },
+    {
+      metric: "Transaction Amount",
+      today: formatCurrency(ban.totalAmountToday),
+      yesterday: formatCurrency(ban.totalAmountYesterday),
+      change: calculateComparisons(ban.totalAmountToday, ban.totalAmountYesterday, true, false).html,
+      currentMonth: formatCurrency(ban.totalAmountMTD)
+    },
+    {
+      metric: "Success Rate (%)",
+      today: formatPercentage(ban.successRateToday),
+      yesterday: formatPercentage(ban.successRateYesterday),
+      change: calculateComparisons(ban.successRateToday, ban.successRateYesterday, true, false).html,
+      currentMonth: formatPercentage(ban.successRateMTD)
+    },
+    {
+      metric: "Failed Transactions Count",
+      today: formatNumber(ban.failedTxnToday),
+      yesterday: formatNumber(ban.failedTxnYesterday),
+      change: calculateComparisons(ban.failedTxnToday, ban.failedTxnYesterday, false, false).html,
+      currentMonth: formatNumber(ban.failedTxnMTD)
+    },
+    {
+      metric: "Pending / Exception Items",
+      today: formatNumber(ban.pendingItemsToday),
+      yesterday: formatNumber(ban.pendingItemsYesterday),
+      change: calculateComparisons(ban.pendingItemsToday, ban.pendingItemsYesterday, false, false).html,
+      currentMonth: formatNumber(ban.pendingItemsMTD)
+    }
+  ];
+
+  root.appendChild(buildTable(null, dailyColumns, dailyRows));
+
+  root.appendChild(sectionTitle("Banca Product Operational Breakdown"));
+  const breakdownColumns = [
+    { key: "product", label: "Banca Product Line" },
+    { key: "txnCount", label: "Transaction Count", numeric: true },
+    { key: "amount", label: "Transaction Amount", currency: true },
+    { key: "successRate", label: "Success Rate (%)", percent: true },
+    { key: "pendingItems", label: "Pending Items", numeric: true }
+  ];
+
+  root.appendChild(buildTable(null, breakdownColumns, breakdown));
+
+  root.appendChild(sectionTitle("Banca Portfolio Share & Analytical Insight"));
+  const chartCard = el("div", { class: "ov-chart-card" });
+  chartCard.appendChild(el("div", { class: "ov-chart-title", text: "Banca Product Portfolio Share" }));
+  const chartBody = el("div", { class: "ov-chart-body" });
+  chartBody.innerHTML = buildBancaChartSVG(breakdown);
+  chartCard.appendChild(chartBody);
+  root.appendChild(chartCard);
+}
+
+function buildBancaChartSVG(breakdown) {
+  var total = breakdown.reduce(function (s, b) { return s + b.amount; }, 0) || 1;
+  var COLORS = ["#117ABF", "#6FAED2", "#90C4E4", "#D0E5F3"];
+  var W = 600, barH = 28, padX = 10, gapY = 14, legH = 20;
+  var H = barH + gapY + legH * Math.ceil(breakdown.length / 2) + 10;
+  var barW = W - 2 * padX;
+  var x = padX, rects = "";
+
+  breakdown.forEach(function (b, i) {
+    var w = Math.max(4, (b.amount / total) * barW);
+    var color = COLORS[i % COLORS.length];
+    var pct = ((b.amount / total) * 100).toFixed(1);
+    rects += '<rect x="' + x.toFixed(1) + '" y="4" width="' + w.toFixed(1) + '" height="' + barH + '" fill="' + color + '" rx="3" class="chart-bar-seg">'
+      + '<title>' + b.product + ': ' + formatCurrency(b.amount) + ' (' + pct + '%)</title></rect>';
+    x += w;
+  });
+
+  var legends = breakdown.map(function (b, i) {
+    var col = i % 2;
+    var row = Math.floor(i / 2);
+    var lx = padX + col * 290;
+    var ly = barH + gapY + row * legH + 6;
+    var color = COLORS[i % COLORS.length];
+    var pct = ((b.amount / total) * 100).toFixed(1);
+    return '<rect x="' + lx + '" y="' + ly + '" width="12" height="12" fill="' + color + '" rx="2"/>'
+      + '<text x="' + (lx + 18) + '" y="' + (ly + 10) + '" font-size="11.5" fill="#1F2937" font-weight="600">' + b.product + '</text>'
+      + '<text x="' + (lx + 180) + '" y="' + (ly + 10) + '" font-size="11.5" fill="#6B7280">' + formatCurrency(b.amount) + ' (' + pct + '%)</text>';
+  }).join("");
+
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Banca Operations Breakdown" style="width:100%;max-height:160px;display:block">'
+    + rects + legends + '</svg>';
 }
 
 /* ---------------------------------------------------------------------

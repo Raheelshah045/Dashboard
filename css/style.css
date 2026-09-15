@@ -347,11 +347,13 @@ button, input, select {
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  padding: var(--space-2) 0;
+  padding: var(--space-1) 0;
   position: sticky;
   top: 0;
   height: calc(100vh - 120px);
-  gap: 2px;
+  gap: 1px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .nav-item {
@@ -359,10 +361,10 @@ button, input, select {
   background: none;
   border: none;
   border-left: 3px solid transparent;
-  padding: var(--space-1-5) var(--space-2);
+  padding: 10px var(--space-2);
   cursor: pointer;
   color: var(--text-body);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
   transition: all 0.15s ease;
   margin: 0 var(--space-1);
@@ -370,6 +372,8 @@ button, input, select {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .nav-arrow {
@@ -1130,6 +1134,15 @@ table.ov-adc-table tbody tr:hover { background: var(--ov-blue-xlight); }
 
 .ov-chart-body {
   width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Allow chart titles to wrap in standalone page context */
+.page-body > .ov-chart-card .ov-chart-title {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
 }
 
 .ov-chart-summary {
@@ -1161,9 +1174,15 @@ table.ov-adc-table tbody tr:hover { background: var(--ov-blue-xlight); }
 /* ── Level 4: Module Summary Panels ───────────────────────────────── */
 .ov-modules-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--space-1-5);
   margin-bottom: var(--space-2);
+}
+
+/* Standalone chart card outside ov-charts-row (used by new pages) */
+.page-body > .ov-chart-card {
+  max-width: 700px;
+  margin-bottom: var(--space-3);
 }
 
 .ov-module-card {
