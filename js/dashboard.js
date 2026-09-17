@@ -2107,20 +2107,29 @@ function renderOvNostro(root, data) {
 
   const rTbody = el("tbody");
   const glBreakdownData = [
-    { unit: "1888 - ADC", count: 25 },
-    { unit: "1948 - Credit Card (CTL)", count: 18 },
-    { unit: "7928 - Credit Card (Card Pro)", count: 32 },
-    { unit: "1922 - Ijarah", count: 14 },
-    { unit: "1944 - Auto Loan", count: 22 },
-    { unit: "1945 - PRL (Personal Loan)", count: 29 },
-    { unit: "1946 - MTG (Mortgage)", count: 16 },
-    { unit: "2000 - SME", count: 12 }
+    { unit: "1888 - ADC",                  count: 25, reconUnitId: "1888"  },
+    { unit: "1948 - Credit Card (CTL)",     count: 18, reconUnitId: "1948"  },
+    { unit: "7928 - Credit Card (Card Pro)",count: 32, reconUnitId: "7928"  },
+    { unit: "1922 - Ijarah",               count: 14, reconUnitId: "1922"  },
+    { unit: "1944 - Auto Loan",            count: 22, reconUnitId: "1944"  },
+    { unit: "1945 - PRL (Personal Loan)",  count: 29, reconUnitId: "PRL"   },
+    { unit: "1946 - MTG (Mortgage)",       count: 16, reconUnitId: "1946"  },
+    { unit: "2000 - SME",                  count: 12, reconUnitId: "2000"  },
+    { unit: "Banca",                       count: 9,  reconUnitId: "banca" }
   ];
 
   glBreakdownData.forEach(function (item) {
-    const tr = el("tr");
+    const tr = el("tr", { class: "recon-gl-row-link" });
+    tr.title = "Open " + item.unit + " Reconciliation";
     tr.appendChild(el("td", { text: item.unit, style: "text-align:left; font-weight:500;" }));
     tr.appendChild(el("td", { text: item.count.toString(), class: "num", style: "text-align:right; font-weight:600;" }));
+    tr.addEventListener("click", function () {
+      const matchedUnit = RECON_UNITS.find(function (u) { return u.id === item.reconUnitId; });
+      if (matchedUnit) {
+        activeReconciliationUnit = matchedUnit;
+      }
+      navigateToPage("reconciliation");
+    });
     rTbody.appendChild(tr);
   });
 
@@ -3641,10 +3650,10 @@ function renderReconciliation(data) {
     // LEVEL 2: Unit-specific Reconciliation Details
     const unit = activeReconciliationUnit;
 
-    // --- Top bar: small back button ---
+    // --- Top bar: small circular arrow back button ---
     const topBar = el("div", { class: "recon-detail-topbar" });
-    const backBtn = el("button", { class: "btn btn-sm recon-back-btn", type: "button" });
-    backBtn.innerHTML = "&#8592; Back to Reconciliation";
+    const backBtn = el("button", { class: "recon-back-circle", type: "button", "aria-label": "Back to Reconciliation" });
+    backBtn.innerHTML = "&#8592;";
     backBtn.addEventListener("click", function () {
       activeReconciliationUnit = null;
       renderReconciliation(currentData());

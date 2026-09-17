@@ -1391,6 +1391,25 @@ table.ov-recon-gl-table tbody tr:last-child td {
   border-bottom: none;
 }
 
+/* Clickable GL rows from Overview → Reconciliation unit navigation */
+table.ov-recon-gl-table tbody tr.recon-gl-row-link {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+table.ov-recon-gl-table tbody tr.recon-gl-row-link:hover {
+  background: var(--ov-blue-xlight);
+}
+
+table.ov-recon-gl-table tbody tr.recon-gl-row-link:hover td:first-child {
+  color: var(--brand);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  table.ov-recon-gl-table tbody tr.recon-gl-row-link { transition: none; }
+}
+
 .ov-section-heading {
   font-size: 13px;
   font-weight: 700;
@@ -1707,7 +1726,37 @@ table.ov-module-table tbody tr:last-child td {
 }
 
 .recon-back-btn {
-  /* inherits .btn-sm — no extra rules needed */
+  /* kept for backward compatibility */
+}
+
+/* Small circular arrow back button on reconciliation detail pages */
+.recon-back-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1.5px solid var(--brand);
+  background: var(--card-bg);
+  color: var(--brand-dark);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  flex-shrink: 0;
+}
+
+.recon-back-circle:hover,
+.recon-back-circle:focus-visible {
+  background: var(--brand);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(17, 122, 191, 0.30);
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recon-back-circle { transition: none; }
 }
 
 .recon-centered-heading {
