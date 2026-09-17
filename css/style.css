@@ -1201,6 +1201,83 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   color: var(--text-body);
 }
 
+.ov-nostro-recon-grid {
+  display: grid;
+  grid-template-columns: 1.8fr 1fr;
+  gap: var(--space-2);
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .ov-nostro-recon-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ov-nostro-card-container,
+.ov-recon-box-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.ov-recon-summary-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.recon-summary-item {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  background: var(--ov-blue-xlight, #f4f8fb);
+  border-radius: var(--radius-sm);
+  border-left: 3.5px solid var(--brand);
+}
+
+.recon-summary-item.net {
+  background: var(--brand-light, #e8f3fa);
+  border-left: 4px solid var(--brand);
+}
+
+.recon-item-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.recon-item-value {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.recon-item-value.pos {
+  color: #107C41;
+}
+
+.recon-item-value.neg {
+  color: #D13438;
+}
+
+.recon-item-value.highlight {
+  color: var(--brand);
+}
+
+.recon-cnt {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
 .ov-section-heading {
   font-size: 13px;
   font-weight: 700;
