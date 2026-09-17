@@ -1562,6 +1562,7 @@ table.ov-module-table {
   font-size: 11px;
   margin: 0;
   table-layout: auto;
+  border: 1px solid var(--border);
 }
 
 table.ov-module-table th {
@@ -1571,23 +1572,24 @@ table.ov-module-table th {
   text-transform: uppercase;
   letter-spacing: 0.03em;
   padding: 5px 6px;
-  border-bottom: 1.5px solid var(--border);
+  border: 1px solid var(--border);
   background: var(--ov-blue-xlight);
   white-space: nowrap;
   vertical-align: middle;
-  text-align: right;
+  text-align: center;
 }
 
 table.ov-module-table th.grouped-hdr {
-  border-bottom: 1px solid var(--ov-blue-light);
+  border: 1px solid var(--border);
   font-size: 10px;
   background: var(--ov-blue-light);
   color: var(--brand-dark);
+  text-align: center;
 }
 
 table.ov-module-table th.border-group-end,
 table.ov-module-table td.border-group-end {
-  border-right: 1px solid var(--border);
+  border-right: 1.5px solid var(--border);
 }
 
 table.ov-module-table th:first-child,
@@ -1597,17 +1599,19 @@ table.ov-module-table td:first-child {
 
 table.ov-module-table td {
   padding: 5px 6px;
-  border-bottom: 1px solid var(--border-light);
+  border: 1px solid var(--border);
   color: var(--text-main);
   white-space: nowrap;
   vertical-align: middle;
   font-size: 11px;
 }
 
-table.ov-module-table td.num,
-table.ov-module-table th.num {
-  text-align: right;
+table.ov-module-table td.num {
   font-variant-numeric: tabular-nums;
+}
+
+table.ov-module-table th.num {
+  text-align: center;
 }
 
 table.ov-module-table tbody tr:hover {
@@ -1623,14 +1627,14 @@ table.ov-module-table tbody tr.clickable-row:hover {
 }
 
 table.ov-module-table tbody tr:last-child td {
-  border-bottom: none;
+  border-bottom: 1px solid var(--border);
 }
 
 /* ---------------------------------------------------------------
    Complain / Chargeback / Disputes — full grid-border table
    --------------------------------------------------------------- */
 table.ov-cb-disputes-table {
-  border: 1.5px solid var(--border);
+  border: 1px solid var(--border);
 }
 
 table.ov-cb-disputes-table th,
@@ -1640,13 +1644,13 @@ table.ov-cb-disputes-table td {
 
 table.ov-cb-disputes-table thead th.grouped-hdr.cb-grp-cur {
   background: var(--ov-blue-light);
-  border-bottom: 1px solid var(--ov-blue-light);
+  border: 1px solid var(--border);
   text-align: center;
 }
 
 table.ov-cb-disputes-table thead th.grouped-hdr.cb-grp-prev {
   background: #e8f4fb;
-  border-bottom: 1px solid #d0e8f5;
+  border: 1px solid var(--border);
   text-align: center;
 }
 

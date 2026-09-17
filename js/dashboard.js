@@ -2582,16 +2582,17 @@ function svgAgingBar(buckets) {
 function renderOvModules(root, data) {
   root.appendChild(el("div", { class: "ov-section-heading", text: "Module Summaries" }));
   const grid = el("div", { class: "ov-modules-grid" });
-  grid.appendChild(ovModuleCard("ADC Operations", "adc-operations", buildOvAdcTable(data)));
-  grid.appendChild(ovModuleCard("Inventory / Stock Position", "card-non-financials", buildOvInventoryTable(data)));
-  grid.appendChild(ovModuleCard("Card Financials", "card-financials", buildOvCardFinTable(data)));
-  grid.appendChild(ovModuleCard("Complain / Chargeback / Disputes", "chargeback", buildOvCbDisputesTable(data)));
-  grid.appendChild(ovModuleCard("Secure Operations", "secure-operations", ovSecOpsRows(data)));
-  grid.appendChild(ovModuleCard("Unsecured Operations", "unsecured-operations", ovUnsecOpsRows(data)));
-  grid.appendChild(ovModuleCard("Banca", "banca", ovBancaRows(data)));
-  grid.appendChild(ovModuleCard("Reconciliation", "reconciliation", ovReconRows(data)));
+  grid.appendChild(ovModuleCard("ADC Operations",                  "adc-operations",    buildOvAdcTable(data)));
+  grid.appendChild(ovModuleCard("Inventory / Stock Position",      "card-non-financials", buildOvInventoryTable(data)));
+  grid.appendChild(ovModuleCard("Card Financials",                 "card-financials",   buildOvCardFinTable(data)));
+  grid.appendChild(ovModuleCard("Complain / Chargeback / Disputes","chargeback",        buildOvCbDisputesTable(data)));
+  grid.appendChild(ovModuleCard("Reconciliation",                  "reconciliation",    buildOvReconTable(data)));
+  grid.appendChild(ovModuleCard("Secure Operations",               "secure-operations", ovSecOpsRows(data)));
+  grid.appendChild(ovModuleCard("Unsecured Operations",            "unsecured-operations", ovUnsecOpsRows(data)));
+  grid.appendChild(ovModuleCard("Banca",                           "banca",             ovBancaRows(data)));
   root.appendChild(grid);
 }
+
 
 function ovModuleCard(title, page, content) {
   const card = el("div", { class: "ov-module-card" });
@@ -2712,9 +2713,9 @@ function buildOvInventoryTable(data) {
   const thead = el("thead");
   const trHead = el("tr");
   trHead.appendChild(el("th", { text: "Inventory Item", style: "text-align:left;" }));
-  trHead.appendChild(el("th", { text: "Current Month", class: "num" }));
-  trHead.appendChild(el("th", { text: "Previous Month", class: "num" }));
-  trHead.appendChild(el("th", { text: "MoM Change", class: "num" }));
+  trHead.appendChild(el("th", { text: "Current Month", class: "num", style: "text-align:center;" }));
+  trHead.appendChild(el("th", { text: "Previous Month", class: "num", style: "text-align:center;" }));
+  trHead.appendChild(el("th", { text: "MoM Change", class: "num", style: "text-align:center;" }));
   thead.appendChild(trHead);
   table.appendChild(thead);
 
@@ -2775,7 +2776,7 @@ function buildOvInventoryTable(data) {
     tr.appendChild(el("td", { text: r.prevStr, class: "num", style: "color:var(--text-secondary);" }));
 
     const comp = calculateComparisons(r.cur, r.prev, true, true);
-    const tdChg = el("td", { class: "num" });
+    const tdChg = el("td", { class: "num", style: "text-align:center;" });
     tdChg.innerHTML = comp.html;
     tr.appendChild(tdChg);
 
@@ -2791,9 +2792,9 @@ function buildOvCardFinTable(data) {
   const thead = el("thead");
   const trHead = el("tr");
   trHead.appendChild(el("th", { text: "Metric", style: "text-align:left;" }));
-  trHead.appendChild(el("th", { text: "Current Month", class: "num" }));
-  trHead.appendChild(el("th", { text: "Previous Month", class: "num" }));
-  trHead.appendChild(el("th", { text: "MoM Rate", class: "num" }));
+  trHead.appendChild(el("th", { text: "Current Month", class: "num", style: "text-align:center;" }));
+  trHead.appendChild(el("th", { text: "Previous Month", class: "num", style: "text-align:center;" }));
+  trHead.appendChild(el("th", { text: "MoM Rate", class: "num", style: "text-align:center;" }));
   thead.appendChild(trHead);
   table.appendChild(thead);
 
@@ -2911,6 +2912,50 @@ function ovBancaRows(data) {
     ["Banca Transaction Amount", formatCurrency(b.totalAmountToday)],
     ["Pending / Exception Items", formatNumber(b.pendingItemsToday)]
   ];
+}
+
+function buildOvReconTable(data) {
+  const table = el("table", { class: "ov-module-table ov-recon-summary-table" });
+  const thead = el("thead");
+
+  // Row 1 — grouped top headers
+  const tr1 = el("tr");
+  tr1.appendChild(el("th", { text: "METRIC", rowspan: "2", style: "text-align:left; vertical-align:bottom;" }));
+  tr1.appendChild(el("th", { text: "TODAY",     colspan: "1", class: "grouped-hdr grp-today",     style: "text-align:center;" }));
+  tr1.appendChild(el("th", { text: "YESTERDAY", colspan: "1", class: "grouped-hdr grp-yesterday", style: "text-align:center;" }));
+  tr1.appendChild(el("th", { text: "CHANGE RATE", rowspan: "2", style: "text-align:center; vertical-align:bottom;" }));
+  thead.appendChild(tr1);
+
+  // Row 2 — sub-headers
+  const tr2 = el("tr");
+  tr2.appendChild(el("th", { text: "AMOUNT", class: "num", style: "text-align:center;" }));
+  tr2.appendChild(el("th", { text: "AMOUNT", class: "num", style: "text-align:center;" }));
+  thead.appendChild(tr2);
+
+  table.appendChild(thead);
+
+  const tbody = el("tbody");
+
+  // Demo realistic values — PKR amounts
+  const reconRows = [
+    { metric: "Receivables > 30d Amount", today: 145600000, yesterday: 138200000 },
+    { metric: "Payables > 30d Amount",    today: 89400000,  yesterday: 93100000  }
+  ];
+
+  reconRows.forEach(function (r) {
+    const comp = calculateComparisons(r.today, r.yesterday, true, false);
+    const tr = el("tr");
+    tr.appendChild(el("td", { text: r.metric, style: "text-align:left; font-weight:600;" }));
+    tr.appendChild(el("td", { text: formatCurrency(r.today),     class: "num", style: "font-weight:600; text-align:center;" }));
+    tr.appendChild(el("td", { text: formatCurrency(r.yesterday), class: "num", style: "color:var(--text-secondary); text-align:center;" }));
+    const tdChg = el("td", { style: "text-align:center;" });
+    tdChg.innerHTML = comp.html;
+    tr.appendChild(tdChg);
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  return table;
 }
 
 function ovCbRows(data) {
