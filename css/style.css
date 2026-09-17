@@ -1260,7 +1260,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 
 .ov-nostro-recon-grid {
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
+  grid-template-columns: 1.2fr 1fr;
   gap: var(--space-2);
   align-items: stretch;
 }
@@ -1280,6 +1280,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 
 .ov-recon-box-card {
   height: 100%;
+  min-width: 340px;
   display: flex;
   flex-direction: column;
 }
@@ -1405,6 +1406,19 @@ table.ov-recon-gl-table tbody tr.recon-gl-row-link:hover {
 table.ov-recon-gl-table tbody tr.recon-gl-row-link:hover td:first-child {
   color: var(--brand);
   font-weight: 600;
+}
+
+/* Highlighted summary rows inside Reconciliation GL Breakdown */
+table.ov-recon-gl-table tbody tr.recon-gl-highlight-row,
+table.ov-recon-gl-table tbody tr.recon-gl-highlight-row td {
+  background: #117ABF !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+table.ov-recon-gl-table tbody tr.recon-gl-highlight-row:hover td {
+  background: #0e66a0 !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1552,7 +1566,7 @@ table.ov-adc-table tbody tr:hover { background: var(--ov-blue-xlight); }
 /* ── Level 4: Module Summary Panels ───────────────────────────────── */
 .ov-modules-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  grid-template-columns: 1fr;
   gap: var(--space-1-5);
   margin-bottom: var(--space-2);
 }
@@ -1681,6 +1695,44 @@ table.ov-cb-disputes-table tbody tr:last-child td {
   color: var(--text-muted);
   font-weight: normal;
   margin-left: 3px;
+}
+
+/* ---------------------------------------------------------------
+   Reconciliation Summary Table & Card — Overview Module Summary
+   --------------------------------------------------------------- */
+.ov-module-card-recon {
+  grid-column: span 2;
+}
+
+@media (max-width: 900px) {
+  .ov-module-card-recon {
+    grid-column: span 1;
+  }
+}
+
+table.ov-recon-summary-table {
+  border: 1px solid var(--border);
+  width: 100%;
+}
+
+table.ov-recon-summary-table th,
+table.ov-recon-summary-table td {
+  border: 1px solid var(--border);
+}
+
+table.ov-recon-summary-table tr.recon-highlight-row,
+table.ov-recon-summary-table tr.recon-highlight-row td {
+  background: #117ABF !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+table.ov-recon-summary-table tr.recon-highlight-row td .indicator {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border-radius: 4px;
 }
 
 /* Standalone chart card outside ov-charts-row (used by new pages) */

@@ -2133,6 +2133,19 @@ function renderOvNostro(root, data) {
     rTbody.appendChild(tr);
   });
 
+  // Two newly added rows inside THIS SAME Reconciliation GL Breakdown box
+  const extraReconRows = [
+    { label: "Receivables > 30d Amount", val: "PKR 145.60 Mn" },
+    { label: "Payables > 30d Amount",    val: "PKR 89.40 Mn"  }
+  ];
+
+  extraReconRows.forEach(function (r) {
+    const tr = el("tr", { class: "recon-gl-highlight-row" });
+    tr.appendChild(el("td", { text: r.label, style: "text-align:left; font-weight:bold; color:#ffffff;" }));
+    tr.appendChild(el("td", { text: r.val, class: "num", style: "text-align:right; font-weight:bold; color:#ffffff;" }));
+    rTbody.appendChild(tr);
+  });
+
   reconTable.appendChild(rTbody);
   reconTableWrap.appendChild(reconTable);
   reconCard.appendChild(reconTableWrap);
@@ -2601,10 +2614,9 @@ function renderOvModules(root, data) {
   root.appendChild(el("div", { class: "ov-section-heading", text: "Module Summaries" }));
   const grid = el("div", { class: "ov-modules-grid" });
   grid.appendChild(ovModuleCard("ADC Operations",                  "adc-operations",    buildOvAdcTable(data)));
-  grid.appendChild(ovModuleCard("Inventory / Stock Position",      "card-non-financials", buildOvInventoryTable(data)));
-  grid.appendChild(ovModuleCard("Card Financials",                 "card-financials",   buildOvCardFinTable(data)));
   grid.appendChild(ovModuleCard("Complain / Chargeback / Disputes","chargeback",        buildOvCbDisputesTable(data)));
-  grid.appendChild(ovModuleCard("Reconciliation",                  "reconciliation",    buildOvReconTable(data)));
+  grid.appendChild(ovModuleCard("Card Financials",                 "card-financials",   buildOvCardFinTable(data)));
+  grid.appendChild(ovModuleCard("Inventory / Stock Position",      "card-non-financials", buildOvInventoryTable(data)));
   grid.appendChild(ovModuleCard("Secure Operations",               "secure-operations", ovSecOpsRows(data)));
   grid.appendChild(ovModuleCard("Unsecured Operations",            "unsecured-operations", ovUnsecOpsRows(data)));
   grid.appendChild(ovModuleCard("Banca",                           "banca",             ovBancaRows(data)));
@@ -2612,8 +2624,8 @@ function renderOvModules(root, data) {
 }
 
 
-function ovModuleCard(title, page, content) {
-  const card = el("div", { class: "ov-module-card" });
+function ovModuleCard(title, page, content, extraClass) {
+  const card = el("div", { class: "ov-module-card" + (extraClass ? " " + extraClass : "") });
 
   const hdr = el("div", { class: "ov-module-header" });
   hdr.appendChild(el("span", { class: "ov-module-title", text: title }));
@@ -2938,7 +2950,7 @@ function buildOvReconTable(data) {
 
   // Row 1 — grouped top headers
   const tr1 = el("tr");
-  tr1.appendChild(el("th", { text: "METRIC", rowspan: "2", style: "text-align:left; vertical-align:bottom;" }));
+  tr1.appendChild(el("th", { text: "RECON UNIT / METRIC", rowspan: "2", style: "text-align:left; vertical-align:bottom;" }));
   tr1.appendChild(el("th", { text: "TODAY",     colspan: "1", class: "grouped-hdr grp-today",     style: "text-align:center;" }));
   tr1.appendChild(el("th", { text: "YESTERDAY", colspan: "1", class: "grouped-hdr grp-yesterday", style: "text-align:center;" }));
   tr1.appendChild(el("th", { text: "CHANGE RATE", rowspan: "2", style: "text-align:center; vertical-align:bottom;" }));
@@ -2954,19 +2966,55 @@ function buildOvReconTable(data) {
 
   const tbody = el("tbody");
 
-  // Demo realistic values — PKR amounts
-  const reconRows = [
+  // 1. Existing Reconciliation unit rows/details
+  const unitRowsData = [
+    { unit: "1888 - ADC",                  today: 25400000, yesterday: 24100000, reconUnitId: "1888" },
+    { unit: "1948 - Credit Card (CTL)",     today: 63000000, yesterday: 59800000, reconUnitId: "1948" },
+    { unit: "7928 - Credit Card (Card Pro)",today: 32980000, yesterday: 34200000, reconUnitId: "7928" },
+    { unit: "1922 - Ijarah",               today: 24040000, yesterday: 22800000, reconUnitId: "1922" },
+    { unit: "1944 - Auto Loan",            today: 30540000, yesterday: 29100000, reconUnitId: "1944" },
+    { unit: "1945 - PRL (Personal Loan)",  today: 54600000, yesterday: 52000000, reconUnitId: "PRL"  },
+    { unit: "1946 - MTG (Mortgage)",       today: 69680000, yesterday: 67000000, reconUnitId: "1946" },
+    { unit: "2000 - SME",                  today: 38200000, yesterday: 39500000, reconUnitId: "2000" },
+    { unit: "Banca",                       today: 21000000, yesterday: 19800000, reconUnitId: "banca" }
+  ];
+
+  unitRowsData.forEach(function (r) {
+    const comp = calculateComparisons(r.today, r.yesterday, true, false);
+    const tr = el("tr", { class: "clickable-row" });
+    tr.style.cursor = "pointer";
+    tr.title = "Click to view " + r.unit + " Reconciliation details";
+    tr.appendChild(el("td", { text: r.unit, style: "text-align:left; font-weight:600;" }));
+    tr.appendChild(el("td", { text: formatCurrency(r.today),     class: "num", style: "font-weight:600; text-align:center;" }));
+    tr.appendChild(el("td", { text: formatCurrency(r.yesterday), class: "num", style: "color:var(--text-secondary); text-align:center;" }));
+    const tdChg = el("td", { style: "text-align:center;" });
+    tdChg.innerHTML = comp.html;
+    tr.appendChild(tdChg);
+
+    tr.addEventListener("click", function () {
+      const matchedUnit = RECON_UNITS.find(function (u) { return u.id === r.reconUnitId; });
+      if (matchedUnit) {
+        activeReconciliationUnit = matchedUnit;
+      }
+      navigateToPage("reconciliation");
+    });
+
+    tbody.appendChild(tr);
+  });
+
+  // 2. Styled summary rows inside the SAME box (Receivables > 30d Amount & Payables > 30d Amount)
+  const summaryRows = [
     { metric: "Receivables > 30d Amount", today: 145600000, yesterday: 138200000 },
     { metric: "Payables > 30d Amount",    today: 89400000,  yesterday: 93100000  }
   ];
 
-  reconRows.forEach(function (r) {
+  summaryRows.forEach(function (r) {
     const comp = calculateComparisons(r.today, r.yesterday, true, false);
-    const tr = el("tr");
-    tr.appendChild(el("td", { text: r.metric, style: "text-align:left; font-weight:600;" }));
-    tr.appendChild(el("td", { text: formatCurrency(r.today),     class: "num", style: "font-weight:600; text-align:center;" }));
-    tr.appendChild(el("td", { text: formatCurrency(r.yesterday), class: "num", style: "color:var(--text-secondary); text-align:center;" }));
-    const tdChg = el("td", { style: "text-align:center;" });
+    const tr = el("tr", { class: "recon-highlight-row" });
+    tr.appendChild(el("td", { text: r.metric, style: "text-align:left; font-weight:bold; color:#ffffff;" }));
+    tr.appendChild(el("td", { text: formatCurrency(r.today),     class: "num", style: "font-weight:bold; color:#ffffff; text-align:center;" }));
+    tr.appendChild(el("td", { text: formatCurrency(r.yesterday), class: "num", style: "font-weight:bold; color:#ffffff; text-align:center;" }));
+    const tdChg = el("td", { style: "text-align:center; color:#ffffff; font-weight:bold;" });
     tdChg.innerHTML = comp.html;
     tr.appendChild(tdChg);
     tbody.appendChild(tr);
