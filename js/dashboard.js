@@ -2350,6 +2350,7 @@ function renderOvKpiStrip(root, data) {
   ccCard.style.cursor = "pointer";
   ccCard.setAttribute("title", "Click to view Card Financials");
   ccCard.addEventListener("click", function () {
+    cardFinancialsActiveTab = "credit";
     navigateToPage("card-financials");
   });
   cardsGrid.appendChild(ccCard);
@@ -2364,6 +2365,7 @@ function renderOvKpiStrip(root, data) {
   dcCard.style.cursor = "pointer";
   dcCard.setAttribute("title", "Click to view Card Financials");
   dcCard.addEventListener("click", function () {
+    cardFinancialsActiveTab = "debit";
     navigateToPage("card-financials");
   });
   cardsGrid.appendChild(dcCard);
@@ -3094,11 +3096,13 @@ function renderADCOperations(data) {
     const atmPerfTitle = sectionTitle("ATM Performance");
     atmPerfTitle.id = "atm-performance";
     root.appendChild(atmPerfTitle);
-    root.appendChild(buildTable("Top 5 Performing ATMs",
+    root.appendChild(sectionTitle("Top 5 Best-Performing ATMs"));
+    root.appendChild(buildTable(null,
       [{ key: "rank", label: "Rank", numeric: true }, { key: "atmId", label: "ATM ID" }, { key: "location", label: "Location" },
        { key: "txnCount", label: "Txn Count", numeric: true }, { key: "txnAmount", label: "Txn Amount", currency: true }, { key: "successRate", label: "Success Rate", percent: true }, { key: "uptime", label: "Uptime", percent: true }],
       data.atmTop5Best));
-    root.appendChild(buildTable("Top 5 Low-Performing ATMs",
+    root.appendChild(sectionTitle("Top 5 Lowest-Performing ATMs (Underperforming)"));
+    root.appendChild(buildTable(null,
       [{ key: "rank", label: "Rank", numeric: true }, { key: "atmId", label: "ATM ID" }, { key: "location", label: "Location" },
        { key: "txnCount", label: "Txn Count", numeric: true }, { key: "txnAmount", label: "Txn Amount", currency: true }, { key: "successRate", label: "Success Rate", percent: true }, { key: "uptime", label: "Uptime", percent: true }],
       data.atmBottom5));
@@ -3210,7 +3214,8 @@ function renderADCOperations(data) {
     root.appendChild(buildTable(null, adcThreeTableColumns, ibftRows));
 
     /* 3. IBFT Failure Reasons Table */
-    root.appendChild(buildTable("IBFT Failure Reasons", adcThreeTableColumns,
+    root.appendChild(sectionTitle("IBFT Failure Reasons"));
+    root.appendChild(buildTable(null, adcThreeTableColumns,
       (data.ibftFailures || []).map(function (f) {
         return {
           kpi: f.reason,
@@ -3311,6 +3316,7 @@ function renderCardFinancials(data) {
   const cf = data.cardFinancials;
   const c = cf.credit || {};
   const d = cf.debit || {};
+  const cardData = getCardKpiData(data);
 
   root.appendChild(sectionTitle("Comprehensive Card Financial Performance & Revenue Summary"));
 
@@ -3329,15 +3335,22 @@ function renderCardFinancials(data) {
     tableContainer.innerHTML = "";
     const tab = cardFinancialsActiveTab === "debit" ? "debit" : "credit";
     const selectedData = tab === "debit" ? d : c;
+    const selectedKpi = tab === "debit" ? cardData.debit : cardData.credit;
     const isCredit = tab === "credit";
     const compRows = [];
 
     if (isCredit) {
-      if (c.cif !== undefined && c.cif !== null) compRows.push({ item: "Credit Card CIF", current: c.cif, previous: c.cifPrevious, isCount: true });
-      if (c.aif !== undefined && c.aif !== null) compRows.push({ item: "Credit Card AIF", current: c.aif, previous: c.aifPrevious, isCount: true });
-      compRows.push({ item: "Credit Card Spend", current: c.spendCurrent, previous: c.spendPrevious, isCurrency: true });
+      compRows.push({ item: "Credit Card CIF", current: selectedKpi.cif.cur, previous: selectedKpi.cif.prev, isCount: true });
+      compRows.push({ item: "Credit Card AIF", current: selectedKpi.aif.cur, previous: selectedKpi.aif.prev, isCount: true });
+      compRows.push({ item: "Inactive Cards", current: selectedKpi.inactive.cur, previous: selectedKpi.inactive.prev, isCount: true });
+      compRows.push({ item: "Annual Fee", current: selectedKpi.annualFee.cur, previous: selectedKpi.annualFee.prev, isCurrency: true });
+      compRows.push({ item: "Credit Card Spend", current: c.spendCurrent || cardData.spend.ccTotal.cur, previous: c.spendPrevious || cardData.spend.ccTotal.prev, isCurrency: true });
     } else {
-      compRows.push({ item: "Debit Card Spend", current: d.spendCurrent, previous: d.spendPrevious, isCurrency: true });
+      compRows.push({ item: "Debit Card CIF", current: selectedKpi.cif.cur, previous: selectedKpi.cif.prev, isCount: true });
+      compRows.push({ item: "Debit Card AIF", current: selectedKpi.aif.cur, previous: selectedKpi.aif.prev, isCount: true });
+      compRows.push({ item: "Inactive Cards", current: selectedKpi.inactive.cur, previous: selectedKpi.inactive.prev, isCount: true });
+      compRows.push({ item: "Annual Fee", current: selectedKpi.annualFee.cur, previous: selectedKpi.annualFee.prev, isCurrency: true });
+      compRows.push({ item: "Debit Card Spend", current: d.spendCurrent || cardData.spend.dcTotal.cur, previous: d.spendPrevious || cardData.spend.dcTotal.prev, isCurrency: true });
     }
 
     compRows.push({ item: "Domestic Transaction Count", current: selectedData.domesticTxnCount, previous: selectedData.domesticTxnCountPrevious, isCount: true });
@@ -3387,9 +3400,9 @@ function renderCardFinancials(data) {
 
     const wrap = buildTable(null,
       [{ key: "item", label: "Financial / Performance Metric" },
-       { key: "currentDisplay", label: lbl.shortPrimary, rightAlign: true },
-       { key: "previousDisplay", label: lbl.comparisonTerm, rightAlign: true },
-       { key: "changeDisplay", label: lbl.changeTerm, rightAlign: true }],
+       { key: "currentDisplay", label: "CURRENT MONTH", rightAlign: true },
+       { key: "previousDisplay", label: "PREVIOUS MONTH", rightAlign: true },
+       { key: "changeDisplay", label: "MOM RATE", rightAlign: true }],
       formattedRows
     );
     tableContainer.appendChild(wrap);
