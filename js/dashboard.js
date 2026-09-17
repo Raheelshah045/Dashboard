@@ -1490,6 +1490,63 @@ function periodLabelText() {
   return "View: Today" + dateStr;
 }
 
+function getPeriodLabels() {
+  const f = appState.filters || {};
+  const mode = f.period || "today";
+
+  if (mode === "month") {
+    let mName = "Selected Month";
+    if (f.reportingMonth) {
+      const parts = f.reportingMonth.split("-");
+      if (parts.length === 2) {
+        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, 1);
+        mName = d.toLocaleString("en-US", { month: "long", year: "numeric" });
+      }
+    }
+    return {
+      mode: "month",
+      isDaily: false,
+      primaryTerm: "Selected Period (" + mName + ")",
+      shortPrimary: "Selected Period",
+      comparisonTerm: "Previous Month",
+      changeTerm: "MoM Change %",
+      trendTerm: "Full Month Trend",
+      freqTag: "MONTHLY",
+      vsTag: "vs Prev Month",
+      tableSectionTitle: "Period Operational Comparison"
+    };
+  }
+
+  if (mode === "custom") {
+    const dCount = f.daysCount || 15;
+    return {
+      mode: "custom",
+      isDaily: false,
+      primaryTerm: "Selected Period (" + dCount + "d)",
+      shortPrimary: "Selected Period",
+      comparisonTerm: "Previous Period (" + dCount + "d)",
+      changeTerm: "Period Change %",
+      trendTerm: "Full Month Trend",
+      freqTag: "CUSTOM PERIOD",
+      vsTag: "vs Prev Period",
+      tableSectionTitle: "Period Operational Comparison"
+    };
+  }
+
+  return {
+    mode: "today",
+    isDaily: true,
+    primaryTerm: "Today",
+    shortPrimary: "Today",
+    comparisonTerm: "Yesterday",
+    changeTerm: "Daily Change %",
+    trendTerm: "Current Month",
+    freqTag: "DAILY",
+    vsTag: "vs Yesterday",
+    tableSectionTitle: "Daily Operational Comparison"
+  };
+}
+
 function getFilteredData(rawData, filters) {
   if (!rawData) return rawData;
   const f = filters || {};
@@ -2068,11 +2125,12 @@ function getCardKpiData(data) {
 }
 
 function renderOvCardKpiTableCard(title, rows) {
+  const lbl = getPeriodLabels();
   const card = el("div", { class: "ov-table-kpi-card" });
 
   const header = el("div", { class: "ov-table-kpi-header" });
   header.appendChild(el("div", { class: "ov-table-kpi-title", text: title }));
-  header.appendChild(el("div", { class: "ov-table-kpi-freq", text: "MONTHLY" }));
+  header.appendChild(el("div", { class: "ov-table-kpi-freq", text: lbl.freqTag }));
   card.appendChild(header);
 
   const table = el("table", { class: "ov-kpi-table" });
@@ -2080,9 +2138,9 @@ function renderOvCardKpiTableCard(title, rows) {
   const thead = el("thead");
   const trHead = el("tr");
   trHead.appendChild(el("th", { text: "Metric" }));
-  trHead.appendChild(el("th", { text: "Current Month" }));
-  trHead.appendChild(el("th", { text: "Previous Month" }));
-  trHead.appendChild(el("th", { text: "Change %" }));
+  trHead.appendChild(el("th", { text: lbl.shortPrimary }));
+  trHead.appendChild(el("th", { text: lbl.comparisonTerm }));
+  trHead.appendChild(el("th", { text: lbl.changeTerm }));
   thead.appendChild(trHead);
   table.appendChild(thead);
 
@@ -2106,16 +2164,17 @@ function renderOvCardKpiTableCard(title, rows) {
 }
 
 function renderOvKpiStrip(root, data) {
+  const lbl = getPeriodLabels();
   const strip = el("div", { class: "ov-kpi-strip" });
 
-  /* 1. Daily Execution Strip */
+  /* 1. Execution Strip */
   const dailyStrip = el("div", { class: "ov-daily-strip" });
 
   const uptime  = data.atm ? data.atm.uptimeToday : null;
   const uptimeY = data.atm ? data.atm.uptimeYesterday : null;
   const uptComp = formatUptimeComparison(uptime, uptimeY);
   dailyStrip.appendChild(ovExecCard("ATM Uptime", uptComp.todayStr,
-    'Yesterday: ' + uptComp.yesterdayStr + ' &nbsp;|&nbsp; ' + uptComp.html, "vs Yesterday", "DAILY",
+    lbl.comparisonTerm + ': ' + uptComp.yesterdayStr + ' &nbsp;|&nbsp; ' + uptComp.html, lbl.vsTag, lbl.freqTag,
     fullValueTitle(uptime)));
 
   const adcCntTdy = (data.atm ? data.atm.withdrawalCountToday || 0 : 0)
@@ -2125,7 +2184,7 @@ function renderOvKpiStrip(root, data) {
                   + (data.raast ? data.raast.successCountYesterday || 0 : 0)
                   + (data.ibft ? data.ibft.successCountYesterday || 0 : 0);
   dailyStrip.appendChild(ovExecCard("Total ADC Transaction Count", formatNumber(adcCntTdy, 0),
-    'Yesterday: ' + formatNumber(adcCntY, 0) + ' &nbsp;|&nbsp; ' + indicatorHTML(adcCntTdy, adcCntY, true, false), "vs Yesterday", "DAILY"));
+    lbl.comparisonTerm + ': ' + formatNumber(adcCntY, 0) + ' &nbsp;|&nbsp; ' + indicatorHTML(adcCntTdy, adcCntY, true, false), lbl.vsTag, lbl.freqTag));
 
   const adcAmtTdy = (data.atm ? data.atm.withdrawalAmountToday || 0 : 0)
                   + (data.raast ? data.raast.successAmountToday || 0 : 0)
@@ -2134,7 +2193,7 @@ function renderOvKpiStrip(root, data) {
                   + (data.raast ? data.raast.successAmountYesterday || 0 : 0)
                   + (data.ibft ? data.ibft.successAmountYesterday || 0 : 0);
   dailyStrip.appendChild(ovExecCard("Total ADC Transaction Amount", formatCurrency(adcAmtTdy),
-    'Yesterday: ' + formatCurrency(adcAmtY) + ' &nbsp;|&nbsp; ' + indicatorHTML(adcAmtTdy, adcAmtY, true, false), "vs Yesterday", "DAILY",
+    lbl.comparisonTerm + ': ' + formatCurrency(adcAmtY) + ' &nbsp;|&nbsp; ' + indicatorHTML(adcAmtTdy, adcAmtY, true, false), lbl.vsTag, lbl.freqTag,
     fullValueTitle(adcAmtTdy, true)));
 
   strip.appendChild(dailyStrip);
@@ -2187,6 +2246,7 @@ function ovExecCard(label, value, indicHtml, vsLabel, freq, titleAttr) {
 }
 
 function renderOvAdcSummary(root, data) {
+  const lbl = getPeriodLabels();
   const section = el("div", { class: "ov-section" });
   section.appendChild(el("div", { class: "ov-section-heading", text: "ADC Operations Summary" }));
 
@@ -2247,7 +2307,7 @@ function renderOvAdcSummary(root, data) {
   const table = el("table", { class: "ov-adc-table" });
   const thead = el("thead");
   const hr = el("tr");
-  ["Metric", "Today", "Yesterday", "Change", "Current Month"].forEach(function (h, i) {
+  ["Metric", lbl.shortPrimary, lbl.comparisonTerm, "Change", lbl.trendTerm].forEach(function (h, i) {
     hr.appendChild(el("th", { class: i > 0 ? "num" : "", text: h }));
   });
   thead.appendChild(hr);
@@ -2551,6 +2611,7 @@ function sumBy(arr, key) {
 function renderADCOperations(data) {
   const root = document.getElementById("adc-operations-body");
   root.innerHTML = "";
+  const lbl = getPeriodLabels();
 
   root.appendChild(sectionTitle("ATM Operations"));
   if (data.atm) {
@@ -2560,17 +2621,21 @@ function renderADCOperations(data) {
     const grid = el("div", { class: "kpi-grid" });
     grid.appendChild(kpiCard("Total ATMs Count", formatNumber(a.totalATMs)));
 
-    const uptimeSubHTML = "Yesterday: " + uptComp.yesterdayStr + " &nbsp;|&nbsp; " + uptComp.html;
-    grid.appendChild(kpiCard("ATM Uptime (Today vs Yesterday)", uptComp.todayStr + " (Today)", uptimeSubHTML));
+    const uptimeSubHTML = lbl.comparisonTerm + ": " + uptComp.yesterdayStr + " &nbsp;|&nbsp; " + uptComp.html;
+    grid.appendChild(kpiCard("ATM Uptime (" + lbl.shortPrimary + ")", uptComp.todayStr, uptimeSubHTML));
 
-    grid.appendChild(kpiCard("Withdrawal Transaction Count (Today)", formatNumber(a.withdrawalCountToday), "Yesterday: " + formatNumber(a.withdrawalCountYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(a.withdrawalCountToday, a.withdrawalCountYesterday, true, false).html));
-    grid.appendChild(kpiCard("Withdrawal Transaction Count (Current Month)", formatNumber(a.withdrawalCountMTD), "Prev Month: " + formatNumber(a.withdrawalCountPrevMTD) + " &nbsp;|&nbsp; " + calculateComparisons(a.withdrawalCountMTD, a.withdrawalCountPrevMTD, true, true).html));
-    grid.appendChild(kpiCard("Withdrawal Transaction Amount (Today)", formatCurrency(a.withdrawalAmountToday), "Yesterday: " + formatCurrency(a.withdrawalAmountYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(a.withdrawalAmountToday, a.withdrawalAmountYesterday, true, false).html, fullValueTitle(a.withdrawalAmountToday, true)));
-    grid.appendChild(kpiCard("Withdrawal Transaction Amount (Current Month)", formatCurrency(a.withdrawalAmountMTD), "Prev Month: " + formatCurrency(a.withdrawalAmountPrevMTD) + " &nbsp;|&nbsp; " + calculateComparisons(a.withdrawalAmountMTD, a.withdrawalAmountPrevMTD, true, true).html, fullValueTitle(a.withdrawalAmountMTD, true)));
-    grid.appendChild(kpiCard("Failed ATM Transactions Count (Today)", formatNumber(a.failedTxnToday), "Yesterday: " + formatNumber(a.failedTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(a.failedTxnToday, a.failedTxnYesterday, false, false).html));
-    grid.appendChild(kpiCard("ATM Disputes / Claims Count (Current Month)", formatNumber(a.disputesMTD)));
-    grid.appendChild(kpiCard("Cards Captured Count (Current Month)", formatNumber(a.capturedCardsMTD)));
-    grid.appendChild(kpiCard("Cash-Retract Transactions Count (Current Month)", formatNumber(a.retractTxnMTD)));
+    grid.appendChild(kpiCard("Withdrawal Transaction Count (" + lbl.shortPrimary + ")", formatNumber(a.withdrawalCountToday), lbl.comparisonTerm + ": " + formatNumber(a.withdrawalCountYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(a.withdrawalCountToday, a.withdrawalCountYesterday, true, false).html));
+    if (lbl.isDaily) {
+      grid.appendChild(kpiCard("Withdrawal Transaction Count (Current Month)", formatNumber(a.withdrawalCountMTD), "Prev Month: " + formatNumber(a.withdrawalCountPrevMTD) + " &nbsp;|&nbsp; " + calculateComparisons(a.withdrawalCountMTD, a.withdrawalCountPrevMTD, true, true).html));
+    }
+    grid.appendChild(kpiCard("Withdrawal Transaction Amount (" + lbl.shortPrimary + ")", formatCurrency(a.withdrawalAmountToday), lbl.comparisonTerm + ": " + formatCurrency(a.withdrawalAmountYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(a.withdrawalAmountToday, a.withdrawalAmountYesterday, true, false).html, fullValueTitle(a.withdrawalAmountToday, true)));
+    if (lbl.isDaily) {
+      grid.appendChild(kpiCard("Withdrawal Transaction Amount (Current Month)", formatCurrency(a.withdrawalAmountMTD), "Prev Month: " + formatCurrency(a.withdrawalAmountPrevMTD) + " &nbsp;|&nbsp; " + calculateComparisons(a.withdrawalAmountMTD, a.withdrawalAmountPrevMTD, true, true).html, fullValueTitle(a.withdrawalAmountMTD, true)));
+    }
+    grid.appendChild(kpiCard("Failed ATM Transactions Count (" + lbl.shortPrimary + ")", formatNumber(a.failedTxnToday), lbl.comparisonTerm + ": " + formatNumber(a.failedTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(a.failedTxnToday, a.failedTxnYesterday, false, false).html));
+    grid.appendChild(kpiCard("ATM Disputes / Claims Count", formatNumber(a.disputesMTD)));
+    grid.appendChild(kpiCard("Cards Captured Count", formatNumber(a.capturedCardsMTD)));
+    grid.appendChild(kpiCard("Cash-Retract Transactions Count", formatNumber(a.retractTxnMTD)));
     root.appendChild(grid);
 
     /* ATM Performance tables displaying explicit Txn Amount column */
@@ -2589,10 +2654,10 @@ function renderADCOperations(data) {
 
   const adcThreeTableColumns = [
     { key: "kpi", label: "Metric" },
-    { key: "today", label: "Today", numeric: true },
-    { key: "yesterday", label: "Yesterday", numeric: true },
+    { key: "today", label: lbl.shortPrimary, numeric: true },
+    { key: "yesterday", label: lbl.comparisonTerm, numeric: true },
     { key: "change", label: "Change", numeric: true },
-    { key: "mtd", label: "Current Month", numeric: true }
+    { key: "mtd", label: lbl.trendTerm, numeric: true }
   ];
 
   /* 1. RAAST Operations Table */
@@ -2774,6 +2839,7 @@ function renderCardNonFinancials(data) {
 function renderCardFinancials(data) {
   const root = document.getElementById("card-financials-body");
   root.innerHTML = "";
+  const lbl = getPeriodLabels();
 
   if (!data.cardFinancials) {
     root.appendChild(el("div", { class: "no-data-note", text: "Card_Financials sheet is missing. No data available for Card Financials." }));
@@ -2859,9 +2925,9 @@ function renderCardFinancials(data) {
 
     const wrap = buildTable(null,
       [{ key: "item", label: "Financial / Performance Metric" },
-       { key: "currentDisplay", label: "Current Month", rightAlign: true },
-       { key: "previousDisplay", label: "Previous Month", rightAlign: true },
-       { key: "changeDisplay", label: "MoM Change", rightAlign: true }],
+       { key: "currentDisplay", label: lbl.shortPrimary, rightAlign: true },
+       { key: "previousDisplay", label: lbl.comparisonTerm, rightAlign: true },
+       { key: "changeDisplay", label: lbl.changeTerm, rightAlign: true }],
       formattedRows
     );
     tableContainer.appendChild(wrap);
@@ -2896,8 +2962,8 @@ function renderCardFinancials(data) {
   root.appendChild(sectionTitle("Spend by Channel"));
   if (data.spendByChannel) {
     root.appendChild(buildTable(null,
-      [{ key: "channel", label: "Channel" }, { key: "current", label: "Current Month", currency: true },
-       { key: "previous", label: "Previous Month", currency: true }, { key: "changeDisplay", label: "MoM Change", rightAlign: true }],
+      [{ key: "channel", label: "Channel" }, { key: "current", label: lbl.shortPrimary, currency: true },
+       { key: "previous", label: lbl.comparisonTerm, currency: true }, { key: "changeDisplay", label: lbl.changeTerm, rightAlign: true }],
       data.spendByChannel.map(function (r) { return { channel: r.channel, current: r.current, previous: r.previous, changeDisplay: calculateComparisons(r.current, r.previous, true, true).html }; })
     ));
   } else {
@@ -2913,8 +2979,8 @@ function renderCardFinancials(data) {
   root.appendChild(sectionTitle("SBP Cross-Border Monitoring (USD 30,000 threshold)"));
   if (data.sbpCrossBorder) {
     const sbpGrid = el("div", { class: "kpi-grid" });
-    sbpGrid.appendChild(kpiCard("Customers Reaching Threshold (Current Month)", formatNumber(data.sbpCrossBorder.customerCountCurrent, 0)));
-    sbpGrid.appendChild(kpiCard("Previous Month", formatNumber(data.sbpCrossBorder.customerCountPrevious, 0),
+    sbpGrid.appendChild(kpiCard("Customers Reaching Threshold (" + lbl.shortPrimary + ")", formatNumber(data.sbpCrossBorder.customerCountCurrent, 0)));
+    sbpGrid.appendChild(kpiCard(lbl.comparisonTerm, formatNumber(data.sbpCrossBorder.customerCountPrevious, 0),
       calculateComparisons(data.sbpCrossBorder.customerCountCurrent, data.sbpCrossBorder.customerCountPrevious, false, true).html));
     root.appendChild(sbpGrid);
   } else {
@@ -2929,6 +2995,7 @@ function renderCardFinancials(data) {
 function renderChargeback(data) {
   const root = document.getElementById("chargeback-body");
   root.innerHTML = "";
+  const lbl = getPeriodLabels();
 
   if (!data.chargeback) {
     root.appendChild(el("div", { class: "no-data-note", text: "Chargeback sheet is missing. No data available for Chargeback." }));
@@ -2985,12 +3052,12 @@ function renderChargeback(data) {
 
     const wrap = buildTable(null,
       [{ key: "metric", label: "Dispute Metric" },
-       { key: "countCurrent", label: "Current Count", rightAlign: true },
-       { key: "countPrev", label: "Previous Count", rightAlign: true },
-       { key: "countChange", label: "Count MoM", rightAlign: true },
-       { key: "amtCurrent", label: "Current Amount", rightAlign: true },
-       { key: "amtPrev", label: "Previous Amount", rightAlign: true },
-       { key: "amtChange", label: "Amount MoM", rightAlign: true }],
+       { key: "countCurrent", label: lbl.shortPrimary + " Count", rightAlign: true },
+       { key: "countPrev", label: lbl.comparisonTerm + " Count", rightAlign: true },
+       { key: "countChange", label: "Count Change", rightAlign: true },
+       { key: "amtCurrent", label: lbl.shortPrimary + " Amount", rightAlign: true },
+       { key: "amtPrev", label: lbl.comparisonTerm + " Amount", rightAlign: true },
+       { key: "amtChange", label: "Amount Change", rightAlign: true }],
       rows
     );
     tableContainer.appendChild(wrap);
@@ -3133,6 +3200,7 @@ function renderSecureOperations(data) {
   const root = document.getElementById("secure-operations-body");
   if (!root) return;
   root.innerHTML = "";
+  const lbl = getPeriodLabels();
 
   const sec = data.secureOperations || generateIllustrativeData().secureOperations;
   const breakdown = data.secureOpsBreakdown || generateIllustrativeData().secureOpsBreakdown;
@@ -3140,33 +3208,33 @@ function renderSecureOperations(data) {
   root.appendChild(sectionTitle("Secure Operations Executive Summary"));
 
   const grid = el("div", { class: "kpi-grid" });
-  grid.appendChild(kpiCard("Total Secure Transactions (Today)", formatNumber(sec.totalTxnToday),
-    "Yesterday: " + formatNumber(sec.totalTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.totalTxnToday, sec.totalTxnYesterday, true, false).html));
+  grid.appendChild(kpiCard("Total Secure Transactions (" + lbl.shortPrimary + ")", formatNumber(sec.totalTxnToday),
+    lbl.comparisonTerm + ": " + formatNumber(sec.totalTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.totalTxnToday, sec.totalTxnYesterday, true, false).html));
 
-  grid.appendChild(kpiCard("Successful Transactions (Today)", formatNumber(sec.successTxnToday),
-    "Yesterday: " + formatNumber(sec.successTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.successTxnToday, sec.successTxnYesterday, true, false).html));
+  grid.appendChild(kpiCard("Successful Transactions (" + lbl.shortPrimary + ")", formatNumber(sec.successTxnToday),
+    lbl.comparisonTerm + ": " + formatNumber(sec.successTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.successTxnToday, sec.successTxnYesterday, true, false).html));
 
-  grid.appendChild(kpiCard("Secure Success Rate (Today)", formatPercentage(sec.successRateToday),
-    "Yesterday: " + formatPercentage(sec.successRateYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.successRateToday, sec.successRateYesterday, true, false).html));
+  grid.appendChild(kpiCard("Secure Success Rate (" + lbl.shortPrimary + ")", formatPercentage(sec.successRateToday),
+    lbl.comparisonTerm + ": " + formatPercentage(sec.successRateYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.successRateToday, sec.successRateYesterday, true, false).html));
 
-  grid.appendChild(kpiCard("Total Transaction Amount (Today)", formatCurrency(sec.totalAmountToday),
-    "Yesterday: " + formatCurrency(sec.totalAmountYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.totalAmountToday, sec.totalAmountYesterday, true, false).html, fullValueTitle(sec.totalAmountToday, true)));
+  grid.appendChild(kpiCard("Total Transaction Amount (" + lbl.shortPrimary + ")", formatCurrency(sec.totalAmountToday),
+    lbl.comparisonTerm + ": " + formatCurrency(sec.totalAmountYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.totalAmountToday, sec.totalAmountYesterday, true, false).html, fullValueTitle(sec.totalAmountToday, true)));
 
-  grid.appendChild(kpiCard("Failed Transactions (Today)", formatNumber(sec.failedTxnToday),
-    "Yesterday: " + formatNumber(sec.failedTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.failedTxnToday, sec.failedTxnYesterday, false, false).html));
+  grid.appendChild(kpiCard("Failed Transactions (" + lbl.shortPrimary + ")", formatNumber(sec.failedTxnToday),
+    lbl.comparisonTerm + ": " + formatNumber(sec.failedTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.failedTxnToday, sec.failedTxnYesterday, false, false).html));
 
-  grid.appendChild(kpiCard("Pending / Exception Items (Today)", formatNumber(sec.pendingItemsToday),
-    "Yesterday: " + formatNumber(sec.pendingItemsYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.pendingItemsToday, sec.pendingItemsYesterday, false, false).html));
+  grid.appendChild(kpiCard("Pending / Exception Items (" + lbl.shortPrimary + ")", formatNumber(sec.pendingItemsToday),
+    lbl.comparisonTerm + ": " + formatNumber(sec.pendingItemsYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.pendingItemsToday, sec.pendingItemsYesterday, false, false).html));
 
   root.appendChild(grid);
 
-  root.appendChild(sectionTitle("Daily Operational Comparison"));
+  root.appendChild(sectionTitle(lbl.tableSectionTitle));
   const dailyColumns = [
     { key: "metric", label: "Metric" },
-    { key: "today", label: "Today", numeric: true },
-    { key: "yesterday", label: "Yesterday", numeric: true },
+    { key: "today", label: lbl.shortPrimary, numeric: true },
+    { key: "yesterday", label: lbl.comparisonTerm, numeric: true },
     { key: "change", label: "Change", numeric: true },
-    { key: "currentMonth", label: "Current Month", numeric: true }
+    { key: "currentMonth", label: lbl.trendTerm, numeric: true }
   ];
 
   const dailyRows = [
@@ -3270,6 +3338,7 @@ function renderUnsecuredOperations(data) {
   const root = document.getElementById("unsecured-operations-body");
   if (!root) return;
   root.innerHTML = "";
+  const lbl = getPeriodLabels();
 
   const unsec = data.unsecuredOperations || generateIllustrativeData().unsecuredOperations;
   const breakdown = data.unsecuredOpsBreakdown || generateIllustrativeData().unsecuredOpsBreakdown;
@@ -3277,33 +3346,33 @@ function renderUnsecuredOperations(data) {
   root.appendChild(sectionTitle("Unsecured Operations Executive Summary"));
 
   const grid = el("div", { class: "kpi-grid" });
-  grid.appendChild(kpiCard("Total Transactions (Today)", formatNumber(unsec.totalTxnToday),
-    "Yesterday: " + formatNumber(unsec.totalTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.totalTxnToday, unsec.totalTxnYesterday, true, false).html));
+  grid.appendChild(kpiCard("Total Transactions (" + lbl.shortPrimary + ")", formatNumber(unsec.totalTxnToday),
+    lbl.comparisonTerm + ": " + formatNumber(unsec.totalTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.totalTxnToday, unsec.totalTxnYesterday, true, false).html));
 
-  grid.appendChild(kpiCard("Successful Transactions (Today)", formatNumber(unsec.successTxnToday),
-    "Yesterday: " + formatNumber(unsec.successTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.successTxnToday, unsec.successTxnYesterday, true, false).html));
+  grid.appendChild(kpiCard("Successful Transactions (" + lbl.shortPrimary + ")", formatNumber(unsec.successTxnToday),
+    lbl.comparisonTerm + ": " + formatNumber(unsec.successTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.successTxnToday, unsec.successTxnYesterday, true, false).html));
 
-  grid.appendChild(kpiCard("Success Rate (Today)", formatPercentage(unsec.successRateToday),
-    "Yesterday: " + formatPercentage(unsec.successRateYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.successRateToday, unsec.successRateYesterday, true, false).html));
+  grid.appendChild(kpiCard("Success Rate (" + lbl.shortPrimary + ")", formatPercentage(unsec.successRateToday),
+    lbl.comparisonTerm + ": " + formatPercentage(unsec.successRateYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.successRateToday, unsec.successRateYesterday, true, false).html));
 
-  grid.appendChild(kpiCard("Transaction Amount (Today)", formatCurrency(unsec.totalAmountToday),
-    "Yesterday: " + formatCurrency(unsec.totalAmountYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.totalAmountToday, unsec.totalAmountYesterday, true, false).html, fullValueTitle(unsec.totalAmountToday, true)));
+  grid.appendChild(kpiCard("Transaction Amount (" + lbl.shortPrimary + ")", formatCurrency(unsec.totalAmountToday),
+    lbl.comparisonTerm + ": " + formatCurrency(unsec.totalAmountYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.totalAmountToday, unsec.totalAmountYesterday, true, false).html, fullValueTitle(unsec.totalAmountToday, true)));
 
-  grid.appendChild(kpiCard("Failed Transactions (Today)", formatNumber(unsec.failedTxnToday),
-    "Yesterday: " + formatNumber(unsec.failedTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.failedTxnToday, unsec.failedTxnYesterday, false, false).html));
+  grid.appendChild(kpiCard("Failed Transactions (" + lbl.shortPrimary + ")", formatNumber(unsec.failedTxnToday),
+    lbl.comparisonTerm + ": " + formatNumber(unsec.failedTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.failedTxnToday, unsec.failedTxnYesterday, false, false).html));
 
-  grid.appendChild(kpiCard("Pending / Exception Items (Today)", formatNumber(unsec.pendingItemsToday),
-    "Yesterday: " + formatNumber(unsec.pendingItemsYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.pendingItemsToday, unsec.pendingItemsYesterday, false, false).html));
+  grid.appendChild(kpiCard("Pending / Exception Items (" + lbl.shortPrimary + ")", formatNumber(unsec.pendingItemsToday),
+    lbl.comparisonTerm + ": " + formatNumber(unsec.pendingItemsYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.pendingItemsToday, unsec.pendingItemsYesterday, false, false).html));
 
   root.appendChild(grid);
 
-  root.appendChild(sectionTitle("Daily Operational Comparison"));
+  root.appendChild(sectionTitle(lbl.tableSectionTitle));
   const dailyColumns = [
     { key: "metric", label: "Metric" },
-    { key: "today", label: "Today", numeric: true },
-    { key: "yesterday", label: "Yesterday", numeric: true },
+    { key: "today", label: lbl.shortPrimary, numeric: true },
+    { key: "yesterday", label: lbl.comparisonTerm, numeric: true },
     { key: "change", label: "Change", numeric: true },
-    { key: "currentMonth", label: "Current Month", numeric: true }
+    { key: "currentMonth", label: lbl.trendTerm, numeric: true }
   ];
 
   const dailyRows = [
@@ -3407,6 +3476,7 @@ function renderBanca(data) {
   const root = document.getElementById("banca-body");
   if (!root) return;
   root.innerHTML = "";
+  const lbl = getPeriodLabels();
 
   const ban = data.banca || generateIllustrativeData().banca;
   const breakdown = data.bancaOpsBreakdown || generateIllustrativeData().bancaOpsBreakdown;
@@ -3414,33 +3484,33 @@ function renderBanca(data) {
   root.appendChild(sectionTitle("Banca Operations Executive Summary"));
 
   const grid = el("div", { class: "kpi-grid" });
-  grid.appendChild(kpiCard("Total Banca Transactions (Today)", formatNumber(ban.totalTxnToday),
-    "Yesterday: " + formatNumber(ban.totalTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(ban.totalTxnToday, ban.totalTxnYesterday, true, false).html));
+  grid.appendChild(kpiCard("Total Banca Transactions (" + lbl.shortPrimary + ")", formatNumber(ban.totalTxnToday),
+    lbl.comparisonTerm + ": " + formatNumber(ban.totalTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(ban.totalTxnToday, ban.totalTxnYesterday, true, false).html));
 
-  grid.appendChild(kpiCard("Successful Transactions (Today)", formatNumber(ban.successTxnToday),
-    "Yesterday: " + formatNumber(ban.successTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(ban.successTxnToday, ban.successTxnYesterday, true, false).html));
+  grid.appendChild(kpiCard("Successful Transactions (" + lbl.shortPrimary + ")", formatNumber(ban.successTxnToday),
+    lbl.comparisonTerm + ": " + formatNumber(ban.successTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(ban.successTxnToday, ban.successTxnYesterday, true, false).html));
 
-  grid.appendChild(kpiCard("Success Rate (Today)", formatPercentage(ban.successRateToday),
-    "Yesterday: " + formatPercentage(ban.successRateYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(ban.successRateToday, ban.successRateYesterday, true, false).html));
+  grid.appendChild(kpiCard("Success Rate (" + lbl.shortPrimary + ")", formatPercentage(ban.successRateToday),
+    lbl.comparisonTerm + ": " + formatPercentage(ban.successRateYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(ban.successRateToday, ban.successRateYesterday, true, false).html));
 
-  grid.appendChild(kpiCard("Transaction Amount (Today)", formatCurrency(ban.totalAmountToday),
-    "Yesterday: " + formatCurrency(ban.totalAmountYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(ban.totalAmountToday, ban.totalAmountYesterday, true, false).html, fullValueTitle(ban.totalAmountToday, true)));
+  grid.appendChild(kpiCard("Transaction Amount (" + lbl.shortPrimary + ")", formatCurrency(ban.totalAmountToday),
+    lbl.comparisonTerm + ": " + formatCurrency(ban.totalAmountYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(ban.totalAmountToday, ban.totalAmountYesterday, true, false).html, fullValueTitle(ban.totalAmountToday, true)));
 
-  grid.appendChild(kpiCard("Failed Transactions (Today)", formatNumber(ban.failedTxnToday),
-    "Yesterday: " + formatNumber(ban.failedTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(ban.failedTxnToday, ban.failedTxnYesterday, false, false).html));
+  grid.appendChild(kpiCard("Failed Transactions (" + lbl.shortPrimary + ")", formatNumber(ban.failedTxnToday),
+    lbl.comparisonTerm + ": " + formatNumber(ban.failedTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(ban.failedTxnToday, ban.failedTxnYesterday, false, false).html));
 
-  grid.appendChild(kpiCard("Pending / Exception Items (Today)", formatNumber(ban.pendingItemsToday),
-    "Yesterday: " + formatNumber(ban.pendingItemsYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(ban.pendingItemsToday, ban.pendingItemsYesterday, false, false).html));
+  grid.appendChild(kpiCard("Pending / Exception Items (" + lbl.shortPrimary + ")", formatNumber(ban.pendingItemsToday),
+    lbl.comparisonTerm + ": " + formatNumber(ban.pendingItemsYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(ban.pendingItemsToday, ban.pendingItemsYesterday, false, false).html));
 
   root.appendChild(grid);
 
-  root.appendChild(sectionTitle("Daily Operational Comparison"));
+  root.appendChild(sectionTitle(lbl.tableSectionTitle));
   const dailyColumns = [
     { key: "metric", label: "Metric" },
-    { key: "today", label: "Today", numeric: true },
-    { key: "yesterday", label: "Yesterday", numeric: true },
+    { key: "today", label: lbl.shortPrimary, numeric: true },
+    { key: "yesterday", label: lbl.comparisonTerm, numeric: true },
     { key: "change", label: "Change", numeric: true },
-    { key: "currentMonth", label: "Current Month", numeric: true }
+    { key: "currentMonth", label: lbl.trendTerm, numeric: true }
   ];
 
   const dailyRows = [

@@ -753,10 +753,132 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 
 /* ── Level 1: Executive KPI Strip ──────────────────────────────────── */
 .ov-kpi-strip {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: var(--space-1-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
   margin-bottom: var(--space-3);
+}
+
+.ov-daily-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+.ov-cards-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  align-items: stretch;
+}
+
+.ov-table-kpi-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-top: 3.5px solid var(--brand);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  min-width: 0;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.ov-table-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-hover);
+}
+
+.ov-table-kpi-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
+
+.ov-table-kpi-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-main);
+}
+
+.ov-table-kpi-freq {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--brand);
+  background: var(--brand-light);
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+}
+
+.ov-kpi-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10.5px;
+  margin: 0;
+  padding: 0;
+  table-layout: auto;
+}
+
+.ov-kpi-table th {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 3.5px 4px 4.5px 4px;
+  border-bottom: 1.5px solid var(--border);
+  text-align: right;
+  white-space: nowrap;
+  vertical-align: middle;
+  line-height: 1.2;
+}
+
+.ov-kpi-table th:first-child {
+  text-align: left;
+}
+
+.ov-kpi-table td {
+  padding: 3.5px 4px;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-main);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  vertical-align: middle;
+  line-height: 1.25;
+  font-size: 10.5px;
+}
+
+.ov-kpi-table td:first-child {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-main);
+  font-size: 10.5px;
+}
+
+.ov-kpi-table td .indicator {
+  padding: 1px 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ov-kpi-table tr:last-child td {
+  border-bottom: none;
 }
 
 .ov-kpi-card {
@@ -842,7 +964,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-width: 290px;
+  max-width: 330px;
   width: calc(100% - 48px);
   pointer-events: none;
 }
@@ -853,7 +975,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   border: 1px solid var(--border);
   border-left: 3.5px solid var(--brand);
   border-radius: var(--radius-md);
-  padding: 8px 10px;
+  padding: 10px 12px;
   box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.12), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   display: flex;
   align-items: flex-start;
@@ -883,13 +1005,16 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .toast-body {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .toast-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
+  padding-right: 12px;
 }
 
 .toast-title {
@@ -905,12 +1030,48 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   line-height: 1.25;
 }
 
+.toast-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 8px;
+  gap: 12px;
+}
+
 .toast-link {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--brand);
-  margin-top: 2px;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+}
+
+.toast-email-action {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand);
+  background: rgba(17, 122, 191, 0.08);
+  border: 1px solid rgba(17, 122, 191, 0.22);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  min-height: 28px;
+  box-sizing: border-box;
+  line-height: 1.2;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.toast-email-action:hover {
+  background: rgba(17, 122, 191, 0.16);
+  border-color: var(--brand);
+  color: var(--brand);
+  text-decoration: none;
 }
 
 .toast-close {
@@ -1598,14 +1759,17 @@ table.ov-adc-table tbody tr:hover { background: var(--ov-blue-xlight); }
   }
 
   /* Overview Page Mobile Cards */
-  .ov-kpi-strip {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+  .ov-daily-strip,
+  .ov-cards-kpi-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
 
-  .ov-kpi-card {
+  .ov-kpi-card,
+  .ov-table-kpi-card {
     padding: var(--space-1-5);
     min-width: 0;
+  }
   }
 
   .ov-kpi-value {
