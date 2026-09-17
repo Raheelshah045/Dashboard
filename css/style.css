@@ -786,6 +786,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   min-width: 0;
   height: 100%;
   box-sizing: border-box;
+  cursor: pointer;
 }
 
 .ov-table-kpi-card:hover {

@@ -2333,7 +2333,13 @@ function renderOvKpiStrip(root, data) {
     { label: "Inactive Cards", cur: cardData.credit.inactive.cur, prev: cardData.credit.inactive.prev },
     { label: "Annual Fee", cur: cardData.credit.annualFee.cur, prev: cardData.credit.annualFee.prev, isCurrency: true }
   ];
-  cardsGrid.appendChild(renderOvCardKpiTableCard("Credit Card", ccRows));
+  const ccCard = renderOvCardKpiTableCard("Credit Card", ccRows);
+  ccCard.style.cursor = "pointer";
+  ccCard.setAttribute("title", "Click to view Card Financials");
+  ccCard.addEventListener("click", function () {
+    navigateToPage("card-financials");
+  });
+  cardsGrid.appendChild(ccCard);
 
   const dcRows = [
     { label: "CIF", cur: cardData.debit.cif.cur, prev: cardData.debit.cif.prev },
@@ -2341,7 +2347,13 @@ function renderOvKpiStrip(root, data) {
     { label: "Inactive Cards", cur: cardData.debit.inactive.cur, prev: cardData.debit.inactive.prev },
     { label: "Annual Fee", cur: cardData.debit.annualFee.cur, prev: cardData.debit.annualFee.prev, isCurrency: true }
   ];
-  cardsGrid.appendChild(renderOvCardKpiTableCard("Debit Card", dcRows));
+  const dcCard = renderOvCardKpiTableCard("Debit Card", dcRows);
+  dcCard.style.cursor = "pointer";
+  dcCard.setAttribute("title", "Click to view Card Financials");
+  dcCard.addEventListener("click", function () {
+    navigateToPage("card-financials");
+  });
+  cardsGrid.appendChild(dcCard);
 
   const spendRows = [
     { label: "Total Credit Card Spend", cur: cardData.spend.ccTotal.cur, prev: cardData.spend.ccTotal.prev, isCurrency: true },
@@ -2351,7 +2363,13 @@ function renderOvKpiStrip(root, data) {
     { label: "DC International Spend", cur: cardData.spend.dcIntl.cur, prev: cardData.spend.dcIntl.prev, isCurrency: true },
     { label: "DC Domestic Spend", cur: cardData.spend.dcDom.cur, prev: cardData.spend.dcDom.prev, isCurrency: true }
   ];
-  cardsGrid.appendChild(renderOvCardKpiTableCard("TOTAL CARD SPEND", spendRows));
+  const spendCard = renderOvCardKpiTableCard("TOTAL CARD SPEND", spendRows);
+  spendCard.style.cursor = "pointer";
+  spendCard.setAttribute("title", "Click to view Card Financials");
+  spendCard.addEventListener("click", function () {
+    navigateToPage("card-financials");
+  });
+  cardsGrid.appendChild(spendCard);
 
   strip.appendChild(cardsGrid);
   root.appendChild(strip);
