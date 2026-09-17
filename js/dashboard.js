@@ -2585,10 +2585,10 @@ function renderOvModules(root, data) {
   grid.appendChild(ovModuleCard("ADC Operations", "adc-operations", buildOvAdcTable(data)));
   grid.appendChild(ovModuleCard("Inventory / Stock Position", "card-non-financials", buildOvInventoryTable(data)));
   grid.appendChild(ovModuleCard("Card Financials", "card-financials", buildOvCardFinTable(data)));
+  grid.appendChild(ovModuleCard("Complain / Chargeback / Disputes", "chargeback", buildOvCbDisputesTable(data)));
   grid.appendChild(ovModuleCard("Secure Operations", "secure-operations", ovSecOpsRows(data)));
   grid.appendChild(ovModuleCard("Unsecured Operations", "unsecured-operations", ovUnsecOpsRows(data)));
   grid.appendChild(ovModuleCard("Banca", "banca", ovBancaRows(data)));
-  grid.appendChild(ovModuleCard("Chargeback", "chargeback", ovCbRows(data)));
   grid.appendChild(ovModuleCard("Reconciliation", "reconciliation", ovReconRows(data)));
   root.appendChild(grid);
 }
@@ -2817,6 +2817,53 @@ function buildOvCardFinTable(data) {
     tdChg.innerHTML = comp.html;
     tr.appendChild(tdChg);
 
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  return table;
+}
+
+function buildOvCbDisputesTable(data) {
+  const table = el("table", { class: "ov-module-table ov-cb-disputes-table" });
+  const thead = el("thead");
+
+  // Row 1 — top grouped headers
+  const tr1 = el("tr");
+  tr1.appendChild(el("th", { text: "CHANNEL", rowspan: "2", style: "text-align:left; vertical-align:bottom;" }));
+  tr1.appendChild(el("th", { text: "CURRENT MONTH", colspan: "1", class: "grouped-hdr cb-grp-cur", style: "text-align:center;" }));
+  tr1.appendChild(el("th", { text: "PREVIOUS MONTH", colspan: "1", class: "grouped-hdr cb-grp-prev", style: "text-align:center;" }));
+  tr1.appendChild(el("th", { text: "MOM", rowspan: "2", class: "cb-grp-mom", style: "text-align:center; vertical-align:bottom;" }));
+  thead.appendChild(tr1);
+
+  // Row 2 — sub-headers
+  const tr2 = el("tr");
+  tr2.appendChild(el("th", { text: "COUNT", class: "num cb-sub-cur", style: "text-align:center;" }));
+  tr2.appendChild(el("th", { text: "COUNT", class: "num cb-sub-prev", style: "text-align:center;" }));
+  thead.appendChild(tr2);
+
+  table.appendChild(thead);
+
+  const tbody = el("tbody");
+
+  // Demo data — realistic complaint/chargeback dispute counts by channel
+  const cbRows = [
+    { channel: "RAAST", cur: 1248, prev: 1105 },
+    { channel: "IBFT",  cur: 3872, prev: 4210 },
+    { channel: "ATM",   cur: 2561, prev: 2389 },
+    { channel: "POS",   cur: 984,  prev: 876  },
+    { channel: "UBPS",  cur: 432,  prev: 398  }
+  ];
+
+  cbRows.forEach(function (r) {
+    const comp = calculateComparisons(r.cur, r.prev, true, true);
+    const tr = el("tr");
+    tr.appendChild(el("td", { text: r.channel, style: "text-align:left; font-weight:600;" }));
+    tr.appendChild(el("td", { text: formatNumber(r.cur, 0), class: "num cb-sub-cur", style: "text-align:center; font-weight:600;" }));
+    tr.appendChild(el("td", { text: formatNumber(r.prev, 0), class: "num cb-sub-prev", style: "text-align:center; color:var(--text-secondary);" }));
+    const tdMom = el("td", { class: "num", style: "text-align:center;" });
+    tdMom.innerHTML = comp.html;
+    tr.appendChild(tdMom);
     tbody.appendChild(tr);
   });
 

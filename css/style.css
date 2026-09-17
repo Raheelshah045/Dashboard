@@ -1626,6 +1626,51 @@ table.ov-module-table tbody tr:last-child td {
   border-bottom: none;
 }
 
+/* ---------------------------------------------------------------
+   Complain / Chargeback / Disputes — full grid-border table
+   --------------------------------------------------------------- */
+table.ov-cb-disputes-table {
+  border: 1.5px solid var(--border);
+}
+
+table.ov-cb-disputes-table th,
+table.ov-cb-disputes-table td {
+  border: 1px solid var(--border);
+}
+
+table.ov-cb-disputes-table thead th.grouped-hdr.cb-grp-cur {
+  background: var(--ov-blue-light);
+  border-bottom: 1px solid var(--ov-blue-light);
+  text-align: center;
+}
+
+table.ov-cb-disputes-table thead th.grouped-hdr.cb-grp-prev {
+  background: #e8f4fb;
+  border-bottom: 1px solid #d0e8f5;
+  text-align: center;
+}
+
+table.ov-cb-disputes-table thead th.cb-grp-mom {
+  background: var(--ov-blue-xlight);
+  text-align: center;
+}
+
+table.ov-cb-disputes-table thead th.cb-sub-cur,
+table.ov-cb-disputes-table thead th.cb-sub-prev {
+  text-align: center;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+table.ov-cb-disputes-table td.cb-sub-cur,
+table.ov-cb-disputes-table td.cb-sub-prev {
+  text-align: center;
+}
+
+table.ov-cb-disputes-table tbody tr:last-child td {
+  border-bottom: 1px solid var(--border);
+}
+
 .stock-subtext {
   font-size: 10px;
   color: var(--text-muted);
