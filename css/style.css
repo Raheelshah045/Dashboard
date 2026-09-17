@@ -1349,9 +1349,12 @@ table.ov-adc-table tbody tr:hover { background: var(--ov-blue-xlight); }
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: var(--space-2);
+  padding: 12px 14px;
   box-shadow: var(--shadow-sm);
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -1361,10 +1364,10 @@ table.ov-adc-table tbody tr:hover { background: var(--ov-blue-xlight); }
 }
 
 .ov-chart-title {
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 700;
   color: var(--ov-text-dark);
-  margin-bottom: var(--space-1-5);
+  margin-bottom: 8px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1372,6 +1375,10 @@ table.ov-adc-table tbody tr:hover { background: var(--ov-blue-xlight); }
 
 .ov-chart-body {
   width: 100%;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -1639,11 +1646,7 @@ table.ov-adc-table tbody tr:hover { background: var(--ov-blue-xlight); }
   }
 
   .ov-charts-row {
-    grid-template-columns: 1fr 1fr;
-  }
-  
-  .ov-charts-row .ov-chart-card:nth-child(3) {
-    grid-column: span 2;
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .ov-modules-grid {

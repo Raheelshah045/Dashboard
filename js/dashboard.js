@@ -2470,7 +2470,7 @@ function buildOvAgingChart(data) {
 
 function svgStackedBar(debitVal, creditVal) {
   var total = (debitVal + creditVal) || 1;
-  var W = 340, barH = 28, padX = 10, gapY = 12, legH = 18;
+  var W = 340, barH = 22, padX = 10, gapY = 12, legH = 18;
   var H = barH + gapY + legH * 2 + 4;
   var barW = W - 2 * padX;
   var dW = Math.max(2, (debitVal / total) * barW);
@@ -2479,40 +2479,50 @@ function svgStackedBar(debitVal, creditVal) {
   var ly1 = barH + gapY, ly2 = ly1 + legH;
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg"'
     + ' role="img" aria-label="Card spend: Debit ' + formatCurrency(debitVal) + ' ' + dPct + '%, Credit ' + formatCurrency(creditVal) + ' ' + cPct + '%"'
-    + ' style="width:100%;max-height:95px;display:block">'
-    + '<rect x="' + padX + '" y="2" width="' + dW.toFixed(1) + '" height="' + (barH - 4) + '" fill="#117ABF" rx="4" class="chart-bar-seg"><title>Debit Card Spend: ' + formatCurrency(debitVal) + ' (' + dPct + '%)</title></rect>'
-    + '<rect x="' + cX.toFixed(1) + '" y="2" width="' + cW.toFixed(1) + '" height="' + (barH - 4) + '" fill="#6FAED2" rx="4" class="chart-bar-seg"><title>Credit Card Spend: ' + formatCurrency(creditVal) + ' (' + cPct + '%)</title></rect>'
-    + '<rect x="' + padX + '" y="' + ly1 + '" width="10" height="10" fill="#117ABF" rx="2"/>'
-    + '<text x="' + (padX + 16) + '" y="' + (ly1 + 9) + '" font-size="11" fill="#334155" font-weight="600">Debit \u2014 ' + formatCurrency(debitVal) + ' (' + dPct + '%)</text>'
-    + '<rect x="' + padX + '" y="' + ly2 + '" width="10" height="10" fill="#6FAED2" rx="2"/>'
-    + '<text x="' + (padX + 16) + '" y="' + (ly2 + 9) + '" font-size="11" fill="#334155" font-weight="600">Credit \u2014 ' + formatCurrency(creditVal) + ' (' + cPct + '%)</text>'
+    + ' style="width:100%;max-height:85px;display:block;margin:auto;">'
+    + '<rect x="' + padX + '" y="2" width="' + dW.toFixed(1) + '" height="' + barH + '" fill="#117ABF" rx="3" class="chart-bar-seg"><title>Debit Card Spend: ' + formatCurrency(debitVal) + ' (' + dPct + '%)</title></rect>'
+    + '<rect x="' + cX.toFixed(1) + '" y="2" width="' + cW.toFixed(1) + '" height="' + barH + '" fill="#6FAED2" rx="3" class="chart-bar-seg"><title>Credit Card Spend: ' + formatCurrency(creditVal) + ' (' + cPct + '%)</title></rect>'
+    + '<rect x="' + padX + '" y="' + (ly1 + 2) + '" width="10" height="10" fill="#117ABF" rx="2"/>'
+    + '<text x="' + (padX + 16) + '" y="' + (ly1 + 10) + '" font-size="10.5" fill="#1E293B" font-weight="600">Debit \u2014 ' + formatCurrency(debitVal) + ' (' + dPct + '%)</text>'
+    + '<rect x="' + padX + '" y="' + (ly2 + 2) + '" width="10" height="10" fill="#6FAED2" rx="2"/>'
+    + '<text x="' + (padX + 16) + '" y="' + (ly2 + 10) + '" font-size="10.5" fill="#1E293B" font-weight="600">Credit \u2014 ' + formatCurrency(creditVal) + ' (' + cPct + '%)</text>'
     + '</svg>';
 }
 
 function svgAgingBar(buckets) {
   var total = buckets.reduce(function (s, b) { return s + b.amount; }, 0) || 1;
-  var W = 340, barH = 26, padX = 10, gapY = 12, legItemH = 18;
-  var H = barH + gapY + legItemH * buckets.length + 4;
+  var W = 340, barH = 22, padX = 10, gapY = 12, legItemH = 18;
+  var rowCount = Math.ceil(buckets.length / 2);
+  var H = barH + gapY + rowCount * legItemH + 4;
   var barW = W - 2 * padX;
   var x = padX, rects = "";
   buckets.forEach(function (b) {
     var w = Math.max(2, (b.amount / total) * barW);
     var pct = (b.amount / total * 100).toFixed(1);
-    rects += '<rect x="' + x.toFixed(1) + '" y="0" width="' + w.toFixed(1) + '" height="' + barH + '" fill="' + b.color + '" rx="2" class="chart-bar-seg"><title>' + b.label + ': ' + formatCurrency(b.amount) + ' (' + pct + '%)</title></rect>';
+    rects += '<rect x="' + x.toFixed(1) + '" y="2" width="' + w.toFixed(1) + '" height="' + barH + '" fill="' + b.color + '" rx="2" class="chart-bar-seg"><title>' + b.label + ': ' + formatCurrency(b.amount) + ' (' + pct + '%)</title></rect>';
     x += w;
   });
+
+  var col1X = padX;
+  var col2X = padX + 165;
+
   var legends = buckets.map(function (b, i) {
-    var ly = barH + gapY + i * legItemH;
+    var col = i % 2;
+    var row = Math.floor(i / 2);
+    var lx = col === 0 ? col1X : col2X;
+    var ly = barH + gapY + row * legItemH;
     var pct = (b.amount / total * 100).toFixed(1);
     var alertTxt = b.isAlert ? ' <tspan fill="#D97706" font-weight="700">\u25B2 Alert</tspan>' : "";
-    return '<rect x="' + padX + '" y="' + ly + '" width="10" height="10" fill="' + b.color + '" rx="2"/>'
-      + '<text x="' + (padX + 16) + '" y="' + (ly + 9) + '" font-size="11" fill="#0F172A" font-weight="600">' + b.label + '</text>'
-      + '<text x="' + (padX + 70) + '" y="' + (ly + 9) + '" font-size="11" fill="#64748B">'
+    var labelOffset = b.label.length > 4 ? 46 : 38;
+    return '<rect x="' + lx + '" y="' + (ly + 2) + '" width="10" height="10" fill="' + b.color + '" rx="2"/>'
+      + '<text x="' + (lx + 14) + '" y="' + (ly + 10) + '" font-size="10" fill="#0F172A" font-weight="700">' + b.label + '</text>'
+      + '<text x="' + (lx + labelOffset) + '" y="' + (ly + 10) + '" font-size="9.5" fill="#475569">'
       + formatCurrency(b.amount) + ' (' + pct + '%)' + alertTxt + '</text>';
   }).join("");
+
   var ariaDesc = buckets.map(function (b) { return b.label + ": " + formatCurrency(b.amount); }).join(", ");
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg"'
-    + ' role="img" aria-label="Reconciliation aging: ' + ariaDesc + '" style="width:100%;display:block">'
+    + ' role="img" aria-label="Reconciliation aging: ' + ariaDesc + '" style="width:100%;max-height:100px;display:block;margin:auto;">'
     + rects + legends + '</svg>';
 }
 
