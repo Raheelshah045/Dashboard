@@ -2019,13 +2019,10 @@ function renderOverview(data) {
 
   renderOvKpiStrip(root, data);
   renderOvNostro(root, data);
-  renderOvAdcSummary(root, data);
-  renderOvCharts(root, data);
   renderOvModules(root, data);
 }
 
 function renderOvNostro(root, data) {
-  const lbl = getPeriodLabels();
   const section = el("div", { class: "ov-section" });
   section.appendChild(el("div", { class: "ov-section-heading", text: "NOSTRO Account Positions & Reconciliation" }));
 
@@ -2033,76 +2030,87 @@ function renderOvNostro(root, data) {
 
   // 1. NOSTRO POSITION TABLE GRID
   const nostroCard = el("div", { class: "ov-chart-card ov-nostro-card-container" });
-  nostroCard.appendChild(el("div", { class: "ov-chart-title", text: "NOSTRO Position Overview" }));
+  nostroCard.appendChild(el("div", { class: "ov-chart-title", text: "NOSTRO Position" }));
 
   const nostroTableWrap = el("div", { class: "table-responsive" });
-  const nostroTable = el("table", { class: "ov-adc-table ov-kpi-table" });
+  const nostroTable = el("table", { class: "ov-kpi-table ov-nostro-redesign-table" });
 
   const thead = el("thead");
   const trHead = el("tr");
-  trHead.appendChild(el("th", { text: "Metric / Nostro Item", style: "text-align:left;" }));
-  trHead.appendChild(el("th", { text: lbl.shortPrimary, style: "text-align:right;" }));
-  trHead.appendChild(el("th", { text: lbl.comparisonTerm, style: "text-align:right;" }));
-  trHead.appendChild(el("th", { text: lbl.changeTerm, style: "text-align:right;" }));
+  trHead.appendChild(el("th", { text: "", style: "text-align:left; width:34%;" }));
+  trHead.appendChild(el("th", { text: "CURRENT MONTH", style: "text-align:right; width:22%;" }));
+  trHead.appendChild(el("th", { text: "PREVIOUS MONTH", style: "text-align:right; width:22%;" }));
+  trHead.appendChild(el("th", { text: "CHANGE RATE", style: "text-align:right; width:22%;" }));
   thead.appendChild(trHead);
   nostroTable.appendChild(thead);
 
   const tbody = el("tbody");
-  const nostroItems = (data.nostro && data.nostro.length) ? data.nostro : generateIllustrativeData().nostro;
 
-  nostroItems.forEach(function (n) {
-    const rawGl = (n.gl || "").replace(/-01$/i, "").replace(/-01\b/i, "");
-    const cur = n.currency || (rawGl.indexOf("USD") !== -1 ? "USD" : "AED");
-    const itemName = rawGl + " Available Balance";
+  // USD Group
+  const trUsdHeader = el("tr", { class: "nostro-group-row" });
+  trUsdHeader.appendChild(el("td", { html: '<span class="nostro-currency-badge">USD</span>', colspan: "4", style: "text-align:left;" }));
+  tbody.appendChild(trUsdHeader);
 
-    const curVal = n.balance !== undefined && n.balance !== null ? n.balance : (cur === "USD" ? 18600000 : 6200000);
-    const prevVal = n.prevBalance !== undefined && n.prevBalance !== null ? n.prevBalance : (cur === "USD" ? 17800000 : 5900000);
+  const trUsd = el("tr");
+  trUsd.appendChild(el("td", { html: '<div class="nostro-bank-info"><strong>JP Morgan</strong><span class="nostro-bank-code">(840)</span></div>', style: "text-align:left;" }));
+  trUsd.appendChild(el("td", { text: "38.3 Bn", style: "text-align:right; font-weight:600;" }));
+  trUsd.appendChild(el("td", { text: "40.2 Bn", style: "text-align:right; color:var(--text-secondary);" }));
+  trUsd.appendChild(el("td", { html: '<span class="indicator down negative">&#9660; -4.73%</span>', style: "text-align:right;" }));
+  tbody.appendChild(trUsd);
 
-    const comp = calculateComparisons(curVal, prevVal, true, false);
+  // AED Group
+  const trAedHeader = el("tr", { class: "nostro-group-row" });
+  trAedHeader.appendChild(el("td", { html: '<span class="nostro-currency-badge">AED</span>', colspan: "4", style: "text-align:left;" }));
+  tbody.appendChild(trAedHeader);
 
-    const tr = el("tr");
-    tr.appendChild(el("td", { html: '<strong>' + itemName + '</strong> <span style="font-size:10px;color:var(--text-muted); font-weight:normal;">(' + rawGl + ')</span>', style: "text-align:left;" }));
-    tr.appendChild(el("td", { text: formatCurrency(curVal, cur), title: fullValueTitle(curVal, true, cur), style: "text-align:right; font-weight:600;" }));
-    tr.appendChild(el("td", { text: formatCurrency(prevVal, cur), title: fullValueTitle(prevVal, true, cur), style: "text-align:right; color:var(--text-secondary);" }));
-    tr.appendChild(el("td", { html: comp.html, style: "text-align:right;" }));
-    tbody.appendChild(tr);
-  });
+  const trAed = el("tr");
+  trAed.appendChild(el("td", { html: '<div class="nostro-bank-info"><strong>ENBD</strong><span class="nostro-bank-code">(784)</span></div>', style: "text-align:left;" }));
+  trAed.appendChild(el("td", { text: "40.0 Bn", style: "text-align:right; font-weight:600;" }));
+  trAed.appendChild(el("td", { text: "33.0 Bn", style: "text-align:right; color:var(--text-secondary);" }));
+  trAed.appendChild(el("td", { html: '<span class="indicator up positive">&#9650; +21.21%</span>', style: "text-align:right;" }));
+  tbody.appendChild(trAed);
 
   nostroTable.appendChild(tbody);
   nostroTableWrap.appendChild(nostroTable);
   nostroCard.appendChild(nostroTableWrap);
   gridRow.appendChild(nostroCard);
 
-  // 2. RECONCILIATION SUMMARY BOX
+  // 2. RECONCILIATION SUMMARY BOX (GL COUNT BREAKDOWN)
   const reconCard = el("div", { class: "ov-chart-card ov-recon-box-card" });
-  reconCard.appendChild(el("div", { class: "ov-chart-title", text: "Reconciliation Summary" }));
+  reconCard.appendChild(el("div", { class: "ov-chart-title", text: "Reconciliation GL Breakdown" }));
 
-  const reconData = data.reconciliation || generateIllustrativeData().reconciliation;
-  const recList = reconData.receivables || [];
-  const payList = reconData.payables || [];
+  const reconTableWrap = el("div", { class: "table-responsive" });
+  const reconTable = el("table", { class: "ov-recon-gl-table" });
 
-  const totRecAmt = recList.reduce(function (s, r) { return s + (r.amount || 0); }, 0) || 71900000;
-  const totRecCnt = recList.reduce(function (s, r) { return s + (r.txnCount || 0); }, 0) || 157;
-  const totPayAmt = payList.reduce(function (s, r) { return s + (r.amount || 0); }, 0) || 65200000;
-  const totPayCnt = payList.reduce(function (s, r) { return s + (r.txnCount || 0); }, 0) || 143;
-  const netPos = totRecAmt - totPayAmt;
+  const rThead = el("thead");
+  const rTrHead = el("tr");
+  rTrHead.appendChild(el("th", { text: "UNIT / GL", style: "text-align:left;" }));
+  rTrHead.appendChild(el("th", { text: "GL COUNT", style: "text-align:right;" }));
+  rThead.appendChild(rTrHead);
+  reconTable.appendChild(rThead);
 
-  const reconBody = el("div", { class: "ov-recon-summary-body" });
-  reconBody.innerHTML = 
-    '<div class="recon-summary-item">' +
-      '<div class="recon-item-label">Total Receivables</div>' +
-      '<div class="recon-item-value pos">' + formatCurrency(totRecAmt, "PKR") + ' <span class="recon-cnt">(' + totRecCnt + ' items)</span></div>' +
-    '</div>' +
-    '<div class="recon-summary-item">' +
-      '<div class="recon-item-label">Total Payables</div>' +
-      '<div class="recon-item-value neg">' + formatCurrency(totPayAmt, "PKR") + ' <span class="recon-cnt">(' + totPayCnt + ' items)</span></div>' +
-    '</div>' +
-    '<div class="recon-summary-item net">' +
-      '<div class="recon-item-label">Net Outstanding Position</div>' +
-      '<div class="recon-item-value highlight">' + (netPos >= 0 ? '+' : '') + formatCurrency(netPos, "PKR") + ' <span class="badge-tag">' + (netPos >= 0 ? 'Net Receivable' : 'Net Payable') + '</span></div>' +
-    '</div>';
+  const rTbody = el("tbody");
+  const glBreakdownData = [
+    { unit: "1888 - ADC", count: 25 },
+    { unit: "1948 - Credit Card (CTL)", count: 18 },
+    { unit: "7928 - Credit Card (Card Pro)", count: 32 },
+    { unit: "1922 - Ijarah", count: 14 },
+    { unit: "1944 - Auto Loan", count: 22 },
+    { unit: "1945 - PRL (Personal Loan)", count: 29 },
+    { unit: "1946 - MTG (Mortgage)", count: 16 },
+    { unit: "2000 - SME", count: 12 }
+  ];
 
-  reconCard.appendChild(reconBody);
+  glBreakdownData.forEach(function (item) {
+    const tr = el("tr");
+    tr.appendChild(el("td", { text: item.unit, style: "text-align:left; font-weight:500;" }));
+    tr.appendChild(el("td", { text: item.count.toString(), class: "num", style: "text-align:right; font-weight:600;" }));
+    rTbody.appendChild(tr);
+  });
+
+  reconTable.appendChild(rTbody);
+  reconTableWrap.appendChild(reconTable);
+  reconCard.appendChild(reconTableWrap);
   gridRow.appendChild(reconCard);
 
   section.appendChild(gridRow);
@@ -2197,40 +2205,41 @@ function getCardKpiData(data) {
 }
 
 function renderOvCardKpiTableCard(title, rows) {
-  const lbl = getPeriodLabels();
   const card = el("div", { class: "ov-table-kpi-card" });
 
   const header = el("div", { class: "ov-table-kpi-header" });
   header.appendChild(el("div", { class: "ov-table-kpi-title", text: title }));
-  header.appendChild(el("div", { class: "ov-table-kpi-freq", text: lbl.freqTag }));
+  header.appendChild(el("div", { class: "ov-table-kpi-freq", text: "MONTHLY" }));
   card.appendChild(header);
 
+  const wrap = el("div", { class: "ov-table-kpi-wrap" });
   const table = el("table", { class: "ov-kpi-table" });
 
   const thead = el("thead");
   const trHead = el("tr");
-  trHead.appendChild(el("th", { text: "Metric" }));
-  trHead.appendChild(el("th", { text: lbl.shortPrimary }));
-  trHead.appendChild(el("th", { text: lbl.comparisonTerm }));
-  trHead.appendChild(el("th", { text: lbl.changeTerm }));
+  trHead.appendChild(el("th", { text: "METRIC", class: "col-metric" }));
+  trHead.appendChild(el("th", { html: "CURRENT<br>MONTH", class: "col-val", style: "text-align:center;" }));
+  trHead.appendChild(el("th", { html: "PREVIOUS<br>MONTH", class: "col-val", style: "text-align:center;" }));
+  trHead.appendChild(el("th", { html: "CHANGE<br>RATE", class: "col-change", style: "text-align:center;" }));
   thead.appendChild(trHead);
   table.appendChild(thead);
 
   const tbody = el("tbody");
   rows.forEach(function (r) {
     const tr = el("tr");
-    tr.appendChild(el("td", { text: r.label }));
-    tr.appendChild(el("td", { text: formatKpiMnVal(r.cur, r.isCurrency) }));
-    tr.appendChild(el("td", { text: formatKpiMnVal(r.prev, r.isCurrency) }));
+    tr.appendChild(el("td", { text: r.label, class: "col-metric" }));
+    tr.appendChild(el("td", { text: formatKpiMnVal(r.cur, r.isCurrency), class: "col-val" }));
+    tr.appendChild(el("td", { text: formatKpiMnVal(r.prev, r.isCurrency), class: "col-val" }));
 
-    const tdChange = el("td");
+    const tdChange = el("td", { class: "col-change" });
     tdChange.innerHTML = indicatorHTML(r.cur, r.prev, true, true);
     tr.appendChild(tdChange);
 
     tbody.appendChild(tr);
   });
   table.appendChild(tbody);
-  card.appendChild(table);
+  wrap.appendChild(table);
+  card.appendChild(wrap);
 
   return card;
 }

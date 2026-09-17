@@ -777,10 +777,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   border: 1px solid var(--border);
   border-top: 3.5px solid var(--brand);
   border-radius: var(--radius-md);
-  padding: 10px 12px;
+  padding: 12px 14px;
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   min-width: 0;
   height: 100%;
@@ -797,8 +798,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
-  padding-bottom: 5px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--border-light);
   flex-shrink: 0;
 }
@@ -821,13 +822,23 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   border-radius: var(--radius-pill);
 }
 
+.ov-table-kpi-wrap {
+  width: 100%;
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow-x: auto;
+}
+
 .ov-kpi-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 10.5px;
   margin: 0;
   padding: 0;
-  table-layout: auto;
+  table-layout: fixed;
 }
 
 .ov-kpi-table th {
@@ -836,20 +847,31 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  padding: 3.5px 4px 4.5px 4px;
+  padding: 4px 4px 5px 4px;
   border-bottom: 1.5px solid var(--border);
-  text-align: right;
-  white-space: nowrap;
-  vertical-align: middle;
-  line-height: 1.2;
+  text-align: center;
+  white-space: normal;
+  vertical-align: bottom;
+  line-height: 1.25;
 }
 
-.ov-kpi-table th:first-child {
+.ov-kpi-table th.col-metric {
   text-align: left;
+  width: 38%;
+}
+
+.ov-kpi-table th.col-val {
+  text-align: center;
+  width: 22%;
+}
+
+.ov-kpi-table th.col-change {
+  text-align: center;
+  width: 18%;
 }
 
 .ov-kpi-table td {
-  padding: 3.5px 4px;
+  padding: 4px 4px;
   border-bottom: 1px solid var(--border-light);
   color: var(--text-main);
   text-align: right;
@@ -860,11 +882,24 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   font-size: 10.5px;
 }
 
-.ov-kpi-table td:first-child {
+.ov-kpi-table td.col-metric {
   text-align: left;
   font-weight: 600;
   color: var(--text-main);
   font-size: 10.5px;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.25;
+}
+
+.ov-kpi-table td.col-val {
+  text-align: right;
+  font-weight: 600;
+}
+
+.ov-kpi-table td.col-change {
+  text-align: right;
 }
 
 .ov-kpi-table td .indicator {
@@ -964,9 +999,26 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-width: 330px;
+  max-width: 340px;
   width: calc(100% - 48px);
-  pointer-events: none;
+  max-height: calc(100vh - 120px);
+  max-height: 420px;
+  overflow-y: auto;
+  pointer-events: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--brand-border) transparent;
+}
+
+#toastContainer::-webkit-scrollbar {
+  width: 5px;
+}
+#toastContainer::-webkit-scrollbar-track {
+  background: transparent;
+}
+#toastContainer::-webkit-scrollbar-thumb {
+  background: var(--brand-border);
+  border-radius: 4px;
 }
 
 .toast-notification {
@@ -1203,7 +1255,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 
 .ov-nostro-recon-grid {
   display: grid;
-  grid-template-columns: 1.8fr 1fr;
+  grid-template-columns: 1.4fr 1fr;
   gap: var(--space-2);
   align-items: stretch;
 }
@@ -1214,68 +1266,125 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   }
 }
 
-.ov-nostro-card-container,
+.ov-nostro-card-container {
+  height: auto;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+}
+
 .ov-recon-box-card {
   height: 100%;
   display: flex;
   flex-direction: column;
 }
 
-.ov-recon-summary-body {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 6px 0;
-}
-
-.recon-summary-item {
-  display: flex;
-  flex-direction: column;
-  padding: 8px 12px;
-  background: var(--ov-blue-xlight, #f4f8fb);
-  border-radius: var(--radius-sm);
-  border-left: 3.5px solid var(--brand);
-}
-
-.recon-summary-item.net {
-  background: var(--brand-light, #e8f3fa);
-  border-left: 4px solid var(--brand);
-}
-
-.recon-item-label {
+.nostro-currency-badge {
   font-size: 10.5px;
   font-weight: 700;
-  text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--brand-dark);
+  background: var(--brand-light);
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  display: inline-block;
   letter-spacing: 0.04em;
-  margin-bottom: 2px;
 }
 
-.recon-item-value {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: var(--text-main);
+.nostro-group-row td {
+  text-align: left !important;
+  padding-left: 4px !important;
+  padding-top: 6px !important;
+  padding-bottom: 4px !important;
+  background: var(--ov-blue-xlight, #f4f8fb);
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.nostro-bank-info {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 1px;
 }
 
-.recon-item-value.pos {
-  color: #107C41;
+.nostro-bank-info strong {
+  font-size: 11.5px;
+  color: var(--text-main);
+  line-height: 1.25;
 }
 
-.recon-item-value.neg {
-  color: #D13438;
-}
-
-.recon-item-value.highlight {
-  color: var(--brand);
-}
-
-.recon-cnt {
-  font-size: 10.5px;
+.nostro-bank-code {
+  font-size: 10px;
+  color: var(--text-secondary);
   font-weight: 500;
-  color: var(--text-muted);
+}
+
+table.ov-nostro-redesign-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10.5px;
+  margin: 0;
+  table-layout: fixed;
+}
+
+table.ov-nostro-redesign-table th {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 4px 4px 6px 4px;
+  border-bottom: 1.5px solid var(--border);
+  vertical-align: middle;
+}
+
+table.ov-nostro-redesign-table td {
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-main);
+  vertical-align: middle;
+  font-size: 10.5px;
+}
+
+table.ov-recon-gl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  margin: 0;
+}
+
+table.ov-recon-gl-table th {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--brand-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 5px 8px;
+  border-bottom: 1.5px solid var(--border);
+  background: var(--ov-blue-xlight);
+  white-space: nowrap;
+}
+
+table.ov-recon-gl-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-main);
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+table.ov-recon-gl-table td.num,
+table.ov-recon-gl-table th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+table.ov-recon-gl-table tbody tr:hover {
+  background: var(--ov-blue-xlight);
+}
+
+table.ov-recon-gl-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .ov-section-heading {
