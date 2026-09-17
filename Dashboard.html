@@ -40,19 +40,25 @@
   <div id="globalMessage" class="global-message" role="status" aria-live="polite"></div>
   <div class="header-filters" id="globalFilters">
     <label class="filter-item">
-      <span>Reporting Date</span>
-      <input type="date" id="filterReportingDate">
+      <span>Period</span>
+      <select id="filterPeriod">
+        <option value="today">Today</option>
+        <option value="month">Full Month</option>
+        <option value="custom">Custom Date Range</option>
+      </select>
     </label>
     <label class="filter-item">
       <span>Reporting Month</span>
       <input type="month" id="filterReportingMonth">
     </label>
     <label class="filter-item">
-      <span>Period</span>
-      <select id="filterPeriod">
-        <option value="today">Today</option>
-        <option value="mtd">Current Month</option>
-      </select>
+      <span>From Date</span>
+      <input type="date" id="filterFromDate">
+      <input type="date" id="filterReportingDate" hidden>
+    </label>
+    <label class="filter-item">
+      <span>To Date</span>
+      <input type="date" id="filterToDate">
     </label>
     <label class="filter-item">
       <span>Credit / Debit</span>

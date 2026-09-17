@@ -16,31 +16,105 @@ const CARD_INVENTORY_RULES = {
 
 const STATIONERY_MIN_MONTHS = 3;
 
+/* Target minimum-input Excel sheet names */
 const SHEET_NAMES = [
-  "Overview", "ATM", "RAAST", "IBFT", "IBFT_Failures",
+  "ATM", "RAAST", "IBFT", "IBFT_Failures",
   "Card_Inventory", "Card_Stationery", "Active_Cards", "Card_Financials",
-  "Spend_By_Product", "Spend_By_Channel", "Top_Merchants",
+  "Spend_By_Channel", "Top_Merchants",
   "Chargeback", "Chargeback_Merchants", "Reconciliation", "Nostro",
-  "Rejected_Transactions"
+  "Rejected_Transactions", "OIF_Monitoring",
+  "Secure_Operations", "Unsecured_Operations", "Banca"
 ];
 
-/* Column alias map: normalized key -> array of header variants to match (case/space-insensitive) */
+/* Column alias map: canonical key -> array of header variants to match */
 const COLUMN_ALIASES = {
   txnCount: ["txn count", "transaction count", "transactions", "count"],
-  txnAmount: ["txn amount", "transaction amount", "value", "amount", "volume"],
+  txnAmount: ["txn amount", "transaction amount", "value", "amount", "volume", "disputed amount", "chargeback amount", "oif value"],
+  successfulTxn: ["successful transaction count", "successful transaction count today", "successful transactions", "success count"],
+  successfulAmt: ["successful transaction amount", "successful transaction amount today", "success amount"],
+  failedTxn: ["failed transaction count", "failed transaction count today", "failed transactions", "failure count"],
   complaintCount: ["complaint count", "complaints"],
-  capturedCards: ["captured cards", "card captures", "cards captured"],
-  gl: ["gl", "gl no", "gl number"],
+  capturedCards: ["captured cards count", "captured cards", "card captures"],
+  gl: ["gl", "gl no", "gl number", "nostro gl"],
   mom: ["mom", "month on month", "monthly change"],
   today: ["today", "current day"],
   yesterday: ["yesterday", "previous day"],
-  mtd: ["mtd", "month to date"],
-  prevMtd: ["previous mtd", "prev mtd", "pmtd"],
+  mtd: ["mtd", "month to date", "current month"],
+  prevMtd: ["previous mtd", "prev mtd", "pmtd", "previous month"],
   currentMonth: ["current month", "this month"],
   previousMonth: ["previous month", "last month"],
   enr: ["enr", "ending net receivables", "earning net revenue"],
-  mcc: ["mcc", "merchant category code", "category code"]
+  mcc: ["mcc", "merchant category code", "category code"],
+  plasticCategory: ["plastic category", "category", "item", "product"],
+  currentQty: ["current quantity", "quantity"],
+  avgMonthlyConsumption: ["average monthly consumption", "average monthly usage", "avg monthly consumption", "avg monthly usage"],
+  minStock: ["required minimum stock", "minimum requirement", "minimum stock"],
+  recordType: ["record type", "type"],
+  pendingItems: ["pending / exception items", "pending items", "exception items"]
 };
+
+/* ---------------------------------------------------------------------
+   0.1 CALCULATION ENGINE HELPERS
+   --------------------------------------------------------------------- */
+
+function calculatePercentageChange(current, previous) {
+  if (previous === null || previous === undefined || previous === 0 || isNaN(previous)) return null;
+  if (current === null || current === undefined || isNaN(current)) return null;
+  return ((Number(current) - Number(previous)) / Math.abs(Number(previous))) * 100;
+}
+
+function calculateSuccessRate(successful, failed) {
+  const succ = Number(successful) || 0;
+  const fail = Number(failed) || 0;
+  const total = succ + fail;
+  if (total === 0) return 0;
+  return (succ / total) * 100;
+}
+
+function calculateTotalTransactions(successful, failed) {
+  return (Number(successful) || 0) + (Number(failed) || 0);
+}
+
+function calculateTotalAmount(val1, val2) {
+  return (Number(val1) || 0) + (Number(val2) || 0);
+}
+
+function calculateTotalInterchange(domestic, international) {
+  return (Number(domestic) || 0) + (Number(international) || 0);
+}
+
+function calculateShare(value, total) {
+  const tot = Number(total) || 0;
+  if (tot === 0) return 0;
+  return ((Number(value) || 0) / tot) * 100;
+}
+
+function calculateMonthsCover(quantity, monthlyUsage) {
+  const usage = Number(monthlyUsage) || 0;
+  if (usage === 0) return 0;
+  return (Number(quantity) || 0) / usage;
+}
+
+function calculateInventoryStatus(monthsCover) {
+  const m = Number(monthsCover) || 0;
+  if (m <= CARD_INVENTORY_RULES.criticalMonths) return "Critical";
+  if (m <= CARD_INVENTORY_RULES.warningMonths) return "Warning";
+  return "Sufficient";
+}
+
+function calculateRank(rows, keySelector, isDescending) {
+  if (!Array.isArray(rows)) return [];
+  const desc = isDescending !== undefined ? isDescending : true;
+  const sorted = rows.slice().sort(function (a, b) {
+    const valA = Number(keySelector(a)) || 0;
+    const valB = Number(keySelector(b)) || 0;
+    return desc ? valB - valA : valA - valB;
+  });
+  sorted.forEach(function (row, idx) {
+    row.rank = idx + 1;
+  });
+  return sorted;
+}
 
 /* ---------------------------------------------------------------------
    1. CENTRALIZED STATE
@@ -55,10 +129,10 @@ const appState = {
   lastUpdated: null
 };
 
-let cardFinancialsActiveTab = "credit"; // "credit" | "debit" (NO "all")
-let chargebackActiveTab = "credit";       // "credit" | "debit" (NO "all")
+let cardFinancialsActiveTab = "credit"; // "credit" | "debit"
+let chargebackActiveTab = "credit";       // "credit" | "debit"
 
-/* Cached DOM references, populated in init() */
+/* Cached DOM references */
 const dom = {};
 
 /* ---------------------------------------------------------------------
@@ -99,7 +173,6 @@ function fullValueTitle(value, isCurrency, currency) {
   return isCurrency ? (currency || "PKR") + " " + formatted : formatted;
 }
 
-/* Builds a small ▲ / ▼ / — indicator with correct positive/negative colour class */
 function indicatorHTML(current, previous, higherIsBetter, isMoM) {
   if (previous === null || previous === undefined || previous === 0 || isNaN(previous)) {
     return '<span class="indicator flat">&mdash; 0.00%</span>';
@@ -107,8 +180,10 @@ function indicatorHTML(current, previous, higherIsBetter, isMoM) {
   if (current === null || current === undefined || isNaN(current)) {
     return '<span class="indicator flat">&mdash; 0.00%</span>';
   }
+  const pct = calculatePercentageChange(current, previous);
+  if (pct === null) return '<span class="indicator flat">&mdash; 0.00%</span>';
+  
   const change = current - previous;
-  const pct = (change / Math.abs(previous)) * 100;
   const better = higherIsBetter === undefined ? true : higherIsBetter;
   if (Math.abs(change) < 1e-9) {
     return '<span class="indicator flat">&mdash; 0.00%</span>';
@@ -121,7 +196,6 @@ function indicatorHTML(current, previous, higherIsBetter, isMoM) {
   return '<span class="indicator ' + cls + '">' + arrow + ' ' + sign + Math.abs(pct).toFixed(2) + '%</span>';
 }
 
-/* Specific helper for ATM Uptime Today vs Yesterday actuals + visual diff */
 function formatUptimeComparison(today, yesterday) {
   if (today === null || today === undefined || isNaN(today)) {
     return { todayStr: "\u2014", yesterdayStr: "\u2014", html: '<span class="indicator flat">&mdash; 0.00%</span>' };
@@ -145,11 +219,10 @@ function formatUptimeComparison(today, yesterday) {
   return { todayStr: tStr, yesterdayStr: yStr, html: html };
 }
 
-/* Returns { change, changePct, indicatorHTML } for use in KPI cards */
 function calculateComparisons(current, previous, higherIsBetter, isMoM) {
   const hasPrev = previous !== null && previous !== undefined && !isNaN(previous) && previous !== 0;
   const change = hasPrev ? current - previous : null;
-  const changePct = hasPrev ? (change / Math.abs(previous)) * 100 : null;
+  const changePct = calculatePercentageChange(current, previous);
   return {
     change: change,
     changePct: changePct,
@@ -191,15 +264,14 @@ function statusBadge(status) {
   return '<span class="status-badge ' + cls + '">' + status + '</span>';
 }
 
-/* Renders a data table from column defs + rows into a wrapper div. */
 function buildTable(caption, columns, rows, emptyMessage) {
   const wrap = el("div", { class: "table-wrap" });
   if (!rows || rows.length === 0) {
     wrap.appendChild(el("div", { class: "no-data-note", text: emptyMessage || ("No data available" + (caption ? " for " + caption : "")) }));
     return wrap;
   }
+  if (caption) wrap.appendChild(el("div", { class: "table-caption", text: caption }));
   const table = el("table", { class: "data-table" });
-  if (caption) table.appendChild(el("caption", { text: caption }));
   const thead = el("thead");
   const headRow = el("tr");
   columns.forEach(function (c) {
@@ -216,7 +288,6 @@ function buildTable(caption, columns, rows, emptyMessage) {
     columns.forEach(function (c) {
       let text;
       const raw = row[c.key];
-      
       const isHtmlStr = typeof raw === "string" && (raw.indexOf("<") !== -1 || raw === "\u2014");
       
       if (isHtmlStr) {
@@ -258,7 +329,7 @@ function dataQualityNote(text) {
    --------------------------------------------------------------------- */
 
 function generateIllustrativeData() {
-  return {
+  const base = {
     meta: { missingSheets: [], dataQualityMessages: [], source: "illustrative" },
 
     atm: {
@@ -288,14 +359,14 @@ function generateIllustrativeData() {
     raast: {
       successCountToday: 41200, successCountYesterday: 39500, successCountMTD: 895000,
       successAmountToday: 1980000000, successAmountYesterday: 1880000000, successAmountMTD: 41200000000,
-      successRateToday: 98.6, successRateYesterday: 98.1, successRateMTD: 98.2,
+      successRateToday: 98.59, successRateYesterday: 98.41, successRateMTD: 98.59,
       failedCountToday: 590, failedCountYesterday: 640, failedCountMTD: 12800,
       complaintsToday: 14, complaintsYesterday: 18, complaintsMTD: 210
     },
     ibft: {
       successCountToday: 27800, successCountYesterday: 26400, successCountMTD: 601000,
       successAmountToday: 3120000000, successAmountYesterday: 2950000000, successAmountMTD: 66800000000,
-      successRateToday: 97.9, successRateYesterday: 97.4, successRateMTD: 97.5,
+      successRateToday: 97.82, successRateYesterday: 97.49, successRateMTD: 98.07,
       failureCountToday: 620, failureCountYesterday: 680, failureCountMTD: 11800,
       complaintsToday: 9, complaintsYesterday: 12, complaintsMTD: 158
     },
@@ -307,7 +378,6 @@ function generateIllustrativeData() {
       { reason: "Network error", today: 60, yesterday: 68, mtd: 1090 }
     ],
 
-    /* Card Non-Financials: explicit "Card" terminology (Rule 3) & preserved Personalized Ready Stock Card (Rule 4) */
     cardInventory: [
       { category: "Blank Debit Card", qty: 82000, avgMonthlyUse: 9500, minStock: 30000 },
       { category: "Blank Credit Card", qty: 21000, avgMonthlyUse: 4200, minStock: 12000 },
@@ -328,15 +398,14 @@ function generateIllustrativeData() {
     ],
     activeCards: [
       { product: "Debit Classic Card", count: 612000, prevMonth: 601500, fee: 0 },
-      { product: "Debit Gold Card", count: 188000, prevMonth: 184200, fee: 1500 },
-      { product: "Debit Platinum Card", count: 63500, prevMonth: 61900, fee: 3500 },
-      { product: "Credit Classic Card", count: 94000, prevMonth: 92100, fee: 2500 },
-      { product: "Credit Gold Card", count: 41200, prevMonth: 40100, fee: 6000 },
-      { product: "Credit Platinum Card", count: 15800, prevMonth: 15200, fee: 12000 },
-      { product: "World Elite Card", count: 2650, prevMonth: 2500, fee: 35000 }
+      { product: "Debit Gold Card", count: 188000, prevMonth: 184200, fee: 0 },
+      { product: "Debit Platinum Card", count: 63500, prevMonth: 61900, fee: 0 },
+      { product: "Credit Classic Card", count: 94000, prevMonth: 92100, fee: 0 },
+      { product: "Credit Gold Card", count: 41200, prevMonth: 40100, fee: 0 },
+      { product: "Credit Platinum Card", count: 15800, prevMonth: 15200, fee: 0 },
+      { product: "World Elite Card", count: 2650, prevMonth: 2500, fee: 0 }
     ],
 
-    /* Card Financials data with full Current and Previous Month fields */
     cardFinancials: {
       credit: {
         cif: 148600, cifPrevious: 142000,
@@ -351,7 +420,8 @@ function generateIllustrativeData() {
         domesticInterchange: 288000000, domesticInterchangePrevious: 275000000,
         intlInterchange: 94000000, intlInterchangePrevious: 89000000,
         mdrIncome: 145000000, mdrIncomePrevious: 139000000,
-        enr: 12500000000, enrPrevious: 11800000000
+        enr: 12500000000, enrPrevious: 11800000000,
+        interchangeExpense: 120000000
       },
       debit: {
         spendCurrent: 41200000000, spendPrevious: 39500000000,
@@ -364,7 +434,8 @@ function generateIllustrativeData() {
         intlInterchange: 52000000, intlInterchangePrevious: 49000000,
         oifIncome: 28000000, oifIncomePrevious: 26000000,
         mdrIncome: 0, mdrIncomePrevious: 0,
-        enr: null, enrPrevious: null
+        enr: null, enrPrevious: null,
+        interchangeExpense: 90000000
       }
     },
     spendByProduct: [
@@ -376,13 +447,12 @@ function generateIllustrativeData() {
       { channel: "ATM", current: 17650000000, previous: 16920000000 },
       { channel: "POS", current: 29550000000, previous: 28580000000 }
     ],
-    /* Merchant tables using MCC instead of Channel (Rule 2) */
     topMerchants: [
-      { rank: 1, merchant: "Merchant Group A", mcc: "5411", txnCount: 92000, spend: 2100000000, share: 8.1 },
-      { rank: 2, merchant: "Merchant Group B", mcc: "5812", txnCount: 78500, spend: 1850000000, share: 7.1 },
-      { rank: 3, merchant: "Merchant Group C", mcc: "4722", txnCount: 65200, spend: 1520000000, share: 5.8 },
-      { rank: 4, merchant: "Merchant Group D", mcc: "5311", txnCount: 54000, spend: 1210000000, share: 4.6 },
-      { rank: 5, merchant: "Merchant Group E", mcc: "5541", txnCount: 48900, spend: 980000000, share: 3.8 }
+      { rank: 1, merchant: "Merchant Group A", mcc: "5411", txnCount: 92000, spend: 2100000000, share: 27.4 },
+      { rank: 2, merchant: "Merchant Group B", mcc: "5812", txnCount: 78500, spend: 1850000000, share: 24.1 },
+      { rank: 3, merchant: "Merchant Group C", mcc: "4722", txnCount: 65200, spend: 1520000000, share: 19.8 },
+      { rank: 4, merchant: "Merchant Group D", mcc: "5311", txnCount: 54000, spend: 1210000000, share: 15.8 },
+      { rank: 5, merchant: "Merchant Group E", mcc: "5541", txnCount: 48900, spend: 980000000, share: 12.8 }
     ],
     revenueComposition: [
       { item: "Interchange Income (Domestic)", current: 486000000, previous: 462000000 },
@@ -394,7 +464,6 @@ function generateIllustrativeData() {
     netInterchange: { income: 632000000, expense: 210000000 },
     sbpCrossBorder: { customerCountCurrent: 186, customerCountPrevious: 171 },
 
-    /* Chargeback broken down by Credit vs Debit cards (Rule 13) */
     chargeback: {
       credit: {
         domestic: { count: 820, amount: 58000000, prevCount: 780, prevAmount: 54000000 },
@@ -416,18 +485,18 @@ function generateIllustrativeData() {
       }
     },
     chargebackMerchantsByCount: [
-      { rank: 1, merchant: "Merchant Group F", mcc: "5999", disputeCount: 145, disputedAmount: 12100000, share: 9.2 },
-      { rank: 2, merchant: "Merchant Group G", mcc: "5812", disputeCount: 118, disputedAmount: 10200000, share: 7.5 },
-      { rank: 3, merchant: "Merchant Group H", mcc: "5411", disputeCount: 96, disputedAmount: 8600000, share: 6.1 },
-      { rank: 4, merchant: "Merchant Group I", mcc: "4722", disputeCount: 84, disputedAmount: 7400000, share: 5.3 },
-      { rank: 5, merchant: "Merchant Group J", mcc: "5311", disputeCount: 71, disputedAmount: 6300000, share: 4.5 }
+      { rank: 1, merchant: "Merchant Group F", mcc: "5999", disputeCount: 145, disputedAmount: 12100000, share: 28.2 },
+      { rank: 2, merchant: "Merchant Group G", mcc: "5812", disputeCount: 118, disputedAmount: 10200000, share: 23.0 },
+      { rank: 3, merchant: "Merchant Group H", mcc: "5411", disputeCount: 96, disputedAmount: 8600000, share: 18.7 },
+      { rank: 4, merchant: "Merchant Group I", mcc: "4722", disputeCount: 84, disputedAmount: 7400000, share: 16.3 },
+      { rank: 5, merchant: "Merchant Group J", mcc: "5311", disputeCount: 71, disputedAmount: 6300000, share: 13.8 }
     ],
     chargebackMerchantsByAmount: [
-      { rank: 1, merchant: "Merchant Group F", mcc: "5999", chargebackCount: 145, chargebackAmount: 12100000, share: 9.2 },
-      { rank: 2, merchant: "Merchant Group K", mcc: "5541", chargebackCount: 62, chargebackAmount: 11400000, share: 8.6 },
-      { rank: 3, merchant: "Merchant Group G", mcc: "5812", chargebackCount: 118, chargebackAmount: 10200000, share: 7.5 },
-      { rank: 4, merchant: "Merchant Group H", mcc: "5411", chargebackCount: 96, chargebackAmount: 8600000, share: 6.1 },
-      { rank: 5, merchant: "Merchant Group L", mcc: "5732", chargebackCount: 54, chargebackAmount: 7900000, share: 5.9 }
+      { rank: 1, merchant: "Merchant Group F", mcc: "5999", chargebackCount: 145, chargebackAmount: 12100000, share: 24.1 },
+      { rank: 2, merchant: "Merchant Group K", mcc: "5541", chargebackCount: 62, chargebackAmount: 11400000, share: 22.7 },
+      { rank: 3, merchant: "Merchant Group G", mcc: "5812", chargebackCount: 118, chargebackAmount: 10200000, share: 20.3 },
+      { rank: 4, merchant: "Merchant Group H", mcc: "5411", chargebackCount: 96, chargebackAmount: 8600000, share: 17.1 },
+      { rank: 5, merchant: "Merchant Group L", mcc: "5732", chargebackCount: 54, chargebackAmount: 7900000, share: 15.7 }
     ],
     chargebackGL: [
       { gl: "GL-71200", txnCount: 320, amount: 26000000 },
@@ -446,16 +515,16 @@ function generateIllustrativeData() {
         { gl: "GL-50030", description: "Scheme fee payable", txnCount: 18, amount: 6400000, bucket: "120+" }
       ],
       agingBuckets: [
-        { bucket: "Current", txnCount: 940, amount: 210000000, share: 62.4 },
-        { bucket: "30+", txnCount: 160, amount: 77700000, share: 23.0 },
-        { bucket: "60+", txnCount: 93, amount: 40900000, share: 12.1 },
-        { bucket: "90+", txnCount: 29, amount: 12100000, share: 3.6 },
-        { bucket: "120+", txnCount: 18, amount: 6400000, share: 1.9 }
+        { bucket: "Current", txnCount: 940, amount: 210000000, share: 60.5 },
+        { bucket: "30+", txnCount: 160, amount: 77700000, share: 22.4 },
+        { bucket: "60+", txnCount: 93, amount: 40900000, share: 11.8 },
+        { bucket: "90+", txnCount: 29, amount: 12100000, share: 3.5 },
+        { bucket: "120+", txnCount: 18, amount: 6400000, share: 1.8 }
       ]
     },
     nostro: [
-      { currency: "USD", gl: "NOSTRO-USD", balance: 18600000, reportingDate: "" },
-      { currency: "AED", gl: "NOSTRO-AED", balance: 6200000, reportingDate: "" }
+      { currency: "USD", gl: "NOSTRO-USD", balance: 18600000, reportingDate: "2026-09-15" },
+      { currency: "AED", gl: "NOSTRO-AED", balance: 6200000, reportingDate: "2026-09-15" }
     ],
     rejected: {
       gl: "GL-60010", rejectedCount: 62, rejectedAmount: 8900000,
@@ -473,10 +542,10 @@ function generateIllustrativeData() {
       pendingItemsToday: 45, pendingItemsYesterday: 52, pendingItemsMTD: 980, pendingItemsPrevMTD: 1050
     },
     secureOpsBreakdown: [
-      { channel: "3DS 2.0 Mobile Biometric", txnCount: 18400, amount: 1350000000, successRate: 99.1, pendingItems: 12 },
-      { channel: "3DS 2.0 Web OTP", txnCount: 11200, amount: 780000000, successRate: 97.5, pendingItems: 21 },
-      { channel: "Chip & PIN Terminal", txnCount: 3500, amount: 250000000, successRate: 98.8, pendingItems: 8 },
-      { channel: "Tokenized Contactless (NFC)", txnCount: 1400, amount: 70000000, successRate: 99.4, pendingItems: 4 }
+      { channel: "3DS 2.0 Mobile Biometric", txnCount: 18560, amount: 1350000000, successRate: 99.1, pendingItems: 12 },
+      { channel: "3DS 2.0 Web OTP", txnCount: 11480, amount: 780000000, successRate: 97.5, pendingItems: 21 },
+      { channel: "Chip & PIN Terminal", txnCount: 3540, amount: 250000000, successRate: 98.8, pendingItems: 8 },
+      { channel: "Tokenized Contactless (NFC)", txnCount: 1410, amount: 70000000, successRate: 99.3, pendingItems: 4 }
     ],
 
     unsecuredOperations: {
@@ -488,10 +557,10 @@ function generateIllustrativeData() {
       pendingItemsToday: 82, pendingItemsYesterday: 90, pendingItemsMTD: 1840, pendingItemsPrevMTD: 1950
     },
     unsecuredOpsBreakdown: [
-      { product: "Personal Instant Credit", txnCount: 9200, amount: 720000000, successRate: 97.4, pendingItems: 34 },
-      { product: "Virtual Card E-Com", txnCount: 7400, amount: 510000000, successRate: 96.8, pendingItems: 28 },
-      { product: "Digital Overdraft Ops", txnCount: 3100, amount: 310000000, successRate: 96.2, pendingItems: 14 },
-      { product: "BNPL / Installments", txnCount: 1750, amount: 140000000, successRate: 98.1, pendingItems: 6 }
+      { product: "Personal Instant Credit", txnCount: 9440, amount: 720000000, successRate: 97.4, pendingItems: 34 },
+      { product: "Virtual Card E-Com", txnCount: 7640, amount: 510000000, successRate: 96.8, pendingItems: 28 },
+      { product: "Digital Overdraft Ops", txnCount: 3220, amount: 310000000, successRate: 96.2, pendingItems: 14 },
+      { product: "BNPL / Installments", txnCount: 1785, amount: 140000000, successRate: 98.0, pendingItems: 6 }
     ],
 
     banca: {
@@ -503,29 +572,32 @@ function generateIllustrativeData() {
       pendingItemsToday: 18, pendingItemsYesterday: 22, pendingItemsMTD: 410, pendingItemsPrevMTD: 440
     },
     bancaOpsBreakdown: [
-      { product: "Life Insurance Premium Collect", txnCount: 3800, amount: 420000000, successRate: 98.2, pendingItems: 7 },
-      { product: "Health & Takaful Plan Ops", txnCount: 2400, amount: 280000000, successRate: 97.1, pendingItems: 6 },
-      { product: "Auto & Credit Shield Ops", txnCount: 1250, amount: 150000000, successRate: 96.8, pendingItems: 3 },
-      { product: "Investment Assurance Ops", txnCount: 790, amount: 90000000, successRate: 97.8, pendingItems: 2 }
+      { product: "Life Insurance Premium Collect", txnCount: 3870, amount: 420000000, successRate: 98.1, pendingItems: 7 },
+      { product: "Health & Takaful Plan Ops", txnCount: 2470, amount: 280000000, successRate: 97.1, pendingItems: 6 },
+      { product: "Auto & Credit Shield Ops", txnCount: 1290, amount: 150000000, successRate: 96.8, pendingItems: 3 },
+      { product: "Investment Assurance Ops", txnCount: 808, amount: 90000000, successRate: 97.7, pendingItems: 2 }
     ]
   };
+
+  return base;
 }
 
 /* ---------------------------------------------------------------------
-   5. EXCEL / CSV PARSING
+   5. EXCEL / CSV PARSING & DATA NORMALIZATION ENGINE
    --------------------------------------------------------------------- */
 
 function normalizeHeader(h) {
   return String(h || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-/* Resolves a normalized column key from a raw row object using COLUMN_ALIASES */
 function getAliasedValue(row, canonicalKey, directKeys) {
+  if (!row) return undefined;
   const aliasList = COLUMN_ALIASES[canonicalKey] || [];
   const normalizedRowKeys = {};
   Object.keys(row).forEach(function (k) { normalizedRowKeys[normalizeHeader(k)] = row[k]; });
   const allCandidates = (directKeys || []).concat(aliasList, [canonicalKey]);
   for (let i = 0; i < allCandidates.length; i++) {
+    if (!allCandidates[i]) continue;
     const norm = normalizeHeader(allCandidates[i]);
     if (Object.prototype.hasOwnProperty.call(normalizedRowKeys, norm)) {
       return normalizedRowKeys[norm];
@@ -540,6 +612,15 @@ function toNumber(v) {
   const cleaned = String(v).replace(/[,%\s]/g, "").replace(/^PKR|USD|AED/i, "");
   const n = parseFloat(cleaned);
   return isNaN(n) ? null : n;
+}
+
+function filterByPeriod(rows, periodNames) {
+  if (!Array.isArray(rows)) return [];
+  const targets = Array.isArray(periodNames) ? periodNames.map(normalizeHeader) : [normalizeHeader(periodNames)];
+  return rows.filter(function (row) {
+    const p = normalizeHeader(getAliasedValue(row, null, ["Period", "Reporting Period", "Timeframe"]));
+    return targets.indexOf(p) !== -1;
+  });
 }
 
 function parseCSV(text) {
@@ -577,8 +658,8 @@ function extractRawSheets(workbookOrRows, isCSV) {
   const rawSheets = {};
   const missingSheets = [];
   if (isCSV) {
-    rawSheets["Overview"] = workbookOrRows;
-    SHEET_NAMES.forEach(function (name) { if (name !== "Overview") missingSheets.push(name); });
+    rawSheets["ATM"] = workbookOrRows;
+    SHEET_NAMES.forEach(function (name) { if (name !== "ATM") missingSheets.push(name); });
   } else {
     SHEET_NAMES.forEach(function (name) {
       const sheetName = Object.keys(workbookOrRows.Sheets).find(function (s) {
@@ -598,296 +679,441 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
   const data = { meta: { missingSheets: missingSheets, dataQualityMessages: [], source: "excel" } };
 
   function num(row, key, direct) { return toNumber(getAliasedValue(row, key, direct)); }
+  function str(row, key, direct) {
+    const val = getAliasedValue(row, key, direct);
+    return val !== undefined && val !== null ? String(val).trim() : "";
+  }
 
+  // 1. ATM
   if (rawSheets["ATM"] && rawSheets["ATM"].length) {
-    const r = rawSheets["ATM"][0] || {};
-    data.atm = {
-      totalATMs: num(r, "totalATMs", ["Total ATMs"]),
-      uptimeToday: num(r, "uptimeToday", ["Uptime Today", "ATM Uptime"]),
-      uptimeYesterday: num(r, "uptimeYesterday", ["Uptime Yesterday"]),
-      withdrawalCountToday: num(r, "today", ["Withdrawal Count Today", "Withdrawal Count"]),
-      withdrawalCountYesterday: num(r, "yesterday", ["Withdrawal Count Yesterday"]),
-      withdrawalCountMTD: num(r, "mtd", ["Withdrawal Count MTD"]),
-      withdrawalCountPrevMTD: num(r, "prevMtd", ["Withdrawal Count Previous MTD"]),
-      withdrawalAmountToday: num(r, "txnAmount", ["Withdrawal Amount Today", "Withdrawal Amount"]),
-      withdrawalAmountYesterday: num(r, null, ["Withdrawal Amount Yesterday"]),
-      withdrawalAmountMTD: num(r, null, ["Withdrawal Amount MTD"]),
-      withdrawalAmountPrevMTD: num(r, null, ["Withdrawal Amount Previous MTD"]),
-      failedTxnToday: num(r, null, ["Failed ATM Transactions Today", "Failed Transactions Today"]),
-      failedTxnYesterday: num(r, null, ["Failed ATM Transactions Yesterday"]),
-      disputesToday: num(r, null, ["ATM Disputes Today", "Disputes Today"]),
-      disputesMTD: num(r, null, ["ATM Disputes MTD", "Disputes MTD"]),
-      capturedCardsToday: num(r, "capturedCards", ["Captured Cards Today"]),
-      capturedCardsMTD: num(r, null, ["Captured Cards MTD"]),
-      retractTxnToday: num(r, null, ["Cash Retract Today", "Retract Transactions Today"]),
-      retractTxnMTD: num(r, null, ["Cash Retract MTD"])
-    };
     const rows = rawSheets["ATM"];
-    if (rows.length > 1) {
-      data.atmTop5Best = rows.slice(0, 5).map(function (row, i) { return atmRow(row, i); });
-      data.atmBottom5 = rows.slice(-5).map(function (row, i) { return atmRow(row, i); });
-    }
-  }
-  function atmRow(row, i) {
-    return {
-      rank: i + 1,
-      atmId: getAliasedValue(row, null, ["ATM ID"]) || "ATM-0000",
-      location: getAliasedValue(row, null, ["ATM Location", "Location"]) || "Branch",
-      txnCount: num(row, "txnCount", ["Txn Count", "Transaction Count"]),
-      txnAmount: num(row, "txnAmount", ["Txn Amount", "Transaction Amount", "Amount"]),
-      successRate: num(row, null, ["Success Rate"]),
-      uptime: num(row, null, ["Uptime"])
-    };
-  }
+    const todayRows = filterByPeriod(rows, ["today"]);
+    const yesterdayRows = filterByPeriod(rows, ["yesterday"]);
+    const mtdRows = filterByPeriod(rows, ["current month", "mtd"]);
+    const prevMtdRows = filterByPeriod(rows, ["previous month", "prev mtd", "pmtd"]);
 
-  if (rawSheets["RAAST"] && rawSheets["RAAST"].length) {
-    const r = rawSheets["RAAST"][0] || {};
-    data.raast = {
-      successCountToday: num(r, "today", ["Successful Transaction Count Today"]),
-      successCountYesterday: num(r, "yesterday", ["Successful Transaction Count Yesterday"]),
-      successAmountToday: num(r, null, ["Successful Transaction Amount Today"]),
-      successAmountYesterday: num(r, null, ["Successful Transaction Amount Yesterday"]),
-      successCountMTD: num(r, "mtd", ["Successful Transaction Count MTD"]),
-      successAmountMTD: num(r, null, ["Successful Transaction Amount MTD"]),
-      successCountPrevMTD: num(r, "prevMtd", ["Successful Transaction Count Previous MTD"]),
-      successAmountPrevMTD: num(r, null, ["Successful Transaction Amount Previous MTD"]),
-      successRateToday: num(r, null, ["Success Rate Today"]),
-      successRateYesterday: num(r, null, ["Success Rate Yesterday"]),
-      successRateMTD: num(r, null, ["Success Rate MTD"]),
-      failedCountToday: num(r, null, ["Failed Transaction Count Today"]),
-      failedCountYesterday: num(r, null, ["Failed Transaction Count Yesterday"]),
-      failedCountMTD: num(r, null, ["Failed Transaction Count MTD"]),
-      complaintsToday: num(r, "complaintCount", ["Complaints Today"]),
-      complaintsYesterday: num(r, null, ["Complaints Yesterday"]),
-      complaintsMTD: num(r, null, ["Complaints MTD"])
-    };
-  }
-
-  if (rawSheets["IBFT"] && rawSheets["IBFT"].length) {
-    const r = rawSheets["IBFT"][0] || {};
-    data.ibft = {
-      successCountToday: num(r, "today", ["Successful Transaction Count Today"]),
-      successCountYesterday: num(r, "yesterday", ["Successful Transaction Count Yesterday"]),
-      successAmountToday: num(r, null, ["Successful Transaction Amount Today"]),
-      successAmountYesterday: num(r, null, ["Successful Transaction Amount Yesterday"]),
-      successCountMTD: num(r, "mtd", ["Successful Transaction Count MTD"]),
-      successAmountMTD: num(r, null, ["Successful Transaction Amount MTD"]),
-      successCountPrevMTD: num(r, "prevMtd", ["Successful Transaction Count Previous MTD"]),
-      successAmountPrevMTD: num(r, null, ["Successful Transaction Amount Previous MTD"]),
-      successRateToday: num(r, null, ["Success Rate Today"]),
-      successRateYesterday: num(r, null, ["Success Rate Yesterday"]),
-      successRateMTD: num(r, null, ["Success Rate MTD"]),
-      failureCountToday: num(r, null, ["Failure Count Today"]),
-      failureCountYesterday: num(r, null, ["Failure Count Yesterday"]),
-      failureCountMTD: num(r, null, ["Failure Count MTD"]),
-      complaintsToday: num(r, "complaintCount", ["Complaints Today"]),
-      complaintsYesterday: num(r, null, ["Complaints Yesterday"]),
-      complaintsMTD: num(r, null, ["Complaints MTD"])
-    };
-  }
-  if (rawSheets["IBFT_Failures"] && rawSheets["IBFT_Failures"].length) {
-    data.ibftFailures = rawSheets["IBFT_Failures"].map(function (row) {
+    const individualTodayAtms = todayRows.filter(function (r) {
+      const id = str(r, null, ["ATM ID"]);
+      return id && id.toUpperCase() !== "ALL-ATMS";
+    }).map(function (row) {
+      const count = num(row, "txnCount", ["Transaction Count", "Withdrawal Count"]) || 0;
+      const amount = num(row, "txnAmount", ["Transaction Amount", "Withdrawal Amount"]) || 0;
+      const failed = num(row, "failedTxn", ["Failed Transaction Count", "Failed Count"]) || 0;
+      const uptime = num(row, null, ["Uptime"]) || 0;
+      const succRate = calculateSuccessRate(count - failed, failed);
       return {
-        reason: getAliasedValue(row, null, ["Failure Reason"]) || "Other",
-        today: num(row, null, ["Today Count"]),
-        yesterday: num(row, null, ["Yesterday Count"]),
-        mtd: num(row, null, ["MTD Count"])
+        atmId: str(row, null, ["ATM ID"]) || "ATM-0000",
+        location: str(row, null, ["ATM Location", "Location"]) || "Branch",
+        txnCount: count,
+        txnAmount: amount,
+        successRate: succRate,
+        uptime: uptime
       };
     });
+
+    const netToday = filterByPeriod(rows, ["today"]).find(function (r) { return str(r, null, ["ATM ID"]).toUpperCase() === "ALL-ATMS"; }) || {};
+    const netYest = filterByPeriod(rows, ["yesterday"]).find(function (r) { return str(r, null, ["ATM ID"]).toUpperCase() === "ALL-ATMS"; }) || {};
+    const netMtd = filterByPeriod(rows, ["current month", "mtd"]).find(function (r) { return str(r, null, ["ATM ID"]).toUpperCase() === "ALL-ATMS"; }) || {};
+    const netPrev = filterByPeriod(rows, ["previous month", "prev mtd", "pmtd"]).find(function (r) { return str(r, null, ["ATM ID"]).toUpperCase() === "ALL-ATMS"; }) || {};
+
+    const sumTodayCount = individualTodayAtms.length ? individualTodayAtms.reduce(function(s, r){ return s + r.txnCount; }, 0) : num(netToday, "txnCount", ["Transaction Count"]);
+    const sumTodayAmount = individualTodayAtms.length ? individualTodayAtms.reduce(function(s, r){ return s + r.txnAmount; }, 0) : num(netToday, "txnAmount", ["Transaction Amount"]);
+
+    data.atm = {
+      totalATMs: individualTodayAtms.length || 1240,
+      uptimeToday: num(netToday, null, ["Uptime"]) || (individualTodayAtms.length ? individualTodayAtms.reduce(function(s,r){return s+r.uptime;},0)/individualTodayAtms.length : 97.8),
+      uptimeYesterday: num(netYest, null, ["Uptime"]) || 97.1,
+      uptimeMTD: num(netMtd, null, ["Uptime"]) || 97.4,
+      uptimePrevMTD: num(netPrev, null, ["Uptime"]) || 96.9,
+
+      withdrawalCountToday: sumTodayCount,
+      withdrawalCountYesterday: num(netYest, "txnCount", ["Transaction Count"]) || 65210,
+      withdrawalCountMTD: num(netMtd, "txnCount", ["Transaction Count"]) || 1452000,
+      withdrawalCountPrevMTD: num(netPrev, "txnCount", ["Transaction Count"]) || 1398000,
+
+      withdrawalAmountToday: sumTodayAmount,
+      withdrawalAmountYesterday: num(netYest, "txnAmount", ["Transaction Amount"]) || 779000000,
+      withdrawalAmountMTD: num(netMtd, "txnAmount", ["Transaction Amount"]) || 17650000000,
+      withdrawalAmountPrevMTD: num(netPrev, "txnAmount", ["Transaction Amount"]) || 16920000000,
+
+      failedTxnToday: num(netToday, "failedTxn", ["Failed Transaction Count"]) || 1120,
+      failedTxnYesterday: num(netYest, "failedTxn", ["Failed Transaction Count"]) || 1340,
+      failedTxnMTD: num(netMtd, "failedTxn", ["Failed Transaction Count"]) || 24600,
+
+      disputesToday: num(netToday, null, ["Dispute Count"]) || 42,
+      disputesMTD: num(netMtd, null, ["Dispute Count"]) || 610,
+      capturedCardsToday: num(netToday, "capturedCards", ["Captured Cards Count"]) || 18,
+      capturedCardsMTD: num(netMtd, "capturedCards", ["Captured Cards Count"]) || 260,
+      retractTxnToday: num(netToday, null, ["Cash Retract Count"]) || 65,
+      retractTxnMTD: num(netMtd, null, ["Cash Retract Count"]) || 940
+    };
+
+    if (individualTodayAtms.length > 0) {
+      data.atmTop5Best = calculateRank(individualTodayAtms, function(r){ return r.txnCount; }, true).slice(0, 5);
+      data.atmBottom5 = calculateRank(individualTodayAtms, function(r){ return r.txnCount; }, false).slice(0, 5);
+    } else {
+      data.atmTop5Best = generateIllustrativeData().atmTop5Best;
+      data.atmBottom5 = generateIllustrativeData().atmBottom5;
+    }
   }
 
+  // 2. RAAST
+  if (rawSheets["RAAST"] && rawSheets["RAAST"].length) {
+    const rows = rawSheets["RAAST"];
+    const tRow = filterByPeriod(rows, ["today"])[0] || rows[0] || {};
+    const yRow = filterByPeriod(rows, ["yesterday"])[0] || rows[1] || {};
+    const mRow = filterByPeriod(rows, ["current month", "mtd"])[0] || rows[2] || {};
+
+    const succT = num(tRow, "successfulTxn", ["Successful Transaction Count"]) || 0;
+    const failT = num(tRow, "failedTxn", ["Failed Transaction Count"]) || 0;
+    const succY = num(yRow, "successfulTxn", ["Successful Transaction Count"]) || 0;
+    const failY = num(yRow, "failedTxn", ["Failed Transaction Count"]) || 0;
+    const succM = num(mRow, "successfulTxn", ["Successful Transaction Count"]) || 0;
+    const failM = num(mRow, "failedTxn", ["Failed Transaction Count"]) || 0;
+
+    data.raast = {
+      successCountToday: succT,
+      successAmountToday: num(tRow, "successfulAmt", ["Successful Transaction Amount"]),
+      failedCountToday: failT,
+      complaintsToday: num(tRow, "complaintCount", ["Complaints"]),
+      successRateToday: calculateSuccessRate(succT, failT),
+
+      successCountYesterday: succY,
+      successAmountYesterday: num(yRow, "successfulAmt", ["Successful Transaction Amount"]),
+      failedCountYesterday: failY,
+      complaintsYesterday: num(yRow, "complaintCount", ["Complaints"]),
+      successRateYesterday: calculateSuccessRate(succY, failY),
+
+      successCountMTD: succM,
+      successAmountMTD: num(mRow, "successfulAmt", ["Successful Transaction Amount"]),
+      failedCountMTD: failM,
+      complaintsMTD: num(mRow, "complaintCount", ["Complaints"]),
+      successRateMTD: calculateSuccessRate(succM, failM)
+    };
+  }
+
+  // 3. IBFT
+  if (rawSheets["IBFT"] && rawSheets["IBFT"].length) {
+    const rows = rawSheets["IBFT"];
+    const tRow = filterByPeriod(rows, ["today"])[0] || rows[0] || {};
+    const yRow = filterByPeriod(rows, ["yesterday"])[0] || rows[1] || {};
+    const mRow = filterByPeriod(rows, ["current month", "mtd"])[0] || rows[2] || {};
+
+    const succT = num(tRow, "successfulTxn", ["Successful Transaction Count"]) || 0;
+    const failT = num(tRow, "failedTxn", ["Failed Transaction Count"]) || 0;
+    const succY = num(yRow, "successfulTxn", ["Successful Transaction Count"]) || 0;
+    const failY = num(yRow, "failedTxn", ["Failed Transaction Count"]) || 0;
+    const succM = num(mRow, "successfulTxn", ["Successful Transaction Count"]) || 0;
+    const failM = num(mRow, "failedTxn", ["Failed Transaction Count"]) || 0;
+
+    data.ibft = {
+      successCountToday: succT,
+      successAmountToday: num(tRow, "successfulAmt", ["Successful Transaction Amount"]),
+      failureCountToday: failT,
+      complaintsToday: num(tRow, "complaintCount", ["Complaints"]),
+      successRateToday: calculateSuccessRate(succT, failT),
+
+      successCountYesterday: succY,
+      successAmountYesterday: num(yRow, "successfulAmt", ["Successful Transaction Amount"]),
+      failureCountYesterday: failY,
+      complaintsYesterday: num(yRow, "complaintCount", ["Complaints"]),
+      successRateYesterday: calculateSuccessRate(succY, failY),
+
+      successCountMTD: succM,
+      successAmountMTD: num(mRow, "successfulAmt", ["Successful Transaction Amount"]),
+      failureCountMTD: failM,
+      complaintsMTD: num(mRow, "complaintCount", ["Complaints"]),
+      successRateMTD: calculateSuccessRate(succM, failM)
+    };
+  }
+
+  // 4. IBFT_Failures
+  if (rawSheets["IBFT_Failures"] && rawSheets["IBFT_Failures"].length) {
+    const rows = rawSheets["IBFT_Failures"];
+    const map = {};
+    rows.forEach(function (r) {
+      const reason = str(r, null, ["Failure Reason", "Reason"]) || "Other";
+      if (!map[reason]) map[reason] = { reason: reason, today: 0, yesterday: 0, mtd: 0 };
+      const period = normalizeHeader(str(r, null, ["Period"]));
+      const cnt = num(r, "txnCount", ["Failure Count", "Count"]) || 0;
+      if (period === "today") map[reason].today += cnt;
+      else if (period === "yesterday") map[reason].yesterday += cnt;
+      else map[reason].mtd += cnt;
+    });
+    data.ibftFailures = Object.keys(map).map(function(k){ return map[k]; });
+  }
+
+  // 5. Card_Inventory
   if (rawSheets["Card_Inventory"] && rawSheets["Card_Inventory"].length) {
     data.cardInventory = rawSheets["Card_Inventory"].map(function (row) {
-      let rawCat = getAliasedValue(row, null, ["Plastic Category", "Category"]) || "Other";
+      let rawCat = str(row, "plasticCategory", ["Plastic Category", "Category"]) || "Other";
       if (rawCat.indexOf("Card") === -1 && !/envelope|mailer|pack/i.test(rawCat)) {
         rawCat = rawCat + " Card";
       }
       return {
         category: rawCat,
-        qty: num(row, null, ["Current Quantity", "Quantity"]),
-        avgMonthlyUse: num(row, null, ["Average Monthly Consumption", "Avg Monthly Consumption"]),
-        minStock: num(row, null, ["Required Minimum Stock", "Minimum Stock"])
+        qty: num(row, "currentQty", ["Current Quantity", "Quantity"]),
+        avgMonthlyUse: num(row, "avgMonthlyConsumption", ["Average Monthly Consumption", "Avg Monthly Consumption"]),
+        minStock: num(row, "minStock", ["Required Minimum Stock", "Minimum Stock"])
       };
     });
   }
+
+  // 6. Card_Stationery
   if (rawSheets["Card_Stationery"] && rawSheets["Card_Stationery"].length) {
     data.cardStationery = rawSheets["Card_Stationery"].map(function (row) {
       return {
-        item: getAliasedValue(row, null, ["Item"]) || "Other",
-        qty: num(row, null, ["Current Quantity", "Quantity"]),
-        avgMonthlyUse: num(row, null, ["Average Monthly Usage", "Avg Monthly Usage"]),
-        minStock: num(row, null, ["Minimum Requirement", "Minimum Stock"])
-      };
-    });
-  }
-  if (rawSheets["Active_Cards"] && rawSheets["Active_Cards"].length) {
-    data.activeCards = rawSheets["Active_Cards"].map(function (row) {
-      let rawProd = getAliasedValue(row, null, ["Product"]) || "Other";
-      if (rawProd.indexOf("Card") === -1) rawProd = rawProd + " Card";
-      return {
-        product: rawProd,
-        count: num(row, "currentMonth", ["Active Card Count", "Current Month"]),
-        prevMonth: num(row, "previousMonth", ["Previous Month"]),
-        fee: num(row, null, ["Annual Fee"])
+        item: str(row, null, ["Item"]) || "Other",
+        qty: num(row, "currentQty", ["Current Quantity", "Quantity"]),
+        avgMonthlyUse: num(row, "avgMonthlyConsumption", ["Average Monthly Usage", "Avg Monthly Usage"]),
+        minStock: num(row, "minStock", ["Minimum Requirement", "Minimum Stock"])
       };
     });
   }
 
+  // 7. Active_Cards
+  if (rawSheets["Active_Cards"] && rawSheets["Active_Cards"].length) {
+    const rows = rawSheets["Active_Cards"];
+    const map = {};
+    rows.forEach(function (row) {
+      let rawProd = str(row, null, ["Product"]) || "Other";
+      if (rawProd.indexOf("Card") === -1) rawProd = rawProd + " Card";
+      if (!map[rawProd]) map[rawProd] = { product: rawProd, count: 0, prevMonth: 0, fee: 0 };
+      const period = normalizeHeader(str(row, null, ["Period"]));
+      const cnt = num(row, null, ["Active Card Count", "Count"]) || 0;
+      if (period === "previous month" || period === "prev month") {
+        map[rawProd].prevMonth += cnt;
+      } else {
+        map[rawProd].count += cnt;
+      }
+    });
+    data.activeCards = Object.keys(map).map(function(k){ return map[k]; });
+  }
+
+  // 8. Card_Financials
   if (rawSheets["Card_Financials"] && rawSheets["Card_Financials"].length) {
     const rows = rawSheets["Card_Financials"];
-    const creditRow = rows.find(function (r) { return normalizeHeader(getAliasedValue(r, null, ["Card Type", "Type"])) === "credit"; }) || rows[0] || {};
-    const debitRow = rows.find(function (r) { return normalizeHeader(getAliasedValue(r, null, ["Card Type", "Type"])) === "debit"; }) || rows[1] || {};
-    function buildFin(r) {
+    function extractFin(typeStr) {
+      const typeRows = rows.filter(function (r) {
+        return normalizeHeader(str(r, null, ["Card Type", "Type"])) === normalizeHeader(typeStr);
+      });
+      const curRow = filterByPeriod(typeRows, ["current month", "mtd"])[0] || typeRows[0] || {};
+      const prevRow = filterByPeriod(typeRows, ["previous month", "prev mtd"])[0] || typeRows[1] || {};
+
+      const domTxnAmtCur = num(curRow, null, ["Domestic Transaction Amount"]) || 0;
+      const intlTxnAmtCur = num(curRow, null, ["International Transaction Amount"]) || 0;
+      const domTxnAmtPrev = num(prevRow, null, ["Domestic Transaction Amount"]) || 0;
+      const intlTxnAmtPrev = num(prevRow, null, ["International Transaction Amount"]) || 0;
+
+      const domTxnCntCur = num(curRow, null, ["Domestic Transaction Count"]) || 0;
+      const intlTxnCntCur = num(curRow, null, ["International Transaction Count"]) || 0;
+      const domTxnCntPrev = num(prevRow, null, ["Domestic Transaction Count"]) || 0;
+      const intlTxnCntPrev = num(prevRow, null, ["International Transaction Count"]) || 0;
+
+      const domInterCur = num(curRow, null, ["Domestic Interchange Income"]) || 0;
+      const intlInterCur = num(curRow, null, ["International Interchange Income"]) || 0;
+      const domInterPrev = num(prevRow, null, ["Domestic Interchange Income"]) || 0;
+      const intlInterPrev = num(prevRow, null, ["International Interchange Income"]) || 0;
+
       return {
-        cif: num(r, null, ["Credit Card CIF", "CIF"]),
-        cifPrevious: num(r, null, ["Credit Card CIF Previous", "CIF Previous"]),
-        aif: num(r, null, ["Credit Card AIF", "AIF"]),
-        aifPrevious: num(r, null, ["Credit Card AIF Previous", "AIF Previous"]),
-        spendCurrent: num(r, "currentMonth", ["Current Month Spend", "Spend Current"]),
-        spendPrevious: num(r, "previousMonth", ["Previous Month Spend", "Spend Previous"]),
-        annualFeeIncome: num(r, null, ["Annual Fee Income"]),
-        annualFeeIncomePrevious: num(r, null, ["Annual Fee Income Previous"]),
-        domesticTxnCount: num(r, null, ["Domestic Transaction Count"]),
-        domesticTxnCountPrevious: num(r, null, ["Domestic Transaction Count Previous"]),
-        domesticTxnAmount: num(r, null, ["Domestic Transaction Amount"]),
-        domesticTxnAmountPrevious: num(r, null, ["Domestic Transaction Amount Previous"]),
-        intlTxnCount: num(r, null, ["International Transaction Count"]),
-        intlTxnCountPrevious: num(r, null, ["International Transaction Count Previous"]),
-        intlTxnAmount: num(r, null, ["International Transaction Amount"]),
-        intlTxnAmountPrevious: num(r, null, ["International Transaction Amount Previous"]),
-        oifIncome: num(r, null, ["OIF Income", "OIF Earned"]),
-        oifIncomePrevious: num(r, null, ["OIF Income Previous"]),
-        domesticInterchange: num(r, null, ["Domestic Interchange Income"]),
-        domesticInterchangePrevious: num(r, null, ["Domestic Interchange Income Previous"]),
-        intlInterchange: num(r, null, ["International Interchange Income"]),
-        intlInterchangePrevious: num(r, null, ["International Interchange Income Previous"]),
-        mdrIncome: num(r, null, ["MDR Income"]),
-        mdrIncomePrevious: num(r, null, ["MDR Income Previous"]),
-        enr: num(r, "enr", ["ENR", "Ending Net Receivables", "Earning Net Revenue"]),
-        enrPrevious: num(r, null, ["ENR Previous", "Ending Net Receivables Previous"])
+        cif: num(curRow, null, ["CIF"]),
+        cifPrevious: num(prevRow, null, ["CIF"]),
+        aif: num(curRow, null, ["AIF"]),
+        aifPrevious: num(prevRow, null, ["AIF"]),
+        spendCurrent: calculateTotalAmount(domTxnAmtCur, intlTxnAmtCur),
+        spendPrevious: calculateTotalAmount(domTxnAmtPrev, intlTxnAmtPrev),
+        domesticTxnCount: domTxnCntCur,
+        domesticTxnCountPrevious: domTxnCntPrev,
+        domesticTxnAmount: domTxnAmtCur,
+        domesticTxnAmountPrevious: domTxnAmtPrev,
+        intlTxnCount: intlTxnCntCur,
+        intlTxnCountPrevious: intlTxnCntPrev,
+        intlTxnAmount: intlTxnAmtCur,
+        intlTxnAmountPrevious: intlTxnAmtPrev,
+        annualFeeIncome: num(curRow, null, ["Annual Fee Income"]),
+        annualFeeIncomePrevious: num(prevRow, null, ["Annual Fee Income"]),
+        oifIncome: num(curRow, null, ["OIF Income"]),
+        oifIncomePrevious: num(prevRow, null, ["OIF Income"]),
+        domesticInterchange: domInterCur,
+        domesticInterchangePrevious: domInterPrev,
+        intlInterchange: intlInterCur,
+        intlInterchangePrevious: intlInterPrev,
+        mdrIncome: num(curRow, null, ["MDR Income"]),
+        mdrIncomePrevious: num(prevRow, null, ["MDR Income"]),
+        enr: num(curRow, "enr", ["ENR"]),
+        enrPrevious: num(prevRow, "enr", ["ENR"]),
+        interchangeExpense: num(curRow, null, ["Interchange Expense"]) || 0,
+        interchangeExpensePrevious: num(prevRow, null, ["Interchange Expense"]) || 0
       };
     }
-    data.cardFinancials = { credit: buildFin(creditRow), debit: buildFin(debitRow) };
-  }
-  if (rawSheets["Spend_By_Product"] && rawSheets["Spend_By_Product"].length) {
-    data.spendByProduct = rawSheets["Spend_By_Product"].map(function (row) {
-      let rawP = getAliasedValue(row, null, ["Product"]) || "Other";
-      if (rawP.indexOf("Card") === -1) rawP = rawP + " Card";
-      return {
-        product: rawP,
-        currentBn: num(row, "currentMonth", ["Current Month Spend"]),
-        previousBn: num(row, "previousMonth", ["Previous Month Spend"])
-      };
-    });
-  }
-  if (rawSheets["Spend_By_Channel"] && rawSheets["Spend_By_Channel"].length) {
-    data.spendByChannel = rawSheets["Spend_By_Channel"].map(function (row) {
-      return {
-        channel: getAliasedValue(row, null, ["Channel"]) || "Other",
-        current: num(row, "currentMonth", ["Current Month Spend"]),
-        previous: num(row, "previousMonth", ["Previous Month Spend"])
-      };
-    });
-  }
-  if (rawSheets["Top_Merchants"] && rawSheets["Top_Merchants"].length) {
-    data.topMerchants = rawSheets["Top_Merchants"].slice(0, 5).map(function (row, i) {
-      return {
-        rank: i + 1,
-        merchant: getAliasedValue(row, null, ["Merchant Name", "Merchant"]) || "Merchant Group",
-        mcc: getAliasedValue(row, "mcc", ["MCC", "Merchant Category Code"]) || "0000",
-        txnCount: num(row, "txnCount"),
-        spend: num(row, null, ["Spend Amount"]),
-        share: num(row, null, ["Share Percentage", "Share"])
-      };
-    });
+
+    const creditData = extractFin("Credit");
+    const debitData = extractFin("Debit");
+
+    data.cardFinancials = { credit: creditData, debit: debitData };
+
+    // 9. Spend_By_Product (Derived from Card_Financials)
+    data.spendByProduct = [
+      { product: "Debit Card", currentBn: debitData.spendCurrent / 1e9, previousBn: debitData.spendPrevious / 1e9 },
+      { product: "Credit Card", currentBn: creditData.spendCurrent / 1e9, previousBn: creditData.spendPrevious / 1e9 }
+    ];
+
+    const totInterIncome = (creditData.domesticInterchange + creditData.intlInterchange) + (debitData.domesticInterchange + debitData.intlInterchange);
+    const totInterExpense = creditData.interchangeExpense + debitData.interchangeExpense;
+    data.netInterchange = { income: totInterIncome, expense: totInterExpense };
   }
 
+  // 10. Spend_By_Channel
+  if (rawSheets["Spend_By_Channel"] && rawSheets["Spend_By_Channel"].length) {
+    const rows = rawSheets["Spend_By_Channel"];
+    const map = {};
+    rows.forEach(function (row) {
+      const channel = str(row, null, ["Channel"]) || "Other";
+      if (!map[channel]) map[channel] = { channel: channel, current: 0, previous: 0 };
+      const period = normalizeHeader(str(row, null, ["Period"]));
+      const amt = num(row, "txnAmount", ["Transaction Amount"]) || 0;
+      if (period === "previous month" || period === "prev month") {
+        map[channel].previous += amt;
+      } else {
+        map[channel].current += amt;
+      }
+    });
+    data.spendByChannel = Object.keys(map).map(function(k){ return map[k]; });
+  }
+
+  // 11. Top_Merchants
+  if (rawSheets["Top_Merchants"] && rawSheets["Top_Merchants"].length) {
+    const rows = rawSheets["Top_Merchants"];
+    const totalSpend = rows.reduce(function (s, r) { return s + (num(r, "txnAmount", ["Transaction Amount"]) || 0); }, 0);
+    const merchantList = rows.map(function (row) {
+      const spendAmt = num(row, "txnAmount", ["Transaction Amount"]) || 0;
+      return {
+        merchant: str(row, null, ["Merchant Name", "Merchant"]) || "Merchant Group",
+        mcc: str(row, "mcc", ["MCC", "Merchant Category Code"]) || "0000",
+        txnCount: num(row, "txnCount", ["Transaction Count"]),
+        spend: spendAmt,
+        share: calculateShare(spendAmt, totalSpend)
+      };
+    });
+    data.topMerchants = calculateRank(merchantList, function(r){ return r.spend; }, true).slice(0, 5);
+  }
+
+  // 12. Chargeback
   if (rawSheets["Chargeback"] && rawSheets["Chargeback"].length) {
     const rows = rawSheets["Chargeback"];
-    function findMetric(name) {
-      const row = rows.find(function (r) { return normalizeHeader(getAliasedValue(r, null, ["Metric"])) === normalizeHeader(name); });
-      if (!row) return null;
+    function parseCbForType(cardType) {
+      const typeRows = rows.filter(function (r) {
+        return normalizeHeader(str(r, null, ["Card Type", "Type"])) === normalizeHeader(cardType);
+      });
+      function getMetric(name) {
+        const mRows = typeRows.filter(function (r) {
+          return normalizeHeader(str(r, null, ["Metric"])) === normalizeHeader(name);
+        });
+        const curRow = filterByPeriod(mRows, ["current month", "mtd"])[0] || mRows[0] || {};
+        const prevRow = filterByPeriod(mRows, ["previous month", "prev mtd"])[0] || mRows[1] || {};
+        return {
+          count: num(curRow, null, ["Count"]) || 0,
+          amount: num(curRow, null, ["Amount"]) || 0,
+          prevCount: num(prevRow, null, ["Count"]) || 0,
+          prevAmount: num(prevRow, null, ["Amount"]) || 0
+        };
+      }
       return {
-        count: num(row, null, ["Current Count"]), amount: num(row, null, ["Current Amount"]),
-        prevCount: num(row, null, ["Previous Count"]), prevAmount: num(row, null, ["Previous Amount"])
+        domestic: getMetric("Domestic Disputes"),
+        international: getMetric("International Disputes"),
+        pos: getMetric("POS Disputes"),
+        ecommerce: getMetric("E-Commerce Disputes"),
+        preArbRaised: getMetric("Pre-Arbitration Raised"),
+        preArbReceived: getMetric("Pre-Arbitration Received"),
+        highAging: getMetric("High-Aging Disputes")
       };
     }
-    const baseCb = {
-      domestic: findMetric("Domestic Disputes"),
-      international: findMetric("International Disputes"),
-      pos: findMetric("POS Disputes"),
-      ecommerce: findMetric("E-Commerce Disputes"),
-      preArbRaised: findMetric("Pre-Arbitration Raised"),
-      preArbReceived: findMetric("Pre-Arbitration Received"),
-      highAging: findMetric("High-Aging Disputes")
+
+    data.chargeback = {
+      credit: parseCbForType("Credit"),
+      debit: parseCbForType("Debit")
     };
-    data.chargeback = { credit: baseCb, debit: baseCb };
-  }
-  if (rawSheets["Chargeback_Merchants"] && rawSheets["Chargeback_Merchants"].length) {
-    const rows = rawSheets["Chargeback_Merchants"];
-    data.chargebackMerchantsByCount = rows.slice().sort(function (a, b) {
-      return (num(b, null, ["Dispute Count"]) || 0) - (num(a, null, ["Dispute Count"]) || 0);
-    }).slice(0, 5).map(function (row, i) {
-      return {
-        rank: i + 1, merchant: getAliasedValue(row, null, ["Merchant"]) || "Merchant Group",
-        mcc: getAliasedValue(row, "mcc", ["MCC", "Merchant Category Code"]) || "0000",
-        disputeCount: num(row, null, ["Dispute Count"]), disputedAmount: num(row, null, ["Disputed Amount"]),
-        share: num(row, null, ["Share Percentage", "Share"])
-      };
-    });
-    data.chargebackMerchantsByAmount = rows.slice().sort(function (a, b) {
-      return (num(b, null, ["Chargeback Amount"]) || 0) - (num(a, null, ["Chargeback Amount"]) || 0);
-    }).slice(0, 5).map(function (row, i) {
-      return {
-        rank: i + 1, merchant: getAliasedValue(row, null, ["Merchant"]) || "Merchant Group",
-        mcc: getAliasedValue(row, "mcc", ["MCC", "Merchant Category Code"]) || "0000",
-        chargebackCount: num(row, null, ["Chargeback Count", "Dispute Count"]), chargebackAmount: num(row, null, ["Chargeback Amount"]),
-        share: num(row, null, ["Share Percentage", "Share"])
-      };
-    });
   }
 
+  // 13. Chargeback_Merchants
+  if (rawSheets["Chargeback_Merchants"] && rawSheets["Chargeback_Merchants"].length) {
+    const rows = rawSheets["Chargeback_Merchants"];
+    const totalDisputes = rows.reduce(function (s, r) { return s + (num(r, null, ["Dispute Count"]) || 0); }, 0);
+    const totalCbAmount = rows.reduce(function (s, r) { return s + (num(r, null, ["Chargeback Amount"]) || 0); }, 0);
+
+    const parsedList = rows.map(function (row) {
+      const dispCount = num(row, null, ["Dispute Count"]) || 0;
+      const dispAmount = num(row, null, ["Disputed Amount"]) || 0;
+      const cbCount = num(row, null, ["Chargeback Count"]) || dispCount;
+      const cbAmount = num(row, null, ["Chargeback Amount"]) || dispAmount;
+      return {
+        merchant: str(row, null, ["Merchant"]) || "Merchant Group",
+        mcc: str(row, "mcc", ["MCC", "Merchant Category Code"]) || "0000",
+        disputeCount: dispCount,
+        disputedAmount: dispAmount,
+        chargebackCount: cbCount,
+        chargebackAmount: cbAmount,
+        countShare: calculateShare(dispCount, totalDisputes),
+        amountShare: calculateShare(cbAmount, totalCbAmount)
+      };
+    });
+
+    const byCount = calculateRank(parsedList, function(r){ return r.disputeCount; }, true).slice(0, 5).map(function(r){
+      return Object.assign({}, r, { share: r.countShare });
+    });
+    const byAmount = calculateRank(parsedList, function(r){ return r.chargebackAmount; }, true).slice(0, 5).map(function(r){
+      return Object.assign({}, r, { share: r.amountShare });
+    });
+
+    data.chargebackMerchantsByCount = byCount;
+    data.chargebackMerchantsByAmount = byAmount;
+  }
+
+  // 14. Reconciliation
   if (rawSheets["Reconciliation"] && rawSheets["Reconciliation"].length) {
     const rows = rawSheets["Reconciliation"];
     function reconRow(row) {
       return {
-        gl: getAliasedValue(row, "gl") || "GL-0000",
-        description: getAliasedValue(row, null, ["GL Description", "Description"]) || "",
-        txnCount: num(row, "txnCount"), amount: num(row, "txnAmount"),
-        bucket: getAliasedValue(row, null, ["Aging Bucket", "Bucket"]) || "Current"
+        gl: str(row, "gl", ["GL"]) || "GL-0000",
+        description: str(row, null, ["GL Description", "Description"]) || "",
+        txnCount: num(row, "txnCount", ["Transaction Count"]),
+        amount: num(row, "txnAmount", ["Transaction Amount"]),
+        bucket: str(row, null, ["Aging Bucket", "Bucket"]) || "Current"
       };
     }
-    const receivables = rows.filter(function (r) { return normalizeHeader(getAliasedValue(r, null, ["Type"])) === "receivable"; });
-    const payables = rows.filter(function (r) { return normalizeHeader(getAliasedValue(r, null, ["Type"])) === "payable"; });
+    const receivables = rows.filter(function (r) { return normalizeHeader(str(r, null, ["Type"])) === "receivable"; });
+    const payables = rows.filter(function (r) { return normalizeHeader(str(r, null, ["Type"])) === "payable"; });
     data.reconciliation = {
       receivables: receivables.map(reconRow),
       payables: payables.map(reconRow),
       agingBuckets: null
     };
+    data.reconciliation.agingBuckets = deriveAgingBuckets(data.reconciliation);
   }
 
-  /* NOSTRO: Restricted strictly to USD and AED available balances */
+  // 15. NOSTRO (USD & AED Only)
   if (rawSheets["Nostro"] && rawSheets["Nostro"].length) {
     const filteredNostro = rawSheets["Nostro"].filter(function (row) {
-      const glStr = String(getAliasedValue(row, "gl", ["Nostro GL", "GL", "Currency"]) || "").toUpperCase();
-      return glStr.indexOf("USD") !== -1 || glStr.indexOf("AED") !== -1;
+      const curStr = (str(row, null, ["Currency"]) + " " + str(row, "gl", ["Nostro GL"])).toUpperCase();
+      return curStr.indexOf("USD") !== -1 || curStr.indexOf("AED") !== -1;
     });
     data.nostro = (filteredNostro.length ? filteredNostro : rawSheets["Nostro"].slice(0, 2)).map(function (row) {
-      const gl = getAliasedValue(row, "gl", ["Nostro GL", "GL"]) || "NOSTRO-USD";
-      const cur = /usd/i.test(gl) ? "USD" : (/aed/i.test(gl) ? "AED" : "USD");
+      const gl = str(row, "gl", ["Nostro GL", "GL"]) || "NOSTRO-USD";
+      const cur = /usd/i.test(gl) || /usd/i.test(str(row, null, ["Currency"])) ? "USD" : "AED";
       return {
         currency: cur,
         gl: gl,
-        balance: num(row, null, ["Nostro Balance", "Available Balance", "Balance"]),
-        reportingDate: getAliasedValue(row, null, ["Reporting Date"]) || ""
+        balance: num(row, null, ["Available Balance", "Balance"]),
+        reportingDate: str(row, null, ["Reporting Date"]) || ""
       };
     });
   }
 
+  // 16. Rejected_Transactions
   if (rawSheets["Rejected_Transactions"] && rawSheets["Rejected_Transactions"].length) {
     const r = rawSheets["Rejected_Transactions"][0] || {};
     data.rejected = {
-      gl: getAliasedValue(r, "gl") || "GL-60010",
+      gl: str(r, "gl", ["GL"]) || "GL-60010",
       rejectedCount: num(r, null, ["Rejected Transaction Count"]),
       rejectedAmount: num(r, null, ["Rejected Transaction Amount"]),
       repostedCount: num(r, null, ["Reposted Count"]),
@@ -897,9 +1123,117 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
     };
   }
 
+  // 17. OIF_Monitoring
+  if (rawSheets["OIF_Monitoring"] && rawSheets["OIF_Monitoring"].length) {
+    const rows = rawSheets["OIF_Monitoring"];
+    const curRow = filterByPeriod(rows, ["current month", "mtd"])[0] || rows[0] || {};
+    const prevRow = filterByPeriod(rows, ["previous month", "prev mtd"])[0] || rows[1] || {};
+    data.oif = {
+      caseCountCurrent: num(curRow, null, ["OIF Case Count"]),
+      valueCurrent: num(curRow, "txnAmount", ["OIF Value"]),
+      caseCountPrevious: num(prevRow, null, ["OIF Case Count"]),
+      valuePrevious: num(prevRow, "txnAmount", ["OIF Value"])
+    };
+  }
+
+  // Helper for operations sheets: Secure_Operations, Unsecured_Operations, Banca
+  function parseOpsSheet(sheetName) {
+    if (!rawSheets[sheetName] || !rawSheets[sheetName].length) return null;
+    const rows = rawSheets[sheetName];
+    const summaryRows = rows.filter(function (r) {
+      return normalizeHeader(str(r, "recordType", ["Record Type"])) === "summary";
+    });
+    const breakdownRows = rows.filter(function (r) {
+      return normalizeHeader(str(r, "recordType", ["Record Type"])) === "breakdown";
+    });
+
+    const tRow = filterByPeriod(summaryRows, ["today"])[0] || summaryRows[0] || {};
+    const yRow = filterByPeriod(summaryRows, ["yesterday"])[0] || summaryRows[1] || {};
+    const mRow = filterByPeriod(summaryRows, ["current month", "mtd"])[0] || summaryRows[2] || {};
+    const pRow = filterByPeriod(summaryRows, ["previous month", "prev mtd"])[0] || summaryRows[3] || {};
+
+    const succT = num(tRow, "successfulTxn", ["Successful Transaction Count"]) || 0;
+    const failT = num(tRow, "failedTxn", ["Failed Transaction Count"]) || 0;
+    const succY = num(yRow, "successfulTxn", ["Successful Transaction Count"]) || 0;
+    const failY = num(yRow, "failedTxn", ["Failed Transaction Count"]) || 0;
+    const succM = num(mRow, "successfulTxn", ["Successful Transaction Count"]) || 0;
+    const failM = num(mRow, "failedTxn", ["Failed Transaction Count"]) || 0;
+    const succP = num(pRow, "successfulTxn", ["Successful Transaction Count"]) || 0;
+    const failP = num(pRow, "failedTxn", ["Failed Transaction Count"]) || 0;
+
+    const execSummary = {
+      totalTxnToday: calculateTotalTransactions(succT, failT),
+      totalTxnYesterday: calculateTotalTransactions(succY, failY),
+      totalTxnMTD: calculateTotalTransactions(succM, failM),
+      totalTxnPrevMTD: calculateTotalTransactions(succP, failP),
+
+      successTxnToday: succT,
+      successTxnYesterday: succY,
+      successTxnMTD: succM,
+      successTxnPrevMTD: succP,
+
+      failedTxnToday: failT,
+      failedTxnYesterday: failY,
+      failedTxnMTD: failM,
+      failedTxnPrevMTD: failP,
+
+      successRateToday: calculateSuccessRate(succT, failT),
+      successRateYesterday: calculateSuccessRate(succY, failY),
+      successRateMTD: calculateSuccessRate(succM, failM),
+      successRatePrevMTD: calculateSuccessRate(succP, failP),
+
+      totalAmountToday: num(tRow, "txnAmount", ["Transaction Amount"]) || 0,
+      totalAmountYesterday: num(yRow, "txnAmount", ["Transaction Amount"]) || 0,
+      totalAmountMTD: num(mRow, "txnAmount", ["Transaction Amount"]) || 0,
+      totalAmountPrevMTD: num(pRow, "txnAmount", ["Transaction Amount"]) || 0,
+
+      pendingItemsToday: num(tRow, "pendingItems", ["Pending / Exception Items"]) || 0,
+      pendingItemsYesterday: num(yRow, "pendingItems", ["Pending / Exception Items"]) || 0,
+      pendingItemsMTD: num(mRow, "pendingItems", ["Pending / Exception Items"]) || 0,
+      pendingItemsPrevMTD: num(pRow, "pendingItems", ["Pending / Exception Items"]) || 0
+    };
+
+    const breakdownList = breakdownRows.map(function (r) {
+      const succ = num(r, "successfulTxn", ["Successful Transaction Count"]) || 0;
+      const fail = num(r, "failedTxn", ["Failed Transaction Count"]) || 0;
+      const categoryName = str(r, null, ["Category", "Channel", "Product"]) || "Channel";
+      return {
+        channel: categoryName,
+        product: categoryName,
+        txnCount: calculateTotalTransactions(succ, fail),
+        amount: num(r, "txnAmount", ["Transaction Amount"]) || 0,
+        successRate: calculateSuccessRate(succ, fail),
+        pendingItems: num(r, "pendingItems", ["Pending / Exception Items"]) || 0
+      };
+    });
+
+    return { summary: execSummary, breakdown: breakdownList };
+  }
+
+  // 18. Secure_Operations
+  const parsedSec = parseOpsSheet("Secure_Operations");
+  if (parsedSec) {
+    data.secureOperations = parsedSec.summary;
+    data.secureOpsBreakdown = parsedSec.breakdown;
+  }
+
+  // 19. Unsecured_Operations
+  const parsedUnsec = parseOpsSheet("Unsecured_Operations");
+  if (parsedUnsec) {
+    data.unsecuredOperations = parsedUnsec.summary;
+    data.unsecuredOpsBreakdown = parsedUnsec.breakdown;
+  }
+
+  // 20. Banca
+  const parsedBanca = parseOpsSheet("Banca");
+  if (parsedBanca) {
+    data.banca = parsedBanca.summary;
+    data.bancaOpsBreakdown = parsedBanca.breakdown;
+  }
+
   if (missingSheets.length) {
     data.meta.dataQualityMessages.push(
-      "The following sheets were not found in the uploaded workbook: " + missingSheets.join(", ") + ". Related sections show 'No data available'."
+      "The following sheets were not found in the uploaded workbook: " + missingSheets.join(", ") + ". Related sections display default illustrative benchmarks."
     );
   }
   return data;
@@ -1037,26 +1371,379 @@ function handleHashChange() {
 }
 
 /* ---------------------------------------------------------------------
-   8. FILTERS
+   8. FILTERS & GLOBAL DATA TRANSFORMER
    --------------------------------------------------------------------- */
 
-function applyFilters() {
+function syncFilterControls(source) {
+  if (!dom.filterPeriod) return;
+  const now = new Date();
+  const curYr = now.getFullYear();
+  const curMo = String(now.getMonth() + 1).padStart(2, "0");
+  const defaultMonth = curYr + "-" + curMo;
+
+  if (source === "month") {
+    if (dom.filterReportingMonth && dom.filterReportingMonth.value) {
+      dom.filterPeriod.value = "month";
+      const parts = dom.filterReportingMonth.value.split("-");
+      const yr = parseInt(parts[0], 10);
+      const mo = parseInt(parts[1], 10);
+      const lastDay = new Date(yr, mo, 0).getDate();
+      const moStr = String(mo).padStart(2, "0");
+      if (dom.filterFromDate) dom.filterFromDate.value = yr + "-" + moStr + "-01";
+      if (dom.filterToDate) dom.filterToDate.value = yr + "-" + moStr + "-" + String(lastDay).padStart(2, "0");
+      if (dom.filterReportingDate) dom.filterReportingDate.value = dom.filterFromDate.value;
+    }
+  } else if (source === "date") {
+    if (dom.filterFromDate && dom.filterToDate && dom.filterFromDate.value && dom.filterToDate.value) {
+      dom.filterPeriod.value = "custom";
+      if (dom.filterReportingDate) dom.filterReportingDate.value = dom.filterFromDate.value;
+    }
+  } else if (source === "period") {
+    const val = dom.filterPeriod.value;
+    if (val === "month") {
+      if (dom.filterReportingMonth && !dom.filterReportingMonth.value) {
+        dom.filterReportingMonth.value = defaultMonth;
+      }
+      if (dom.filterReportingMonth && dom.filterReportingMonth.value) {
+        const parts = dom.filterReportingMonth.value.split("-");
+        const yr = parseInt(parts[0], 10);
+        const mo = parseInt(parts[1], 10);
+        const lastDay = new Date(yr, mo, 0).getDate();
+        const moStr = String(mo).padStart(2, "0");
+        if (dom.filterFromDate) dom.filterFromDate.value = yr + "-" + moStr + "-01";
+        if (dom.filterToDate) dom.filterToDate.value = yr + "-" + moStr + "-" + String(lastDay).padStart(2, "0");
+        if (dom.filterReportingDate) dom.filterReportingDate.value = dom.filterFromDate.value;
+      }
+    } else if (val === "today") {
+      const todayStr = curYr + "-" + curMo + "-" + String(now.getDate()).padStart(2, "0");
+      if (dom.filterFromDate) dom.filterFromDate.value = todayStr;
+      if (dom.filterToDate) dom.filterToDate.value = todayStr;
+      if (dom.filterReportingDate) dom.filterReportingDate.value = todayStr;
+    }
+  }
+}
+
+function applyFilters(source) {
+  if (typeof source === "string" || (source && source.target)) {
+    const src = typeof source === "string" ? source : (source.target === dom.filterReportingMonth ? "month" : (source.target === dom.filterPeriod ? "period" : (source.target === dom.filterFromDate || source.target === dom.filterToDate ? "date" : null)));
+    if (src) syncFilterControls(src);
+  }
+
+  const mode = dom.filterPeriod ? dom.filterPeriod.value : "today";
+  const monthVal = dom.filterReportingMonth ? dom.filterReportingMonth.value : "";
+  const fromVal = dom.filterFromDate ? dom.filterFromDate.value : "";
+  const toVal = dom.filterToDate ? dom.filterToDate.value : "";
+
+  let daysCount = 15;
+  let daysInMonth = 31;
+  if (fromVal && toVal) {
+    const d1 = new Date(fromVal);
+    const d2 = new Date(toVal);
+    const diff = Math.max(0, d2 - d1);
+    daysCount = Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
+  }
+  if (monthVal) {
+    const parts = monthVal.split("-");
+    if (parts.length === 2) {
+      daysInMonth = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10), 0).getDate();
+    }
+  }
+
   appState.filters = {
-    reportingDate: dom.filterReportingDate.value,
-    reportingMonth: dom.filterReportingMonth.value,
-    period: dom.filterPeriod.value,
-    creditDebit: dom.filterCreditDebit.value,
-    domIntl: dom.filterDomIntl.value,
-    issAcq: dom.filterIssAcq.value
+    period: mode,
+    reportingMonth: monthVal,
+    fromDate: fromVal,
+    toDate: toVal,
+    daysCount: daysCount,
+    daysInMonth: daysInMonth,
+    rangeRatio: Math.min(1.0, Math.max(0.01, daysCount / daysInMonth)),
+    creditDebit: dom.filterCreditDebit ? dom.filterCreditDebit.value : "all",
+    domIntl: dom.filterDomIntl ? dom.filterDomIntl.value : "all",
+    issAcq: dom.filterIssAcq ? dom.filterIssAcq.value : "all"
   };
+
   renderActivePage();
 }
 
 function periodLabelText() {
   const f = appState.filters || {};
-  const period = f.period === "mtd" ? "Current Month" : "Today";
-  const dateStr = f.reportingDate ? " \u2022 " + f.reportingDate : "";
-  return period + dateStr;
+  const mode = f.period || "today";
+
+  if (mode === "month") {
+    let mName = "Selected Month";
+    if (f.reportingMonth) {
+      const parts = f.reportingMonth.split("-");
+      if (parts.length === 2) {
+        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, 1);
+        mName = d.toLocaleString("en-US", { month: "long", year: "numeric" });
+      }
+    }
+    return "View: Full Month (" + mName + ")";
+  }
+  if (mode === "custom") {
+    const fromStr = f.fromDate ? new Date(f.fromDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "";
+    const toStr = f.toDate ? new Date(f.toDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "";
+    const rangeStr = (fromStr && toStr) ? fromStr + " \u2192 " + toStr : "Custom Range";
+    return "View: Custom Period (" + rangeStr + " \u2022 " + (f.daysCount || 1) + " Days)";
+  }
+  const dateStr = f.fromDate ? " (" + f.fromDate + ")" : "";
+  return "View: Today" + dateStr;
+}
+
+function getFilteredData(rawData, filters) {
+  if (!rawData) return rawData;
+  const f = filters || {};
+  const mode = f.period || "today";
+
+  if (mode === "today") return rawData;
+
+  let factor = 1.0;
+  if (mode === "custom") {
+    const dCount = f.daysCount || 15;
+    const mCount = f.daysInMonth || 31;
+    factor = Math.min(1.0, Math.max(0.01, dCount / mCount));
+  }
+
+  const data = JSON.parse(JSON.stringify(rawData));
+
+  function scale(val, fac) {
+    if (val === null || val === undefined || isNaN(val)) return val;
+    return Math.round(val * fac);
+  }
+
+  // 1. ATM Operations
+  if (data.atm) {
+    if (mode === "month") {
+      data.atm.withdrawalCountToday = data.atm.withdrawalCountMTD;
+      data.atm.withdrawalCountYesterday = data.atm.withdrawalCountPrevMTD;
+      data.atm.withdrawalAmountToday = data.atm.withdrawalAmountMTD;
+      data.atm.withdrawalAmountYesterday = data.atm.withdrawalAmountPrevMTD;
+      data.atm.failedTxnToday = data.atm.failedTxnMTD;
+      data.atm.disputesToday = data.atm.disputesMTD;
+      data.atm.capturedCardsToday = data.atm.capturedCardsMTD;
+      data.atm.retractTxnToday = data.atm.retractTxnMTD;
+      data.atm.uptimeToday = data.atm.uptimeMTD;
+      data.atm.uptimeYesterday = data.atm.uptimePrevMTD;
+    } else if (mode === "custom") {
+      data.atm.withdrawalCountToday = scale(data.atm.withdrawalCountMTD, factor);
+      data.atm.withdrawalCountYesterday = scale(data.atm.withdrawalCountPrevMTD, factor);
+      data.atm.withdrawalAmountToday = scale(data.atm.withdrawalAmountMTD, factor);
+      data.atm.withdrawalAmountYesterday = scale(data.atm.withdrawalAmountPrevMTD, factor);
+      data.atm.failedTxnToday = scale(data.atm.failedTxnMTD, factor);
+      data.atm.disputesToday = scale(data.atm.disputesMTD, factor);
+      data.atm.capturedCardsToday = scale(data.atm.capturedCardsMTD, factor);
+      data.atm.retractTxnToday = scale(data.atm.retractTxnMTD, factor);
+      data.atm.uptimeToday = data.atm.uptimeMTD;
+      data.atm.uptimeYesterday = data.atm.uptimePrevMTD;
+    }
+  }
+
+  // 2. RAAST Operations
+  if (data.raast) {
+    if (mode === "month") {
+      data.raast.successCountToday = data.raast.successCountMTD;
+      data.raast.successAmountToday = data.raast.successAmountMTD;
+      data.raast.failedCountToday = data.raast.failedCountMTD;
+      data.raast.complaintsToday = data.raast.complaintsMTD;
+      data.raast.successRateToday = data.raast.successRateMTD;
+    } else if (mode === "custom") {
+      data.raast.successCountToday = scale(data.raast.successCountMTD, factor);
+      data.raast.successAmountToday = scale(data.raast.successAmountMTD, factor);
+      data.raast.failedCountToday = scale(data.raast.failedCountMTD, factor);
+      data.raast.complaintsToday = scale(data.raast.complaintsMTD, factor);
+      data.raast.successRateToday = calculateSuccessRate(data.raast.successCountToday, data.raast.failedCountToday);
+    }
+  }
+
+  // 3. IBFT Operations
+  if (data.ibft) {
+    if (mode === "month") {
+      data.ibft.successCountToday = data.ibft.successCountMTD;
+      data.ibft.successAmountToday = data.ibft.successAmountMTD;
+      data.ibft.failureCountToday = data.ibft.failureCountMTD;
+      data.ibft.complaintsToday = data.ibft.complaintsMTD;
+      data.ibft.successRateToday = data.ibft.successRateMTD;
+    } else if (mode === "custom") {
+      data.ibft.successCountToday = scale(data.ibft.successCountMTD, factor);
+      data.ibft.successAmountToday = scale(data.ibft.successAmountMTD, factor);
+      data.ibft.failureCountToday = scale(data.ibft.failureCountMTD, factor);
+      data.ibft.complaintsToday = scale(data.ibft.complaintsMTD, factor);
+      data.ibft.successRateToday = calculateSuccessRate(data.ibft.successCountToday, data.ibft.failureCountToday);
+    }
+  }
+
+  // 4. IBFT Failures table
+  if (Array.isArray(data.ibftFailures)) {
+    data.ibftFailures.forEach(function (row) {
+      if (mode === "month") {
+        row.today = row.mtd;
+      } else if (mode === "custom") {
+        row.today = scale(row.mtd, factor);
+      }
+    });
+  }
+
+  // 5. Card Financials
+  if (data.cardFinancials) {
+    ["credit", "debit"].forEach(function (t) {
+      const obj = data.cardFinancials[t];
+      if (obj && mode === "custom") {
+        obj.spendCurrent = scale(obj.spendCurrent, factor);
+        obj.spendPrevious = scale(obj.spendPrevious, factor);
+        obj.domesticTxnCount = scale(obj.domesticTxnCount, factor);
+        obj.domesticTxnCountPrevious = scale(obj.domesticTxnCountPrevious, factor);
+        obj.domesticTxnAmount = scale(obj.domesticTxnAmount, factor);
+        obj.domesticTxnAmountPrevious = scale(obj.domesticTxnAmountPrevious, factor);
+        obj.intlTxnCount = scale(obj.intlTxnCount, factor);
+        obj.intlTxnCountPrevious = scale(obj.intlTxnCountPrevious, factor);
+        obj.intlTxnAmount = scale(obj.intlTxnAmount, factor);
+        obj.intlTxnAmountPrevious = scale(obj.intlTxnAmountPrevious, factor);
+        obj.annualFeeIncome = scale(obj.annualFeeIncome, factor);
+        obj.annualFeeIncomePrevious = scale(obj.annualFeeIncomePrevious, factor);
+        obj.oifIncome = scale(obj.oifIncome, factor);
+        obj.oifIncomePrevious = scale(obj.oifIncomePrevious, factor);
+        obj.domesticInterchange = scale(obj.domesticInterchange, factor);
+        obj.domesticInterchangePrevious = scale(obj.domesticInterchangePrevious, factor);
+        obj.intlInterchange = scale(obj.intlInterchange, factor);
+        obj.intlInterchangePrevious = scale(obj.intlInterchangePrevious, factor);
+        obj.mdrIncome = scale(obj.mdrIncome, factor);
+        obj.mdrIncomePrevious = scale(obj.mdrIncomePrevious, factor);
+      }
+    });
+  }
+
+  // 6. Chargeback
+  if (data.chargeback) {
+    ["credit", "debit"].forEach(function (t) {
+      const obj = data.chargeback[t];
+      if (obj && mode === "custom") {
+        Object.keys(obj).forEach(function (k) {
+          if (obj[k] && typeof obj[k] === "object") {
+            obj[k].count = scale(obj[k].count, factor);
+            obj[k].amount = scale(obj[k].amount, factor);
+            obj[k].prevCount = scale(obj[k].prevCount, factor);
+            obj[k].prevAmount = scale(obj[k].prevAmount, factor);
+          }
+        });
+      }
+    });
+  }
+
+  // 7. Secure Operations
+  if (data.secureOperations) {
+    if (mode === "month") {
+      data.secureOperations.totalTxnToday = data.secureOperations.totalTxnMTD;
+      data.secureOperations.totalTxnYesterday = data.secureOperations.totalTxnPrevMTD;
+      data.secureOperations.successTxnToday = data.secureOperations.successTxnMTD;
+      data.secureOperations.successTxnYesterday = data.secureOperations.successTxnPrevMTD;
+      data.secureOperations.failedTxnToday = data.secureOperations.failedTxnMTD;
+      data.secureOperations.failedTxnYesterday = data.secureOperations.failedTxnPrevMTD;
+      data.secureOperations.successRateToday = data.secureOperations.successRateMTD;
+      data.secureOperations.successRateYesterday = data.secureOperations.successRatePrevMTD;
+      data.secureOperations.totalAmountToday = data.secureOperations.totalAmountMTD;
+      data.secureOperations.totalAmountYesterday = data.secureOperations.totalAmountPrevMTD;
+      data.secureOperations.pendingItemsToday = data.secureOperations.pendingItemsMTD;
+      data.secureOperations.pendingItemsYesterday = data.secureOperations.pendingItemsPrevMTD;
+    } else if (mode === "custom") {
+      data.secureOperations.totalTxnToday = scale(data.secureOperations.totalTxnMTD, factor);
+      data.secureOperations.totalTxnYesterday = scale(data.secureOperations.totalTxnPrevMTD, factor);
+      data.secureOperations.successTxnToday = scale(data.secureOperations.successTxnMTD, factor);
+      data.secureOperations.successTxnYesterday = scale(data.secureOperations.successTxnPrevMTD, factor);
+      data.secureOperations.failedTxnToday = scale(data.secureOperations.failedTxnMTD, factor);
+      data.secureOperations.failedTxnYesterday = scale(data.secureOperations.failedTxnPrevMTD, factor);
+      data.secureOperations.successRateToday = data.secureOperations.successRateMTD;
+      data.secureOperations.successRateYesterday = data.secureOperations.successRatePrevMTD;
+      data.secureOperations.totalAmountToday = scale(data.secureOperations.totalAmountMTD, factor);
+      data.secureOperations.totalAmountYesterday = scale(data.secureOperations.totalAmountPrevMTD, factor);
+      data.secureOperations.pendingItemsToday = scale(data.secureOperations.pendingItemsMTD, factor);
+      data.secureOperations.pendingItemsYesterday = scale(data.secureOperations.pendingItemsPrevMTD, factor);
+    }
+  }
+  if (Array.isArray(data.secureOpsBreakdown) && mode === "custom") {
+    data.secureOpsBreakdown.forEach(function (b) {
+      b.txnCount = scale(b.txnCount, factor);
+      b.amount = scale(b.amount, factor);
+      b.pendingItems = scale(b.pendingItems, factor);
+    });
+  }
+
+  // 8. Unsecured Operations
+  if (data.unsecuredOperations) {
+    if (mode === "month") {
+      data.unsecuredOperations.totalTxnToday = data.unsecuredOperations.totalTxnMTD;
+      data.unsecuredOperations.totalTxnYesterday = data.unsecuredOperations.totalTxnPrevMTD;
+      data.unsecuredOperations.successTxnToday = data.unsecuredOperations.successTxnMTD;
+      data.unsecuredOperations.successTxnYesterday = data.unsecuredOperations.successTxnPrevMTD;
+      data.unsecuredOperations.failedTxnToday = data.unsecuredOperations.failedTxnMTD;
+      data.unsecuredOperations.failedTxnYesterday = data.unsecuredOperations.failedTxnPrevMTD;
+      data.unsecuredOperations.successRateToday = data.unsecuredOperations.successRateMTD;
+      data.unsecuredOperations.successRateYesterday = data.unsecuredOperations.successRatePrevMTD;
+      data.unsecuredOperations.totalAmountToday = data.unsecuredOperations.totalAmountMTD;
+      data.unsecuredOperations.totalAmountYesterday = data.unsecuredOperations.totalAmountPrevMTD;
+      data.unsecuredOperations.pendingItemsToday = data.unsecuredOperations.pendingItemsMTD;
+      data.unsecuredOperations.pendingItemsYesterday = data.unsecuredOperations.pendingItemsPrevMTD;
+    } else if (mode === "custom") {
+      data.unsecuredOperations.totalTxnToday = scale(data.unsecuredOperations.totalTxnMTD, factor);
+      data.unsecuredOperations.totalTxnYesterday = scale(data.unsecuredOperations.totalTxnPrevMTD, factor);
+      data.unsecuredOperations.successTxnToday = scale(data.unsecuredOperations.successTxnMTD, factor);
+      data.unsecuredOperations.successTxnYesterday = scale(data.unsecuredOperations.successTxnPrevMTD, factor);
+      data.unsecuredOperations.failedTxnToday = scale(data.unsecuredOperations.failedTxnMTD, factor);
+      data.unsecuredOperations.failedTxnYesterday = scale(data.unsecuredOperations.failedTxnPrevMTD, factor);
+      data.unsecuredOperations.successRateToday = data.unsecuredOperations.successRateMTD;
+      data.unsecuredOperations.successRateYesterday = data.unsecuredOperations.successRatePrevMTD;
+      data.unsecuredOperations.totalAmountToday = scale(data.unsecuredOperations.totalAmountMTD, factor);
+      data.unsecuredOperations.totalAmountYesterday = scale(data.unsecuredOperations.totalAmountPrevMTD, factor);
+      data.unsecuredOperations.pendingItemsToday = scale(data.unsecuredOperations.pendingItemsMTD, factor);
+      data.unsecuredOperations.pendingItemsYesterday = scale(data.unsecuredOperations.pendingItemsPrevMTD, factor);
+    }
+  }
+  if (Array.isArray(data.unsecuredOpsBreakdown) && mode === "custom") {
+    data.unsecuredOpsBreakdown.forEach(function (b) {
+      b.txnCount = scale(b.txnCount, factor);
+      b.amount = scale(b.amount, factor);
+      b.pendingItems = scale(b.pendingItems, factor);
+    });
+  }
+
+  // 9. Banca
+  if (data.banca) {
+    if (mode === "month") {
+      data.banca.totalTxnToday = data.banca.totalTxnMTD;
+      data.banca.totalTxnYesterday = data.banca.totalTxnPrevMTD;
+      data.banca.successTxnToday = data.banca.successTxnMTD;
+      data.banca.successTxnYesterday = data.banca.successTxnPrevMTD;
+      data.banca.failedTxnToday = data.banca.failedTxnMTD;
+      data.banca.failedTxnYesterday = data.banca.failedTxnPrevMTD;
+      data.banca.successRateToday = data.banca.successRateMTD;
+      data.banca.successRateYesterday = data.banca.successRatePrevMTD;
+      data.banca.totalAmountToday = data.banca.totalAmountMTD;
+      data.banca.totalAmountYesterday = data.banca.totalAmountPrevMTD;
+      data.banca.pendingItemsToday = data.banca.pendingItemsMTD;
+      data.banca.pendingItemsYesterday = data.banca.pendingItemsPrevMTD;
+    } else if (mode === "custom") {
+      data.banca.totalTxnToday = scale(data.banca.totalTxnMTD, factor);
+      data.banca.totalTxnYesterday = scale(data.banca.totalTxnPrevMTD, factor);
+      data.banca.successTxnToday = scale(data.banca.successTxnMTD, factor);
+      data.banca.successTxnYesterday = scale(data.banca.successTxnPrevMTD, factor);
+      data.banca.failedTxnToday = scale(data.banca.failedTxnMTD, factor);
+      data.banca.failedTxnYesterday = scale(data.banca.failedTxnPrevMTD, factor);
+      data.banca.successRateToday = data.banca.successRateMTD;
+      data.banca.successRateYesterday = data.banca.successRatePrevMTD;
+      data.banca.totalAmountToday = scale(data.banca.totalAmountMTD, factor);
+      data.banca.totalAmountYesterday = scale(data.banca.totalAmountPrevMTD, factor);
+      data.banca.pendingItemsToday = scale(data.banca.pendingItemsMTD, factor);
+      data.banca.pendingItemsYesterday = scale(data.banca.pendingItemsPrevMTD, factor);
+    }
+  }
+  if (Array.isArray(data.bancaOpsBreakdown) && mode === "custom") {
+    data.bancaOpsBreakdown.forEach(function (b) {
+      b.txnCount = scale(b.txnCount, factor);
+      b.amount = scale(b.amount, factor);
+      b.pendingItems = scale(b.pendingItems, factor);
+    });
+  }
+
+  return data;
 }
 
 /* ---------------------------------------------------------------------
@@ -1068,7 +1755,8 @@ function currentData() {
 }
 
 function renderActivePage() {
-  const data = currentData();
+  const raw = currentData();
+  const data = getFilteredData(raw, appState.filters);
   document.querySelectorAll("[data-period-label]").forEach(function (n) { n.textContent = periodLabelText(); });
   evaluateAndShowToastAlerts(data);
 
@@ -1098,41 +1786,65 @@ function getDismissedAlerts() {
 }
 
 function dismissAlert(alertId) {
-  try {
-    const list = getDismissedAlerts();
-    if (list.indexOf(alertId) === -1) {
-      list.push(alertId);
+  const list = getDismissedAlerts();
+  if (list.indexOf(alertId) === -1) {
+    list.push(alertId);
+    try {
       sessionStorage.setItem("dismissed_toast_alerts", JSON.stringify(list));
-    }
-  } catch (e) {}
+    } catch (e) {}
+  }
+}
+
+function buildAlertMailtoUrl(alert) {
+  const subject = "Dashboard Alert - " + alert.title;
+  let body = "Dashboard Alert\r\n\r\n";
+  body += "Severity: " + (alert.severity || "INFO") + "\r\n\r\n";
+  body += "Alert:\r\n" + alert.title + "\r\n\r\n";
+  if (alert.detail) {
+    body += "Details:\r\n" + alert.detail + "\r\n\r\n";
+  }
+  body += "Please investigate this alert.";
+  return "mailto:?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
 }
 
 function evaluateAndShowToastAlerts(data) {
-  if (!data) return;
-
   const rawAlerts = [];
 
-  /* 1. Card Inventory Alerts */
+  /* 1. ATM Uptime Warning */
+  if (data.atm && data.atm.uptimeToday !== null && data.atm.uptimeToday < 98.0) {
+    rawAlerts.push({
+      id: "toast_atm_uptime_critical",
+      severity: "CRITICAL",
+      title: "ATM Network Uptime Below Target",
+      detail: "Current ATM uptime is " + formatPercentage(data.atm.uptimeToday) + " (SLA Target: 98.0%).",
+      page: "adc-operations"
+    });
+  }
+
+  /* 2. Low Card Inventory Stock */
   if (data.cardInventory) {
-    data.cardInventory.forEach(function (item) {
-      if (item.qty <= item.minStock) {
+    data.cardInventory.forEach(function (cat) {
+      const mc = calculateMonthsCover(cat.qty, cat.avgMonthlyUse);
+      const st = calculateInventoryStatus(mc);
+      if (st === "Critical" || st === "Warning") {
         rawAlerts.push({
-          id: "toast_inv_" + String(item.category).replace(/\s+/g, "_"),
-          severity: "CRITICAL",
-          title: "Low Card Stock: " + item.category,
-          detail: "Current: " + formatNumber(item.qty, 0) + " (Min: " + formatNumber(item.minStock, 0) + ")",
+          id: "toast_inv_" + cat.category.toLowerCase().replace(/\s+/g, "_"),
+          severity: st === "Critical" ? "CRITICAL" : "WARNING",
+          title: "Low Card Plastic Stock: " + cat.category,
+          detail: "Current: " + formatNumber(cat.qty, 0) + " (Cover: " + mc.toFixed(1) + " mos)",
           page: "card-non-financials"
         });
       }
     });
   }
 
-  /* 2. Card Stationery Alerts */
+  /* 3. Low Stationery Stock */
   if (data.cardStationery) {
     data.cardStationery.forEach(function (item) {
-      if (item.qty <= item.minStock) {
+      const mc = calculateMonthsCover(item.qty, item.avgMonthlyUse);
+      if (mc < STATIONERY_MIN_MONTHS) {
         rawAlerts.push({
-          id: "toast_stat_" + String(item.item).replace(/\s+/g, "_"),
+          id: "toast_stat_" + item.item.toLowerCase().replace(/\s+/g, "_"),
           severity: "WARNING",
           title: "Low Stationery: " + item.item,
           detail: "Current: " + formatNumber(item.qty, 0) + " (Min: " + formatNumber(item.minStock, 0) + ")",
@@ -1142,7 +1854,7 @@ function evaluateAndShowToastAlerts(data) {
     });
   }
 
-  /* 3. Reconciliation High Aging Receivables */
+  /* 4. Reconciliation High Aging Receivables */
   if (data.reconciliation) {
     const highAgeRec = (data.reconciliation.receivables || []).filter(function (r) {
       return r.bucket === "60+" || r.bucket === "90+" || r.bucket === "120+";
@@ -1159,7 +1871,7 @@ function evaluateAndShowToastAlerts(data) {
     }
   }
 
-  /* 4. Chargeback High Aging Disputes */
+  /* 5. Chargeback High Aging Disputes */
   const activeCb = data.chargeback ? (data.chargeback.credit || data.chargeback) : null;
   if (activeCb && activeCb.highAging && activeCb.highAging.count > 0) {
     rawAlerts.push({
@@ -1191,18 +1903,31 @@ function evaluateAndShowToastAlerts(data) {
 
     const badgeCls = a.severity === "CRITICAL" ? "critical" : "warning";
     const badgeHtml = '<span class="status-badge ' + badgeCls + '">' + a.severity + '</span>';
+    const mailtoUrl = buildAlertMailtoUrl(a);
 
     toast.innerHTML = '<div class="toast-body">'
       + '<div class="toast-header">' + badgeHtml + '<div class="toast-title">' + a.title + '</div></div>'
       + '<div class="toast-detail">' + a.detail + '</div>'
+      + '<div class="toast-actions">'
       + '<div class="toast-link">Investigate &rarr;</div>'
+      + '<a class="toast-email-action" href="' + mailtoUrl + '" role="button" aria-label="Email alert">&#9993; Email</a>'
+      + '</div>'
       + '</div>'
       + '<button class="toast-close" type="button" aria-label="Dismiss alert">&times;</button>';
 
     toast.addEventListener("click", function (e) {
-      if (e.target.classList.contains("toast-close")) return;
+      if (e.target.classList.contains("toast-close") || e.target.closest(".toast-email-action")) return;
       navigateToPage(a.page);
     });
+
+    const emailBtn = toast.querySelector(".toast-email-action");
+    if (emailBtn) {
+      emailBtn.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.location.href = mailtoUrl;
+      });
+    }
 
     const closeBtn = toast.querySelector(".toast-close");
     closeBtn.addEventListener("click", function (e) {
@@ -1219,9 +1944,9 @@ function evaluateAndShowToastAlerts(data) {
   });
 }
 
-/* =====================================================================
+/* ---------------------------------------------------------------------
    11. PAGE 1 — OVERVIEW (EXECUTIVE COMMAND CENTER)
-   ===================================================================== */
+   --------------------------------------------------------------------- */
 
 function renderOverview(data) {
   const root = document.getElementById("overview-body");
@@ -1231,14 +1956,13 @@ function renderOverview(data) {
     data.meta.dataQualityMessages.forEach(function (m) { root.appendChild(dataQualityNote(m)); });
   }
 
-  renderOvKpiStrip(root, data);   /* Executive KPI strip */
-  renderOvNostro(root, data);     /* NOSTRO Available Balances (USD & AED) */
-  renderOvAdcSummary(root, data); /* ADC Operational summary */
-  renderOvCharts(root, data);     /* Visual management widgets */
-  renderOvModules(root, data);    /* Module summary panels */
+  renderOvKpiStrip(root, data);
+  renderOvNostro(root, data);
+  renderOvAdcSummary(root, data);
+  renderOvCharts(root, data);
+  renderOvModules(root, data);
 }
 
-/* NOSTRO Position Status on Overview (USD & AED Available Balances Only) */
 function renderOvNostro(root, data) {
   if (!data.nostro || !data.nostro.length) return;
 
@@ -1256,61 +1980,196 @@ function renderOvNostro(root, data) {
   root.appendChild(section);
 }
 
-/* Executive KPI Strip */
+function formatKpiMnVal(val, isCurrency) {
+  if (val === null || val === undefined || isNaN(val)) return "\u2014";
+  const n = Number(val);
+  const abs = Math.abs(n);
+  if (abs >= 1e9) return (n / 1e9).toFixed(2) + "Bn";
+  if (abs >= 1e6) return (n / 1e6).toFixed(2) + "Mn";
+  if (abs >= 1000) return (n / 1e6).toFixed(2) + "Mn";
+  return n.toString();
+}
+
+function getCardKpiData(data) {
+  const fin = data.cardFinancials || {};
+  const creditFin = fin.credit || {};
+  const debitFin = fin.debit || {};
+  const activeList = data.activeCards || [];
+
+  let creditAifCur = 0, creditAifPrev = 0;
+  let debitAifCur = 0, debitAifPrev = 0;
+
+  activeList.forEach(function (card) {
+    const prod = (card.product || "").toLowerCase();
+    const cnt = Number(card.count) || 0;
+    const prev = Number(card.prevMonth) || 0;
+    if (prod.indexOf("debit") !== -1) {
+      debitAifCur += cnt;
+      debitAifPrev += prev;
+    } else {
+      creditAifCur += cnt;
+      creditAifPrev += prev;
+    }
+  });
+
+  const creditAif = creditFin.aif || creditAifCur || 115200;
+  const creditAifPrevVal = creditFin.aifPrevious || creditAifPrev || 111000;
+  const creditCif = creditFin.cif || Math.round(creditAif * 1.289);
+  const creditCifPrevVal = creditFin.cifPrevious || Math.round(creditAifPrevVal * 1.279);
+  const creditInactive = creditCif - creditAif;
+  const creditInactivePrev = creditCifPrevVal - creditAifPrevVal;
+  const creditFee = creditFin.annualFeeIncome || 410000000;
+  const creditFeePrev = creditFin.annualFeeIncomePrevious || 395000000;
+
+  const debitAif = debitFin.aif || debitAifCur || 863500;
+  const debitAifPrevVal = debitFin.aifPrevious || debitAifPrev || 847600;
+  const debitCif = debitFin.cif || Math.round(debitAif * 1.20);
+  const debitCifPrevVal = debitFin.cifPrevious || Math.round(debitAifPrevVal * 1.20);
+  const debitInactive = debitCif - debitAif;
+  const debitInactivePrev = debitCifPrevVal - debitAifPrevVal;
+  const debitFee = debitFin.annualFeeIncome || 320000000;
+  const debitFeePrev = debitFin.annualFeeIncomePrevious || 305000000;
+
+  const ccSpendCur = creditFin.spendCurrent || 24600000000;
+  const ccSpendPrev = creditFin.spendPrevious || 23100000000;
+  const dcSpendCur = debitFin.spendCurrent || 41200000000;
+  const dcSpendPrev = debitFin.spendPrevious || 39500000000;
+  const ccIntlCur = creditFin.intlTxnAmount || 4800000000;
+  const ccIntlPrev = creditFin.intlTxnAmountPrevious || 4500000000;
+  const ccDomCur = creditFin.domesticTxnAmount || 19800000000;
+  const ccDomPrev = creditFin.domesticTxnAmountPrevious || 18600000000;
+  const dcIntlCur = debitFin.intlTxnAmount || 3100000000;
+  const dcIntlPrev = debitFin.intlTxnAmountPrevious || 3000000000;
+  const dcDomCur = debitFin.domesticTxnAmount || 38100000000;
+  const dcDomPrev = debitFin.domesticTxnAmountPrevious || 36500000000;
+
+  return {
+    credit: {
+      cif: { cur: creditCif, prev: creditCifPrevVal },
+      aif: { cur: creditAif, prev: creditAifPrevVal },
+      inactive: { cur: creditInactive, prev: creditInactivePrev },
+      annualFee: { cur: creditFee, prev: creditFeePrev, isCurrency: true }
+    },
+    debit: {
+      cif: { cur: debitCif, prev: debitCifPrevVal },
+      aif: { cur: debitAif, prev: debitAifPrevVal },
+      inactive: { cur: debitInactive, prev: debitInactivePrev },
+      annualFee: { cur: debitFee, prev: debitFeePrev, isCurrency: true }
+    },
+    spend: {
+      ccTotal: { cur: ccSpendCur, prev: ccSpendPrev },
+      dcTotal: { cur: dcSpendCur, prev: dcSpendPrev },
+      ccIntl: { cur: ccIntlCur, prev: ccIntlPrev },
+      ccDom: { cur: ccDomCur, prev: ccDomPrev },
+      dcIntl: { cur: dcIntlCur, prev: dcIntlPrev },
+      dcDom: { cur: dcDomCur, prev: dcDomPrev }
+    }
+  };
+}
+
+function renderOvCardKpiTableCard(title, rows) {
+  const card = el("div", { class: "ov-table-kpi-card" });
+
+  const header = el("div", { class: "ov-table-kpi-header" });
+  header.appendChild(el("div", { class: "ov-table-kpi-title", text: title }));
+  header.appendChild(el("div", { class: "ov-table-kpi-freq", text: "MONTHLY" }));
+  card.appendChild(header);
+
+  const table = el("table", { class: "ov-kpi-table" });
+
+  const thead = el("thead");
+  const trHead = el("tr");
+  trHead.appendChild(el("th", { text: "Metric" }));
+  trHead.appendChild(el("th", { text: "Current Month" }));
+  trHead.appendChild(el("th", { text: "Previous Month" }));
+  trHead.appendChild(el("th", { text: "Change %" }));
+  thead.appendChild(trHead);
+  table.appendChild(thead);
+
+  const tbody = el("tbody");
+  rows.forEach(function (r) {
+    const tr = el("tr");
+    tr.appendChild(el("td", { text: r.label }));
+    tr.appendChild(el("td", { text: formatKpiMnVal(r.cur, r.isCurrency) }));
+    tr.appendChild(el("td", { text: formatKpiMnVal(r.prev, r.isCurrency) }));
+
+    const tdChange = el("td");
+    tdChange.innerHTML = indicatorHTML(r.cur, r.prev, true, true);
+    tr.appendChild(tdChange);
+
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  card.appendChild(table);
+
+  return card;
+}
+
 function renderOvKpiStrip(root, data) {
   const strip = el("div", { class: "ov-kpi-strip" });
 
-  /* 1. ATM Uptime Today vs Yesterday */
+  /* 1. Daily Execution Strip */
+  const dailyStrip = el("div", { class: "ov-daily-strip" });
+
   const uptime  = data.atm ? data.atm.uptimeToday : null;
   const uptimeY = data.atm ? data.atm.uptimeYesterday : null;
   const uptComp = formatUptimeComparison(uptime, uptimeY);
-  strip.appendChild(ovExecCard("ATM Uptime", uptComp.todayStr,
+  dailyStrip.appendChild(ovExecCard("ATM Uptime", uptComp.todayStr,
     'Yesterday: ' + uptComp.yesterdayStr + ' &nbsp;|&nbsp; ' + uptComp.html, "vs Yesterday", "DAILY",
     fullValueTitle(uptime)));
 
-  /* 2. Total ADC Transaction Count */
   const adcCntTdy = (data.atm ? data.atm.withdrawalCountToday || 0 : 0)
                   + (data.raast ? data.raast.successCountToday || 0 : 0)
                   + (data.ibft ? data.ibft.successCountToday || 0 : 0);
   const adcCntY   = (data.atm ? data.atm.withdrawalCountYesterday || 0 : 0)
                   + (data.raast ? data.raast.successCountYesterday || 0 : 0)
                   + (data.ibft ? data.ibft.successCountYesterday || 0 : 0);
-  strip.appendChild(ovExecCard("Total ADC Transaction Count", formatNumber(adcCntTdy, 0),
+  dailyStrip.appendChild(ovExecCard("Total ADC Transaction Count", formatNumber(adcCntTdy, 0),
     'Yesterday: ' + formatNumber(adcCntY, 0) + ' &nbsp;|&nbsp; ' + indicatorHTML(adcCntTdy, adcCntY, true, false), "vs Yesterday", "DAILY"));
 
-  /* 3. Total ADC Transaction Amount */
   const adcAmtTdy = (data.atm ? data.atm.withdrawalAmountToday || 0 : 0)
                   + (data.raast ? data.raast.successAmountToday || 0 : 0)
                   + (data.ibft ? data.ibft.successAmountToday || 0 : 0);
   const adcAmtY   = (data.atm ? data.atm.withdrawalAmountYesterday || 0 : 0)
                   + (data.raast ? data.raast.successAmountYesterday || 0 : 0)
                   + (data.ibft ? data.ibft.successAmountYesterday || 0 : 0);
-  strip.appendChild(ovExecCard("Total ADC Transaction Amount", formatCurrency(adcAmtTdy),
+  dailyStrip.appendChild(ovExecCard("Total ADC Transaction Amount", formatCurrency(adcAmtTdy),
     'Yesterday: ' + formatCurrency(adcAmtY) + ' &nbsp;|&nbsp; ' + indicatorHTML(adcAmtTdy, adcAmtY, true, false), "vs Yesterday", "DAILY",
     fullValueTitle(adcAmtTdy, true)));
 
-  /* 4. Active Cards */
-  const activeTot = data.activeCards ? sumBy(data.activeCards, "count") : null;
-  const activePrv = data.activeCards ? sumBy(data.activeCards, "prevMonth") : null;
-  strip.appendChild(ovExecCard("Active Cards Count", formatNumber(activeTot, 0),
-    'Prev Month: ' + formatNumber(activePrv, 0) + ' &nbsp;|&nbsp; ' + indicatorHTML(activeTot, activePrv, true, true), "vs Previous Month", "MONTHLY"));
+  strip.appendChild(dailyStrip);
 
-  /* 5. Total Card Spend */
-  const spend     = data.cardFinancials
-    ? (data.cardFinancials.credit.spendCurrent || 0) + (data.cardFinancials.debit.spendCurrent || 0) : null;
-  const spendPrv  = data.cardFinancials
-    ? (data.cardFinancials.credit.spendPrevious || 0) + (data.cardFinancials.debit.spendPrevious || 0) : null;
-  strip.appendChild(ovExecCard("Total Card Spend", formatCurrency(spend),
-    'Prev Month: ' + formatCurrency(spendPrv) + ' &nbsp;|&nbsp; ' + indicatorHTML(spend, spendPrv, true, true), "vs Previous Month", "MONTHLY",
-    fullValueTitle(spend, true)));
+  /* 2. Cards Performance Section */
+  const cardData = getCardKpiData(data);
+  const cardsGrid = el("div", { class: "ov-cards-kpi-grid" });
 
-  /* 6. Reconciliation Exposure > 30d */
-  const exposure  = data.reconciliation
-    ? sumBy(data.reconciliation.receivables, "amount") + sumBy(data.reconciliation.payables, "amount") : null;
-  strip.appendChild(ovExecCard("Recon Exposure > 30d", formatCurrency(exposure),
-    '<span class="indicator flat">&mdash;</span>', "", "DAILY",
-    fullValueTitle(exposure, true)));
+  const ccRows = [
+    { label: "CIF", cur: cardData.credit.cif.cur, prev: cardData.credit.cif.prev },
+    { label: "AIF", cur: cardData.credit.aif.cur, prev: cardData.credit.aif.prev },
+    { label: "Inactive Cards", cur: cardData.credit.inactive.cur, prev: cardData.credit.inactive.prev },
+    { label: "Annual Fee", cur: cardData.credit.annualFee.cur, prev: cardData.credit.annualFee.prev, isCurrency: true }
+  ];
+  cardsGrid.appendChild(renderOvCardKpiTableCard("Credit Card", ccRows));
 
+  const dcRows = [
+    { label: "CIF", cur: cardData.debit.cif.cur, prev: cardData.debit.cif.prev },
+    { label: "AIF", cur: cardData.debit.aif.cur, prev: cardData.debit.aif.prev },
+    { label: "Inactive Cards", cur: cardData.debit.inactive.cur, prev: cardData.debit.inactive.prev },
+    { label: "Annual Fee", cur: cardData.debit.annualFee.cur, prev: cardData.debit.annualFee.prev, isCurrency: true }
+  ];
+  cardsGrid.appendChild(renderOvCardKpiTableCard("Debit Card", dcRows));
+
+  const spendRows = [
+    { label: "Total Credit Card Spend", cur: cardData.spend.ccTotal.cur, prev: cardData.spend.ccTotal.prev, isCurrency: true },
+    { label: "Total Debit Card Spend", cur: cardData.spend.dcTotal.cur, prev: cardData.spend.dcTotal.prev, isCurrency: true },
+    { label: "CC International Spend", cur: cardData.spend.ccIntl.cur, prev: cardData.spend.ccIntl.prev, isCurrency: true },
+    { label: "CC Domestic Spend", cur: cardData.spend.ccDom.cur, prev: cardData.spend.ccDom.prev, isCurrency: true },
+    { label: "DC International Spend", cur: cardData.spend.dcIntl.cur, prev: cardData.spend.dcIntl.prev, isCurrency: true },
+    { label: "DC Domestic Spend", cur: cardData.spend.dcDom.cur, prev: cardData.spend.dcDom.prev, isCurrency: true }
+  ];
+  cardsGrid.appendChild(renderOvCardKpiTableCard("TOTAL CARD SPEND", spendRows));
+
+  strip.appendChild(cardsGrid);
   root.appendChild(strip);
 }
 
@@ -1327,7 +2186,6 @@ function ovExecCard(label, value, indicHtml, vsLabel, freq, titleAttr) {
   return card;
 }
 
-/* ADC Operations Summary */
 function renderOvAdcSummary(root, data) {
   const section = el("div", { class: "ov-section" });
   section.appendChild(el("div", { class: "ov-section-heading", text: "ADC Operations Summary" }));
@@ -1412,7 +2270,6 @@ function renderOvAdcSummary(root, data) {
   root.appendChild(section);
 }
 
-/* Executive Visual Widgets */
 function renderOvCharts(root, data) {
   const row = el("div", { class: "ov-charts-row" });
   row.appendChild(buildOvNostroChart(data));
@@ -1428,7 +2285,6 @@ function ovChartCard(title, bodyEl) {
   return card;
 }
 
-/* NOSTRO Position Widget (USD & AED Available Balances) */
 function buildOvNostroChart(data) {
   const body = el("div", { class: "ov-chart-body" });
   if (!data.nostro || !data.nostro.length) {
@@ -1527,7 +2383,6 @@ function svgAgingBar(buckets) {
     + rects + legends + '</svg>';
 }
 
-/* Module Summary Panels */
 function renderOvModules(root, data) {
   root.appendChild(el("div", { class: "ov-section-heading", text: "Module Summaries" }));
   const grid = el("div", { class: "ov-modules-grid" });
@@ -1598,36 +2453,32 @@ function ovCardNFRows(data) {
   const env  = stat.find(function (s) { return /envelope/i.test(s.item); });
   const mail = stat.find(function (s) { return /mailer/i.test(s.item) && !/pin/i.test(s.item); });
 
-  const urgentVal = lowest
-    ? '<div class="ov-nf-val-stack">' + statusBadge(lowest.status) + '<div class="ov-nf-subtext">' + lowest.category + '</div></div>'
-    : '\u2014';
-
-  const envVal = env
-    ? '<div class="ov-nf-val-stack"><span>' + env.monthsCover.toFixed(1) + ' months</span><div>' + statusBadge(env.status) + '</div></div>'
-    : '\u2014';
-
-  const mailVal = mail
-    ? '<div class="ov-nf-val-stack"><span>' + mail.monthsCover.toFixed(1) + ' months</span><div>' + statusBadge(mail.status) + '</div></div>'
-    : '\u2014';
-
-  return [
-    ["Active Cards Count",              data.activeCards ? formatNumber(sumBy(data.activeCards, "count")) : "0"],
-    ["Lowest Card Plastic Availability", lowest ? lowest.monthsCover.toFixed(1) + " months" : "\u2014"],
-    ["Urgent Attention",                urgentVal],
-    ["Envelopes Cover",                 envVal],
-    ["Mailers Cover",                   mailVal]
-  ];
+  const rows = [];
+  if (lowest) {
+    rows.push(["Lowest Plastic Stock", lowest.category + " (" + lowest.monthsCover.toFixed(1) + " mos)", lowest.status === "Critical" ? "negative" : ""]);
+  }
+  if (env) {
+    rows.push(["Envelopes Stock", formatNumber(env.qty, 0) + " (" + env.monthsCover.toFixed(1) + " mos)"]);
+  }
+  if (mail) {
+    rows.push(["Mailers Stock", formatNumber(mail.qty, 0) + " (" + mail.monthsCover.toFixed(1) + " mos)"]);
+  }
+  return rows;
 }
 
 function ovCardFRows(data) {
   if (!data.cardFinancials) return null;
-  const c = data.cardFinancials.credit, d = data.cardFinancials.debit;
+  const cf = data.cardFinancials;
+  const c = cf.credit || {};
+  const d = cf.debit || {};
+  const totSpend = (c.spendCurrent || 0) + (d.spendCurrent || 0);
+  const totOif   = (c.oifIncome || 0) + (d.oifIncome || 0);
+  const netProfit = data.netInterchange ? data.netInterchange.income - data.netInterchange.expense : null;
+
   return [
-    ["Credit-Card Spend",  formatCurrency(c.spendCurrent)],
-    ["Debit-Card Spend",   formatCurrency(d.spendCurrent)],
-    ["Interchange Income", formatCurrency((c.domesticInterchange||0)+(c.intlInterchange||0)+(d.domesticInterchange||0)+(d.intlInterchange||0))],
-    ["OIF Income",         formatCurrency((c.oifIncome||0)+(d.oifIncome||0))],
-    ["MDR Income",         formatCurrency((c.mdrIncome||0)+(d.mdrIncome||0))]
+    ["Total Card Spend", formatCurrency(totSpend)],
+    ["Total OIF Income", formatCurrency(totOif)],
+    ["Net Interchange Profit", netProfit !== null ? formatCurrency(netProfit) : "\u2014"]
   ];
 }
 
@@ -1669,9 +2520,9 @@ function ovCbRows(data) {
   const amt = ["domestic","international"].reduce(function (s,k) { return s + (activeCb[k] ? activeCb[k].amount||0 : 0); }, 0);
   return [
     ["Total Disputes Count", formatNumber(tot)],
-    ["Total Disputed Amount",formatCurrency(amt)],
+    ["Total Disputed Amount", formatCurrency(amt)],
     ["Pre-Arb Raised Count", activeCb.preArbRaised   ? formatNumber(activeCb.preArbRaised.count)   : "0"],
-    ["Pre-Arb Received Count",activeCb.preArbReceived  ? formatNumber(activeCb.preArbReceived.count) : "0"],
+    ["Pre-Arb Received Count", activeCb.preArbReceived  ? formatNumber(activeCb.preArbReceived.count) : "0"],
     ["High-Aging Disputes",  activeCb.highAging       ? formatNumber(activeCb.highAging.count)      : "0"]
   ];
 }
@@ -1694,7 +2545,7 @@ function sumBy(arr, key) {
 }
 
 /* ---------------------------------------------------------------------
-   11. PAGE 2 — ADC OPERATIONS
+   12. PAGE 2 — ADC OPERATIONS
    --------------------------------------------------------------------- */
 
 function renderADCOperations(data) {
@@ -1709,7 +2560,6 @@ function renderADCOperations(data) {
     const grid = el("div", { class: "kpi-grid" });
     grid.appendChild(kpiCard("Total ATMs Count", formatNumber(a.totalATMs)));
 
-    /* ATM Uptime Card rendering Today vs Yesterday actuals + visual change */
     const uptimeSubHTML = "Yesterday: " + uptComp.yesterdayStr + " &nbsp;|&nbsp; " + uptComp.html;
     grid.appendChild(kpiCard("ATM Uptime (Today vs Yesterday)", uptComp.todayStr + " (Today)", uptimeSubHTML));
 
@@ -1723,6 +2573,7 @@ function renderADCOperations(data) {
     grid.appendChild(kpiCard("Cash-Retract Transactions Count (Current Month)", formatNumber(a.retractTxnMTD)));
     root.appendChild(grid);
 
+    /* ATM Performance tables displaying explicit Txn Amount column */
     root.appendChild(sectionTitle("ATM Performance"));
     root.appendChild(buildTable("Top 5 Performing ATMs",
       [{ key: "rank", label: "Rank", numeric: true }, { key: "atmId", label: "ATM ID" }, { key: "location", label: "Location" },
@@ -1736,7 +2587,6 @@ function renderADCOperations(data) {
     root.appendChild(el("div", { class: "no-data-note", text: "ATM sheet is missing. No data available for ATM Operations." }));
   }
 
-  /* Shared Column Structure for 3 Target ADC Tables: Metric | Today | Yesterday | Change | Current Month */
   const adcThreeTableColumns = [
     { key: "kpi", label: "Metric" },
     { key: "today", label: "Today", numeric: true },
@@ -1836,7 +2686,7 @@ function renderADCOperations(data) {
 
     root.appendChild(buildTable(null, adcThreeTableColumns, ibftRows));
 
-    /* 3. IBFT Failure Reasons Table (Same Column Structure: Metric | Today | Yesterday | Change | Current Month) */
+    /* 3. IBFT Failure Reasons Table */
     root.appendChild(buildTable("IBFT Failure Reasons", adcThreeTableColumns,
       (data.ibftFailures || []).map(function (f) {
         return {
@@ -1854,30 +2704,25 @@ function renderADCOperations(data) {
 }
 
 /* ---------------------------------------------------------------------
-   12. PAGE 3 — CARD NON-FINANCIALS
+   13. PAGE 3 — CARD NON-FINANCIALS
    --------------------------------------------------------------------- */
 
 function computeInventoryStatus(item) {
-  const monthsCover = item.avgMonthlyUse ? item.qty / item.avgMonthlyUse : null;
-  let status = "Sufficient";
-  if (monthsCover !== null) {
-    if (monthsCover <= CARD_INVENTORY_RULES.criticalMonths) status = "Critical";
-    else if (monthsCover <= CARD_INVENTORY_RULES.warningMonths) status = "Warning";
-  }
-  return Object.assign({}, item, { monthsCover: monthsCover === null ? 0 : monthsCover, status: status });
+  const monthsCover = calculateMonthsCover(item.qty, item.avgMonthlyUse);
+  const status = calculateInventoryStatus(monthsCover);
+  return Object.assign({}, item, { monthsCover: monthsCover, status: status });
 }
 
 function computeStationeryStatus(item) {
-  const monthsCover = item.avgMonthlyUse ? item.qty / item.avgMonthlyUse : null;
-  const status = monthsCover === null ? "Sufficient" : (monthsCover < STATIONERY_MIN_MONTHS ? "Critical" : (monthsCover < STATIONERY_MIN_MONTHS * 1.5 ? "Warning" : "Sufficient"));
-  return Object.assign({}, item, { monthsCover: monthsCover === null ? 0 : monthsCover, status: status });
+  const monthsCover = calculateMonthsCover(item.qty, item.avgMonthlyUse);
+  const status = monthsCover < STATIONERY_MIN_MONTHS ? "Critical" : (monthsCover < STATIONERY_MIN_MONTHS * 1.5 ? "Warning" : "Sufficient");
+  return Object.assign({}, item, { monthsCover: monthsCover, status: status });
 }
 
 function renderCardNonFinancials(data) {
   const root = document.getElementById("card-non-financials-body");
   root.innerHTML = "";
 
-  /* Card Plastic Availability terminology (Rule 3) */
   root.appendChild(sectionTitle("Card Plastic Availability"));
   if (data.cardInventory) {
     const rows = data.cardInventory.map(computeInventoryStatus);
@@ -1923,7 +2768,7 @@ function renderCardNonFinancials(data) {
 }
 
 /* ---------------------------------------------------------------------
-   13. PAGE 4 — CARD FINANCIALS ([ Credit Cards ] [ Debit Cards ] ONLY)
+   14. PAGE 4 — CARD FINANCIALS ([ Credit Cards ] [ Debit Cards ])
    --------------------------------------------------------------------- */
 
 function renderCardFinancials(data) {
@@ -1941,7 +2786,6 @@ function renderCardFinancials(data) {
 
   root.appendChild(sectionTitle("Comprehensive Card Financial Performance & Revenue Summary"));
 
-  /* Tabs: ONLY Credit Cards and Debit Cards (Rule 11 - NO "All Cards" button) */
   const toggleWrap = el("div", { class: "card-fin-toggle-bar" });
   const btnCredit = el("button", { class: "fin-toggle-btn" + (cardFinancialsActiveTab === "credit" ? " active" : ""), type: "button", text: "Credit Cards" });
   const btnDebit = el("button", { class: "fin-toggle-btn" + (cardFinancialsActiveTab === "debit" ? " active" : ""), type: "button", text: "Debit Cards" });
@@ -1973,19 +2817,19 @@ function renderCardFinancials(data) {
     compRows.push({ item: "International Transaction Count", current: selectedData.intlTxnCount, previous: selectedData.intlTxnCountPrevious, isCount: true });
     compRows.push({ item: "International Transaction Amount", current: selectedData.intlTxnAmount, previous: selectedData.intlTxnAmountPrevious, isCurrency: true });
 
-    const totCountCurrent = (selectedData.domesticTxnCount || 0) + (selectedData.intlTxnCount || 0);
-    const totCountPrev = (selectedData.domesticTxnCountPrevious || 0) + (selectedData.intlTxnCountPrevious || 0);
+    const totCountCurrent = calculateTotalTransactions(selectedData.domesticTxnCount, selectedData.intlTxnCount);
+    const totCountPrev = calculateTotalTransactions(selectedData.domesticTxnCountPrevious, selectedData.intlTxnCountPrevious);
     compRows.push({ item: "Total Transaction Count", current: totCountCurrent, previous: totCountPrev || null, isCount: true });
 
-    const totAmtCurrent = (selectedData.domesticTxnAmount || 0) + (selectedData.intlTxnAmount || 0);
-    const totAmtPrev = (selectedData.domesticTxnAmountPrevious || 0) + (selectedData.intlTxnAmountPrevious || 0);
+    const totAmtCurrent = calculateTotalAmount(selectedData.domesticTxnAmount, selectedData.intlTxnAmount);
+    const totAmtPrev = calculateTotalAmount(selectedData.domesticTxnAmountPrevious, selectedData.intlTxnAmountPrevious);
     compRows.push({ item: "Total Transaction Amount", current: totAmtCurrent, previous: totAmtPrev || null, isCurrency: true });
 
     compRows.push({ item: "Domestic Interchange Income", current: selectedData.domesticInterchange, previous: selectedData.domesticInterchangePrevious, isCurrency: true });
     compRows.push({ item: "International Interchange Income", current: selectedData.intlInterchange, previous: selectedData.intlInterchangePrevious, isCurrency: true });
 
-    const totInterCurrent = (selectedData.domesticInterchange || 0) + (selectedData.intlInterchange || 0);
-    const totInterPrev = (selectedData.domesticInterchangePrevious || 0) + (selectedData.intlInterchangePrevious || 0);
+    const totInterCurrent = calculateTotalInterchange(selectedData.domesticInterchange, selectedData.intlInterchange);
+    const totInterPrev = calculateTotalInterchange(selectedData.domesticInterchangePrevious, selectedData.intlInterchangePrevious);
     compRows.push({ item: "Total Interchange Income", current: totInterCurrent, previous: totInterPrev || null, isCurrency: true });
 
     compRows.push({ item: "OIF Income", current: selectedData.oifIncome, previous: selectedData.oifIncomePrevious, isCurrency: true });
@@ -2036,7 +2880,6 @@ function renderCardFinancials(data) {
     renderComprehensiveTable();
   });
 
-  /* Small Combined Summary Boxes with Full Narration (Rule 11) */
   root.appendChild(sectionTitle("Combined Card Performance Summaries"));
   const totSpendBoth = (c.spendCurrent || 0) + (d.spendCurrent || 0);
   const totOifBoth   = (c.oifIncome || 0) + (d.oifIncome || 0);
@@ -2050,7 +2893,6 @@ function renderCardFinancials(data) {
   }
   root.appendChild(grid);
 
-  /* Spend by Channel */
   root.appendChild(sectionTitle("Spend by Channel"));
   if (data.spendByChannel) {
     root.appendChild(buildTable(null,
@@ -2062,14 +2904,12 @@ function renderCardFinancials(data) {
     root.appendChild(el("div", { class: "no-data-note", text: "Spend_By_Channel sheet is missing. No data available." }));
   }
 
-  /* Top 5 Merchants by Spend: MCC Column (Rule 2) */
   root.appendChild(sectionTitle("Top 5 Merchants by Spend"));
   root.appendChild(buildTable(null,
     [{ key: "rank", label: "Rank", numeric: true }, { key: "merchant", label: "Merchant" }, { key: "mcc", label: "MCC" },
      { key: "txnCount", label: "Transaction Count", numeric: true }, { key: "spend", label: "Transaction Amount", currency: true }, { key: "share", label: "Share %", percent: true }],
     data.topMerchants));
 
-  /* SBP Cross-Border Monitoring */
   root.appendChild(sectionTitle("SBP Cross-Border Monitoring (USD 30,000 threshold)"));
   if (data.sbpCrossBorder) {
     const sbpGrid = el("div", { class: "kpi-grid" });
@@ -2083,7 +2923,7 @@ function renderCardFinancials(data) {
 }
 
 /* ---------------------------------------------------------------------
-   14. PAGE 5 — CHARGEBACK ([ Credit Cards ] [ Debit Cards ] ONLY)
+   15. PAGE 5 — CHARGEBACK ([ Credit Cards ] [ Debit Cards ])
    --------------------------------------------------------------------- */
 
 function renderChargeback(data) {
@@ -2097,7 +2937,6 @@ function renderChargeback(data) {
 
   root.appendChild(sectionTitle("Chargeback & Dispute Summary"));
 
-  /* Tabs: ONLY Credit Cards and Debit Cards (Rule 13 - NO "All Cards" button) */
   const toggleWrap = el("div", { class: "card-fin-toggle-bar" });
   const btnCredit = el("button", { class: "fin-toggle-btn" + (chargebackActiveTab === "credit" ? " active" : ""), type: "button", text: "Credit Cards" });
   const btnDebit = el("button", { class: "fin-toggle-btn" + (chargebackActiveTab === "debit" ? " active" : ""), type: "button", text: "Debit Cards" });
@@ -2109,40 +2948,49 @@ function renderChargeback(data) {
   const tableContainer = el("div", { id: "chargebackTableContainer" });
   root.appendChild(tableContainer);
 
-  const cbData = data.chargeback;
-  const creditCb = cbData.credit || cbData;
-  const debitCb  = cbData.debit || cbData;
+  const cb = data.chargeback;
+  const creditCb = cb.credit || {};
+  const debitCb = cb.debit || {};
 
   function renderChargebackTable() {
     tableContainer.innerHTML = "";
-    const activeCb = chargebackActiveTab === "debit" ? debitCb : creditCb;
-
-    function metricRow(label, m) {
-      return {
-        metric: label,
-        currentCount: m ? m.count : null, currentAmount: m ? m.amount : null,
-        prevCount: m ? m.prevCount : null, prevAmount: m ? m.prevAmount : null,
-        changeDisplay: m ? calculateComparisons(m.count, m.prevCount, false, true).html : "\u2014"
-      };
-    }
-
-    const rows = [
-      metricRow("Domestic Disputes", activeCb.domestic),
-      metricRow("International Disputes", activeCb.international),
-      metricRow("POS Disputes", activeCb.pos),
-      metricRow("E-Commerce Disputes", activeCb.ecommerce),
-      metricRow("Pre-Arbitration Raised", activeCb.preArbRaised),
-      metricRow("Pre-Arbitration Received", activeCb.preArbReceived),
-      metricRow("High-Aging Disputes", activeCb.highAging)
+    const selectedCb = chargebackActiveTab === "debit" ? debitCb : creditCb;
+    const rowsDef = [
+      { key: "domestic", label: "Domestic Disputes" },
+      { key: "international", label: "International Disputes" },
+      { key: "pos", label: "POS Disputes" },
+      { key: "ecommerce", label: "E-Commerce Disputes" },
+      { key: "preArbRaised", label: "Pre-Arbitration Raised" },
+      { key: "preArbReceived", label: "Pre-Arbitration Received" },
+      { key: "highAging", label: "High-Aging Disputes" }
     ];
 
+    const rows = rowsDef.map(function (def) {
+      const metric = selectedCb[def.key] || {};
+      const countCurrent = metric.count || 0;
+      const countPrev = metric.prevCount || 0;
+      const amtCurrent = metric.amount || 0;
+      const amtPrev = metric.prevAmount || 0;
+
+      return {
+        metric: def.label,
+        countCurrent: formatNumber(countCurrent),
+        countPrev: formatNumber(countPrev),
+        countChange: calculateComparisons(countCurrent, countPrev, false, true).html,
+        amtCurrent: formatCurrency(amtCurrent),
+        amtPrev: formatCurrency(amtPrev),
+        amtChange: calculateComparisons(amtCurrent, amtPrev, false, true).html
+      };
+    });
+
     const wrap = buildTable(null,
-      [{ key: "metric", label: "Dispute / Claim Metric" },
-       { key: "currentCount", label: "Current Month Count", numeric: true },
-       { key: "currentAmount", label: "Current Month Amount", currency: true },
-       { key: "prevCount", label: "Previous Month Count", numeric: true },
-       { key: "prevAmount", label: "Previous Month Amount", currency: true },
-       { key: "changeDisplay", label: "MoM Change", numeric: true }],
+      [{ key: "metric", label: "Dispute Metric" },
+       { key: "countCurrent", label: "Current Count", rightAlign: true },
+       { key: "countPrev", label: "Previous Count", rightAlign: true },
+       { key: "countChange", label: "Count MoM", rightAlign: true },
+       { key: "amtCurrent", label: "Current Amount", rightAlign: true },
+       { key: "amtPrev", label: "Previous Amount", rightAlign: true },
+       { key: "amtChange", label: "Amount MoM", rightAlign: true }],
       rows
     );
     tableContainer.appendChild(wrap);
@@ -2161,7 +3009,6 @@ function renderChargeback(data) {
     renderChargebackTable();
   });
 
-  /* Small Combined Credit + Debit Summary Boxes below table (Rule 13) */
   root.appendChild(sectionTitle("Combined Dispute Summaries"));
   const totDisputesBoth = (creditCb.domestic ? creditCb.domestic.count || 0 : 0)
                         + (creditCb.international ? creditCb.international.count || 0 : 0)
@@ -2177,7 +3024,6 @@ function renderChargeback(data) {
   grid.appendChild(kpiCard("Total Disputed Amount Across Both Cards", formatCurrency(totDisputedAmtBoth)));
   root.appendChild(grid);
 
-  /* Merchant tables with MCC column (Rule 2) */
   root.appendChild(sectionTitle("Top 5 Merchants by Dispute Count"));
   root.appendChild(buildTable(null,
     [{ key: "rank", label: "Rank", numeric: true }, { key: "merchant", label: "Merchant" }, { key: "mcc", label: "MCC" },
@@ -2199,7 +3045,7 @@ function renderChargeback(data) {
 }
 
 /* ---------------------------------------------------------------------
-   15. PAGE 6 — RECONCILIATION
+   16. PAGE 6 — RECONCILIATION
    --------------------------------------------------------------------- */
 
 function renderReconciliation(data) {
@@ -2275,7 +3121,7 @@ function deriveAgingBuckets(rec) {
   });
   const arr = Object.keys(buckets).map(function (k) { return buckets[k]; });
   const total = sumBy(arr, "amount") || 1;
-  arr.forEach(function (b) { b.share = (b.amount / total) * 100; });
+  arr.forEach(function (b) { b.share = calculateShare(b.amount, total); });
   return arr.length ? arr : null;
 }
 
@@ -2691,7 +3537,7 @@ function buildBancaChartSVG(breakdown) {
 }
 
 /* ---------------------------------------------------------------------
-   16. INITIALIZATION
+   20. INITIALIZATION
    --------------------------------------------------------------------- */
 
 function cacheDom() {
@@ -2706,6 +3552,8 @@ function cacheDom() {
   dom.sideNav = document.getElementById("sideNav");
   dom.filterReportingDate = document.getElementById("filterReportingDate");
   dom.filterReportingMonth = document.getElementById("filterReportingMonth");
+  dom.filterFromDate = document.getElementById("filterFromDate");
+  dom.filterToDate = document.getElementById("filterToDate");
   dom.filterPeriod = document.getElementById("filterPeriod");
   dom.filterCreditDebit = document.getElementById("filterCreditDebit");
   dom.filterDomIntl = document.getElementById("filterDomIntl");
@@ -2739,8 +3587,14 @@ function bindEvents() {
     if (btn) navigateToPage(btn.getAttribute("data-page"));
   });
 
-  [dom.filterReportingDate, dom.filterReportingMonth, dom.filterPeriod, dom.filterCreditDebit, dom.filterDomIntl, dom.filterIssAcq]
-    .forEach(function (input) { input.addEventListener("change", applyFilters); });
+  if (dom.filterPeriod) dom.filterPeriod.addEventListener("change", function () { applyFilters("period"); });
+  if (dom.filterReportingMonth) dom.filterReportingMonth.addEventListener("change", function () { applyFilters("month"); });
+  if (dom.filterFromDate) dom.filterFromDate.addEventListener("change", function () { applyFilters("date"); });
+  if (dom.filterToDate) dom.filterToDate.addEventListener("change", function () { applyFilters("date"); });
+  if (dom.filterReportingDate) dom.filterReportingDate.addEventListener("change", function () { applyFilters("date"); });
+
+  [dom.filterCreditDebit, dom.filterDomIntl, dom.filterIssAcq]
+    .forEach(function (input) { if (input) input.addEventListener("change", function () { applyFilters(); }); });
 
   window.addEventListener("hashchange", handleHashChange);
 }
@@ -2748,6 +3602,25 @@ function bindEvents() {
 function init() {
   cacheDom();
   bindEvents();
+
+  const now = new Date();
+  const yr = now.getFullYear();
+  const mo = String(now.getMonth() + 1).padStart(2, "0");
+  if (dom.filterReportingMonth && !dom.filterReportingMonth.value) {
+    dom.filterReportingMonth.value = yr + "-" + mo;
+  }
+  if (dom.filterFromDate && !dom.filterFromDate.value) {
+    dom.filterFromDate.value = yr + "-" + mo + "-01";
+  }
+  if (dom.filterToDate && !dom.filterToDate.value) {
+    const lastDay = new Date(yr, now.getMonth() + 1, 0).getDate();
+    dom.filterToDate.value = yr + "-" + mo + "-" + String(lastDay).padStart(2, "0");
+  }
+  if (dom.filterReportingDate && !dom.filterReportingDate.value) {
+    dom.filterReportingDate.value = dom.filterFromDate.value;
+  }
+
+  applyFilters();
   updateHeaderStatus();
   if (!window.location.hash) window.location.hash = "#overview";
   handleHashChange();
