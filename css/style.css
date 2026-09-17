@@ -882,6 +882,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   font-size: 10.5px;
 }
 
+.ov-card-4-rows .ov-kpi-table td {
+  padding: 9.5px 4px;
+}
+
 .ov-kpi-table td.col-metric {
   text-align: left;
   font-weight: 600;
@@ -1528,15 +1532,287 @@ table.ov-adc-table tbody tr:hover { background: var(--ov-blue-xlight); }
 /* ── Level 4: Module Summary Panels ───────────────────────────────── */
 .ov-modules-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
   gap: var(--space-1-5);
   margin-bottom: var(--space-2);
+}
+
+table.ov-module-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  margin: 0;
+  table-layout: auto;
+}
+
+table.ov-module-table th {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--brand-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 5px 6px;
+  border-bottom: 1.5px solid var(--border);
+  background: var(--ov-blue-xlight);
+  white-space: nowrap;
+  vertical-align: middle;
+  text-align: right;
+}
+
+table.ov-module-table th.grouped-hdr {
+  border-bottom: 1px solid var(--ov-blue-light);
+  font-size: 10px;
+  background: var(--ov-blue-light);
+  color: var(--brand-dark);
+}
+
+table.ov-module-table th.border-group-end,
+table.ov-module-table td.border-group-end {
+  border-right: 1px solid var(--border);
+}
+
+table.ov-module-table th:first-child,
+table.ov-module-table td:first-child {
+  text-align: left;
+}
+
+table.ov-module-table td {
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-main);
+  white-space: nowrap;
+  vertical-align: middle;
+  font-size: 11px;
+}
+
+table.ov-module-table td.num,
+table.ov-module-table th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+table.ov-module-table tbody tr:hover {
+  background: var(--ov-blue-xlight);
+}
+
+table.ov-module-table tbody tr.clickable-row {
+  cursor: pointer;
+}
+
+table.ov-module-table tbody tr.clickable-row:hover {
+  background: var(--brand-light);
+}
+
+table.ov-module-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.stock-subtext {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: normal;
+  margin-left: 3px;
 }
 
 /* Standalone chart card outside ov-charts-row (used by new pages) */
 .page-body > .ov-chart-card {
   max-width: 700px;
   margin-bottom: var(--space-3);
+}
+
+/* ── Level 1 & Level 2: Reconciliation Flow ───────────────────────── */
+.recon-unit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2-5);
+  margin-top: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+
+.recon-unit-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-top: 3.5px solid var(--brand);
+  border-radius: var(--radius-md);
+  padding: 24px var(--space-2);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+  min-height: 110px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.recon-unit-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--brand);
+  background: var(--ov-blue-xlight);
+}
+
+.recon-unit-code {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--brand-dark);
+  line-height: 1.2;
+  margin-bottom: 6px;
+  letter-spacing: -0.01em;
+}
+
+.recon-unit-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  line-height: 1.3;
+}
+
+.recon-detail-topbar {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--space-1);
+  padding-bottom: 8px;
+}
+
+.btn-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--brand-dark);
+  background: var(--card-bg);
+  border: 1.5px solid var(--brand);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-sm:hover,
+.btn-sm:focus-visible {
+  background: var(--brand);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-sm { transition: none; }
+}
+
+.recon-back-btn {
+  /* inherits .btn-sm — no extra rules needed */
+}
+
+.recon-centered-heading {
+  text-align: center;
+  color: var(--brand-dark);
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0 0 var(--space-3);
+  letter-spacing: -0.01em;
+}
+
+.recon-table-wrap {
+  margin-bottom: var(--space-3);
+}
+
+table.recon-detail-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 11.5px;
+  margin: 0;
+}
+
+table.recon-detail-table th {
+  background: var(--ov-blue-xlight);
+  color: var(--brand-dark);
+  font-weight: 700;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 7px 8px;
+  border-bottom: 1.5px solid var(--border);
+  border-right: 1px solid var(--border-light);
+  white-space: nowrap;
+  vertical-align: middle;
+  text-align: right;
+}
+
+table.recon-detail-table th.col-left {
+  text-align: left;
+}
+
+table.recon-detail-table th.col-center {
+  text-align: center;
+}
+
+table.recon-detail-table th:last-child {
+  border-right: none;
+}
+
+table.recon-detail-table td {
+  padding: 6.5px 8px;
+  border-bottom: 1px solid var(--border-light);
+  border-right: 1px solid var(--border-light);
+  color: var(--text-main);
+  white-space: nowrap;
+  vertical-align: middle;
+  font-size: 11px;
+}
+
+table.recon-detail-table td:last-child {
+  border-right: none;
+}
+
+table.recon-detail-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+table.recon-detail-table td.center {
+  text-align: center;
+}
+
+table.recon-detail-table tbody tr:hover {
+  background: var(--ov-blue-xlight);
+}
+
+table.recon-detail-table tr.total-row td {
+  background: var(--brand-light);
+  font-weight: 700;
+  color: var(--brand-dark);
+  border-top: 1.5px solid var(--brand);
+  border-bottom: none;
+}
+
+table.recon-detail-table th.col-wide {
+  min-width: 180px;
+  white-space: normal;
+}
+
+table.recon-detail-table td.recon-diff-cell {
+  font-weight: 700;
+  color: var(--brand-dark);
+}
+
+@media (max-width: 900px) {
+  .recon-unit-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 550px) {
+  .recon-unit-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .ov-module-card {

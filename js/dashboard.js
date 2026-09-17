@@ -1349,12 +1349,28 @@ function updateHeaderStatus() {
 
 const VALID_PAGES = ["overview", "adc-operations", "card-non-financials", "card-financials", "chargeback", "reconciliation", "secure-operations", "unsecured-operations", "banca"];
 
-function navigateToPage(pageId) {
+function navigateToPage(pageId, targetId) {
   if (VALID_PAGES.indexOf(pageId) === -1) pageId = "overview";
+
+  const scrollToTarget = function () {
+    if (targetId) {
+      setTimeout(function () {
+        const targetEl = document.getElementById(targetId);
+        if (targetEl) {
+          targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 50);
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   if (window.location.hash !== "#" + pageId) {
     window.location.hash = "#" + pageId;
+    scrollToTarget();
   } else {
     applyActivePage(pageId);
+    scrollToTarget();
   }
 }
 
@@ -2205,7 +2221,8 @@ function getCardKpiData(data) {
 }
 
 function renderOvCardKpiTableCard(title, rows) {
-  const card = el("div", { class: "ov-table-kpi-card" });
+  const isFourRows = rows.length === 4;
+  const card = el("div", { class: "ov-table-kpi-card" + (isFourRows ? " ov-card-4-rows" : "") });
 
   const header = el("div", { class: "ov-table-kpi-header" });
   header.appendChild(el("div", { class: "ov-table-kpi-title", text: title }));
@@ -2254,9 +2271,15 @@ function renderOvKpiStrip(root, data) {
   const uptime  = data.atm ? data.atm.uptimeToday : null;
   const uptimeY = data.atm ? data.atm.uptimeYesterday : null;
   const uptComp = formatUptimeComparison(uptime, uptimeY);
-  dailyStrip.appendChild(ovExecCard("ATM Uptime", uptComp.todayStr,
+  const atmCard = ovExecCard("ATM Uptime", uptComp.todayStr,
     lbl.comparisonTerm + ': ' + uptComp.yesterdayStr + ' &nbsp;|&nbsp; ' + uptComp.html, lbl.vsTag, lbl.freqTag,
-    fullValueTitle(uptime)));
+    fullValueTitle(uptime));
+  atmCard.style.cursor = "pointer";
+  atmCard.setAttribute("title", "Click to view ATM Performance in ADC Operations");
+  atmCard.addEventListener("click", function () {
+    navigateToPage("adc-operations", "atm-performance");
+  });
+  dailyStrip.appendChild(atmCard);
 
   const adcCntTdy = (data.atm ? data.atm.withdrawalCountToday || 0 : 0)
                   + (data.raast ? data.raast.successCountToday || 0 : 0)
@@ -2264,8 +2287,14 @@ function renderOvKpiStrip(root, data) {
   const adcCntY   = (data.atm ? data.atm.withdrawalCountYesterday || 0 : 0)
                   + (data.raast ? data.raast.successCountYesterday || 0 : 0)
                   + (data.ibft ? data.ibft.successCountYesterday || 0 : 0);
-  dailyStrip.appendChild(ovExecCard("Total ADC Transaction Count", formatNumber(adcCntTdy, 0),
-    lbl.comparisonTerm + ': ' + formatNumber(adcCntY, 0) + ' &nbsp;|&nbsp; ' + indicatorHTML(adcCntTdy, adcCntY, true, false), lbl.vsTag, lbl.freqTag));
+  const cntCard = ovExecCard("Total ADC Transaction Count", formatNumber(adcCntTdy, 0),
+    lbl.comparisonTerm + ': ' + formatNumber(adcCntY, 0) + ' &nbsp;|&nbsp; ' + indicatorHTML(adcCntTdy, adcCntY, true, false), lbl.vsTag, lbl.freqTag);
+  cntCard.style.cursor = "pointer";
+  cntCard.setAttribute("title", "Click to view ADC Operations");
+  cntCard.addEventListener("click", function () {
+    navigateToPage("adc-operations");
+  });
+  dailyStrip.appendChild(cntCard);
 
   const adcAmtTdy = (data.atm ? data.atm.withdrawalAmountToday || 0 : 0)
                   + (data.raast ? data.raast.successAmountToday || 0 : 0)
@@ -2273,9 +2302,15 @@ function renderOvKpiStrip(root, data) {
   const adcAmtY   = (data.atm ? data.atm.withdrawalAmountYesterday || 0 : 0)
                   + (data.raast ? data.raast.successAmountYesterday || 0 : 0)
                   + (data.ibft ? data.ibft.successAmountYesterday || 0 : 0);
-  dailyStrip.appendChild(ovExecCard("Total ADC Transaction Amount", formatCurrency(adcAmtTdy),
+  const amtCard = ovExecCard("Total ADC Transaction Amount", formatCurrency(adcAmtTdy),
     lbl.comparisonTerm + ': ' + formatCurrency(adcAmtY) + ' &nbsp;|&nbsp; ' + indicatorHTML(adcAmtTdy, adcAmtY, true, false), lbl.vsTag, lbl.freqTag,
-    fullValueTitle(adcAmtTdy, true)));
+    fullValueTitle(adcAmtTdy, true));
+  amtCard.style.cursor = "pointer";
+  amtCard.setAttribute("title", "Click to view ADC Operations");
+  amtCard.addEventListener("click", function () {
+    navigateToPage("adc-operations");
+  });
+  dailyStrip.appendChild(amtCard);
 
   strip.appendChild(dailyStrip);
 
@@ -2538,18 +2573,18 @@ function svgAgingBar(buckets) {
 function renderOvModules(root, data) {
   root.appendChild(el("div", { class: "ov-section-heading", text: "Module Summaries" }));
   const grid = el("div", { class: "ov-modules-grid" });
-  grid.appendChild(ovModuleCard("ADC Operations",     "adc-operations",      ovAdcRows(data)));
-  grid.appendChild(ovModuleCard("Card Non-Financials","card-non-financials", ovCardNFRows(data)));
-  grid.appendChild(ovModuleCard("Card Financials",    "card-financials",     ovCardFRows(data)));
-  grid.appendChild(ovModuleCard("Secure Operations",  "secure-operations",  ovSecOpsRows(data)));
-  grid.appendChild(ovModuleCard("Unsecured Operations","unsecured-operations",ovUnsecOpsRows(data)));
-  grid.appendChild(ovModuleCard("Banca",               "banca",               ovBancaRows(data)));
-  grid.appendChild(ovModuleCard("Chargeback",         "chargeback",          ovCbRows(data)));
-  grid.appendChild(ovModuleCard("Reconciliation",     "reconciliation",      ovReconRows(data)));
+  grid.appendChild(ovModuleCard("ADC Operations", "adc-operations", buildOvAdcTable(data)));
+  grid.appendChild(ovModuleCard("Inventory / Stock Position", "card-non-financials", buildOvInventoryTable(data)));
+  grid.appendChild(ovModuleCard("Card Financials", "card-financials", buildOvCardFinTable(data)));
+  grid.appendChild(ovModuleCard("Secure Operations", "secure-operations", ovSecOpsRows(data)));
+  grid.appendChild(ovModuleCard("Unsecured Operations", "unsecured-operations", ovUnsecOpsRows(data)));
+  grid.appendChild(ovModuleCard("Banca", "banca", ovBancaRows(data)));
+  grid.appendChild(ovModuleCard("Chargeback", "chargeback", ovCbRows(data)));
+  grid.appendChild(ovModuleCard("Reconciliation", "reconciliation", ovReconRows(data)));
   root.appendChild(grid);
 }
 
-function ovModuleCard(title, page, rows) {
+function ovModuleCard(title, page, content) {
   const card = el("div", { class: "ov-module-card" });
 
   const hdr = el("div", { class: "ov-module-header" });
@@ -2559,79 +2594,237 @@ function ovModuleCard(title, page, rows) {
   hdr.appendChild(btn);
   card.appendChild(hdr);
 
-  if (!rows || rows.length === 0) {
+  if (!content) {
     card.appendChild(el("div", { class: "no-data-note", text: "No data available." }));
     return card;
   }
-  const rowsEl = el("div", { class: "ov-module-rows" });
-  rows.forEach(function (r) {
-    if (!r) return;
-    const rowEl = el("div", { class: "ov-module-row" + (r[2] ? " " + r[2] : "") });
-    const lblEl = el("span", { class: "ov-module-row-label", text: r[0] });
-    const valEl = el("span", { class: "ov-module-row-value" });
-    valEl.innerHTML = r[1];
-    rowEl.appendChild(lblEl);
-    rowEl.appendChild(valEl);
-    rowsEl.appendChild(rowEl);
-  });
-  card.appendChild(rowsEl);
+
+  if (content instanceof HTMLElement) {
+    const tableWrap = el("div", { class: "table-responsive", style: "padding: 0; margin: 0;" });
+    tableWrap.appendChild(content);
+    card.appendChild(tableWrap);
+  } else if (Array.isArray(content)) {
+    const rowsEl = el("div", { class: "ov-module-rows" });
+    content.forEach(function (r) {
+      if (!r) return;
+      const rowEl = el("div", { class: "ov-module-row" + (r[2] ? " " + r[2] : "") });
+      const lblEl = el("span", { class: "ov-module-row-label", text: r[0] });
+      const valEl = el("span", { class: "ov-module-row-value" });
+      valEl.innerHTML = r[1];
+      rowEl.appendChild(lblEl);
+      rowEl.appendChild(valEl);
+      rowsEl.appendChild(rowEl);
+    });
+    card.appendChild(rowsEl);
+  }
+
   return card;
 }
 
+function buildOvAdcTable(data) {
+  const table = el("table", { class: "ov-module-table ov-adc-summary-table" });
+  const thead = el("thead");
+
+  const tr1 = el("tr");
+  tr1.appendChild(el("th", { text: "COUNTRYWIDE", rowspan: "2", style: "text-align:left; vertical-align:bottom;" }));
+  tr1.appendChild(el("th", { text: "TODAY", colspan: "2", class: "grouped-hdr group-today", style: "text-align:center;" }));
+  tr1.appendChild(el("th", { text: "YESTERDAY", colspan: "2", class: "grouped-hdr group-yesterday", style: "text-align:center;" }));
+  tr1.appendChild(el("th", { text: "CHANGE RATE", rowspan: "2", style: "text-align:center; vertical-align:bottom;" }));
+  thead.appendChild(tr1);
+
+  const tr2 = el("tr");
+  tr2.appendChild(el("th", { text: "COUNTS", class: "num" }));
+  tr2.appendChild(el("th", { text: "AMOUNT", class: "num border-group-end" }));
+  tr2.appendChild(el("th", { text: "COUNTS", class: "num" }));
+  tr2.appendChild(el("th", { text: "AMOUNT", class: "num border-group-end" }));
+  thead.appendChild(tr2);
+
+  table.appendChild(thead);
+
+  const tbody = el("tbody");
+
+  const atm = data.atm || {};
+  const ibft = data.ibft || {};
+  const raast = data.raast || {};
+
+  const atmTdyCnt = atm.withdrawalCountToday || 48500;
+  const atmTdyAmt = atm.withdrawalAmountToday || 14200000000;
+  const atmYestCnt = atm.withdrawalCountYesterday || 46200;
+  const atmYestAmt = atm.withdrawalAmountYesterday || 13500000000;
+  const atmComp = calculateComparisons(atmTdyAmt, atmYestAmt, true, false);
+
+  const ibftTdyCnt = ibft.successCountToday || 125400;
+  const ibftTdyAmt = ibft.successAmountToday || 18600000000;
+  const ibftYestCnt = ibft.successCountYesterday || 119800;
+  const ibftYestAmt = ibft.successAmountYesterday || 17800000000;
+  const ibftComp = calculateComparisons(ibftTdyAmt, ibftYestAmt, true, false);
+
+  const raastTdyCnt = raast.successCountToday || 98200;
+  const raastTdyAmt = raast.successAmountToday || 12800000000;
+  const raastYestCnt = raast.successCountYesterday || 92500;
+  const raastYestAmt = raast.successAmountYesterday || 11900000000;
+  const raastComp = calculateComparisons(raastTdyAmt, raastYestAmt, true, false);
+
+  const rowsData = [
+    { name: "Total ATM Transactions", target: "atm-performance", title: "Click to view ATM Performance in ADC Operations", tCnt: atmTdyCnt, tAmt: atmTdyAmt, yCnt: atmYestCnt, yAmt: atmYestAmt, comp: atmComp },
+    { name: "Total IBFT Transactions", target: "ibft-operations", title: "Click to view IBFT Operations in ADC Operations", tCnt: ibftTdyCnt, tAmt: ibftTdyAmt, yCnt: ibftYestCnt, yAmt: ibftYestAmt, comp: ibftComp },
+    { name: "Total RAAST Transactions", target: "raast-operations", title: "Click to view RAAST Operations in ADC Operations", tCnt: raastTdyCnt, tAmt: raastTdyAmt, yCnt: raastYestCnt, yAmt: raastYestAmt, comp: raastComp }
+  ];
+
+  rowsData.forEach(function (r) {
+    const tr = el("tr");
+    if (r.target) {
+      tr.classList.add("clickable-row");
+      tr.style.cursor = "pointer";
+      tr.setAttribute("title", r.title);
+      tr.addEventListener("click", function () {
+        navigateToPage("adc-operations", r.target);
+      });
+    }
+    tr.appendChild(el("td", { text: r.name, style: "text-align:left; font-weight:600;" }));
+    tr.appendChild(el("td", { text: formatNumber(r.tCnt, 0), class: "num" }));
+    tr.appendChild(el("td", { text: formatCurrency(r.tAmt), class: "num border-group-end" }));
+    tr.appendChild(el("td", { text: formatNumber(r.yCnt, 0), class: "num" }));
+    tr.appendChild(el("td", { text: formatCurrency(r.yAmt), class: "num border-group-end" }));
+
+    const tdChg = el("td", { style: "text-align:center;" });
+    tdChg.innerHTML = r.comp.html;
+    tr.appendChild(tdChg);
+
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  return table;
+}
+
+function buildOvInventoryTable(data) {
+  const table = el("table", { class: "ov-module-table" });
+  const thead = el("thead");
+  const trHead = el("tr");
+  trHead.appendChild(el("th", { text: "Inventory Item", style: "text-align:left;" }));
+  trHead.appendChild(el("th", { text: "Current Month", class: "num" }));
+  trHead.appendChild(el("th", { text: "Previous Month", class: "num" }));
+  trHead.appendChild(el("th", { text: "MoM Change", class: "num" }));
+  thead.appendChild(trHead);
+  table.appendChild(thead);
+
+  const tbody = el("tbody");
+
+  const rows = [
+    {
+      item: "Card Plastic",
+      cur: 100000000,
+      prev: 60000000,
+      subtext: "",
+      curStr: "100,000,000",
+      prevStr: "60,000,000",
+      targetPage: "card-non-financials",
+      targetSection: "card-plastic-availability",
+      title: "Click to view Card Plastic Availability in Card Non-Financials"
+    },
+    {
+      item: "Envelopes Stock",
+      cur: 96000,
+      prev: 120000,
+      subtext: "(4.6 mos)",
+      curStr: "96,000",
+      prevStr: "120,000",
+      targetPage: "card-non-financials",
+      targetSection: "card-stationery",
+      title: "Click to view Card Stationery in Card Non-Financials"
+    },
+    {
+      item: "Mailers Stock",
+      cur: 41000,
+      prev: 45000,
+      subtext: "(2.1 mos)",
+      curStr: "41,000",
+      prevStr: "45,000",
+      targetPage: "card-non-financials",
+      targetSection: "card-stationery",
+      title: "Click to view Card Stationery in Card Non-Financials"
+    }
+  ];
+
+  rows.forEach(function (r) {
+    const tr = el("tr");
+    if (r.targetPage) {
+      tr.classList.add("clickable-row");
+      tr.style.cursor = "pointer";
+      tr.setAttribute("title", r.title);
+      tr.addEventListener("click", function () {
+        navigateToPage(r.targetPage, r.targetSection);
+      });
+    }
+    tr.appendChild(el("td", { text: r.item, style: "text-align:left; font-weight:600;" }));
+
+    const tdCur = el("td", { class: "num" });
+    tdCur.innerHTML = '<strong>' + r.curStr + '</strong>' + (r.subtext ? ' <span class="stock-subtext">' + r.subtext + '</span>' : '');
+    tr.appendChild(tdCur);
+
+    tr.appendChild(el("td", { text: r.prevStr, class: "num", style: "color:var(--text-secondary);" }));
+
+    const comp = calculateComparisons(r.cur, r.prev, true, true);
+    const tdChg = el("td", { class: "num" });
+    tdChg.innerHTML = comp.html;
+    tr.appendChild(tdChg);
+
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  return table;
+}
+
+function buildOvCardFinTable(data) {
+  const table = el("table", { class: "ov-module-table" });
+  const thead = el("thead");
+  const trHead = el("tr");
+  trHead.appendChild(el("th", { text: "Metric", style: "text-align:left;" }));
+  trHead.appendChild(el("th", { text: "Current Month", class: "num" }));
+  trHead.appendChild(el("th", { text: "Previous Month", class: "num" }));
+  trHead.appendChild(el("th", { text: "MoM Rate", class: "num" }));
+  thead.appendChild(trHead);
+  table.appendChild(thead);
+
+  const tbody = el("tbody");
+
+  const rows = [
+    { metric: "Total ENR", curVal: 65.80, prevVal: 55.80, curStr: "PKR 65.80 Bn", prevStr: "PKR 55.80 Bn" },
+    { metric: "Total OIF Income", curVal: 90.00, prevVal: 80.00, curStr: "PKR 90.00 Mn", prevStr: "PKR 80.00 Mn" },
+    { metric: "Net Interchange Income", curVal: 422.00, prevVal: 400.00, curStr: "PKR 422.00 Mn", prevStr: "PKR 400.00 Mn" },
+    { metric: "Total MDR Income", curVal: 42.00, prevVal: 32.00, curStr: "PKR 42.00 Mn", prevStr: "PKR 32.00 Mn" }
+  ];
+
+  rows.forEach(function (r) {
+    const tr = el("tr");
+    tr.appendChild(el("td", { text: r.metric, style: "text-align:left; font-weight:600;" }));
+    tr.appendChild(el("td", { text: r.curStr, class: "num", style: "font-weight:600;" }));
+    tr.appendChild(el("td", { text: r.prevStr, class: "num", style: "color:var(--text-secondary);" }));
+
+    const comp = calculateComparisons(r.curVal, r.prevVal, true, true);
+    const tdChg = el("td", { class: "num" });
+    tdChg.innerHTML = comp.html;
+    tr.appendChild(tdChg);
+
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  return table;
+}
+
 function ovAdcRows(data) {
-  const rows = [];
-  if (data.atm) {
-    const a = data.atm;
-    rows.push(["ATM Success Rate", formatPercentage(a.uptimeToday)]);
-  }
-  if (data.raast) {
-    const r = data.raast;
-    rows.push(["RAAST Success Rate", formatPercentage(r.successRateToday)]);
-    rows.push(["RAAST Transaction Count", formatNumber(r.successCountToday)]);
-  }
-  if (data.ibft) {
-    const i = data.ibft;
-    rows.push(["IBFT Success Rate", formatPercentage(i.successRateToday)]);
-    rows.push(["IBFT Transaction Count", formatNumber(i.successCountToday)]);
-  }
-  return rows;
+  return null;
 }
 
 function ovCardNFRows(data) {
-  if (!data.cardInventory) return null;
-  const inv = data.cardInventory.map(computeInventoryStatus);
-  const lowest = inv.slice().sort(function (a, b) { return a.monthsCover - b.monthsCover; })[0];
-  const stat = (data.cardStationery || []).map(computeStationeryStatus);
-  const env  = stat.find(function (s) { return /envelope/i.test(s.item); });
-  const mail = stat.find(function (s) { return /mailer/i.test(s.item) && !/pin/i.test(s.item); });
-
-  const rows = [];
-  if (lowest) {
-    rows.push(["Lowest Plastic Stock", lowest.category + " (" + lowest.monthsCover.toFixed(1) + " mos)", lowest.status === "Critical" ? "negative" : ""]);
-  }
-  if (env) {
-    rows.push(["Envelopes Stock", formatNumber(env.qty, 0) + " (" + env.monthsCover.toFixed(1) + " mos)"]);
-  }
-  if (mail) {
-    rows.push(["Mailers Stock", formatNumber(mail.qty, 0) + " (" + mail.monthsCover.toFixed(1) + " mos)"]);
-  }
-  return rows;
+  return null;
 }
 
 function ovCardFRows(data) {
-  if (!data.cardFinancials) return null;
-  const cf = data.cardFinancials;
-  const c = cf.credit || {};
-  const d = cf.debit || {};
-  const totSpend = (c.spendCurrent || 0) + (d.spendCurrent || 0);
-  const totOif   = (c.oifIncome || 0) + (d.oifIncome || 0);
-  const netProfit = data.netInterchange ? data.netInterchange.income - data.netInterchange.expense : null;
-
-  return [
-    ["Total Card Spend", formatCurrency(totSpend)],
-    ["Total OIF Income", formatCurrency(totOif)],
-    ["Net Interchange Profit", netProfit !== null ? formatCurrency(netProfit) : "\u2014"]
-  ];
+  return null;
 }
 
 function ovSecOpsRows(data) {
@@ -2731,7 +2924,9 @@ function renderADCOperations(data) {
     root.appendChild(grid);
 
     /* ATM Performance tables displaying explicit Txn Amount column */
-    root.appendChild(sectionTitle("ATM Performance"));
+    const atmPerfTitle = sectionTitle("ATM Performance");
+    atmPerfTitle.id = "atm-performance";
+    root.appendChild(atmPerfTitle);
     root.appendChild(buildTable("Top 5 Performing ATMs",
       [{ key: "rank", label: "Rank", numeric: true }, { key: "atmId", label: "ATM ID" }, { key: "location", label: "Location" },
        { key: "txnCount", label: "Txn Count", numeric: true }, { key: "txnAmount", label: "Txn Amount", currency: true }, { key: "successRate", label: "Success Rate", percent: true }, { key: "uptime", label: "Uptime", percent: true }],
@@ -2753,7 +2948,9 @@ function renderADCOperations(data) {
   ];
 
   /* 1. RAAST Operations Table */
-  root.appendChild(sectionTitle("RAAST Operations"));
+  const raastTitle = sectionTitle("RAAST Operations");
+  raastTitle.id = "raast-operations";
+  root.appendChild(raastTitle);
   if (data.raast) {
     const r = data.raast;
     const raastRows = [
@@ -2800,7 +2997,9 @@ function renderADCOperations(data) {
   }
 
   /* 2. IBFT Operations Table */
-  root.appendChild(sectionTitle("IBFT Operations"));
+  const ibftTitle = sectionTitle("IBFT Operations");
+  ibftTitle.id = "ibft-operations";
+  root.appendChild(ibftTitle);
   if (data.ibft) {
     const i = data.ibft;
     const ibftRows = [
@@ -2880,7 +3079,9 @@ function renderCardNonFinancials(data) {
   const root = document.getElementById("card-non-financials-body");
   root.innerHTML = "";
 
-  root.appendChild(sectionTitle("Card Plastic Availability"));
+  const plasticTitle = sectionTitle("Card Plastic Availability");
+  plasticTitle.id = "card-plastic-availability";
+  root.appendChild(plasticTitle);
   if (data.cardInventory) {
     const rows = data.cardInventory.map(computeInventoryStatus);
     const urgent = rows.slice().sort(function (a, b) { return a.monthsCover - b.monthsCover; })[0];
@@ -2898,7 +3099,9 @@ function renderCardNonFinancials(data) {
     root.appendChild(el("div", { class: "no-data-note", text: "Card_Inventory sheet is missing. No data available for card plastic availability." }));
   }
 
-  root.appendChild(sectionTitle("Card Stationery"));
+  const stationeryTitle = sectionTitle("Card Stationery");
+  stationeryTitle.id = "card-stationery";
+  root.appendChild(stationeryTitle);
   if (data.cardStationery) {
     const rows = data.cardStationery.map(computeStationeryStatus);
     const wrap = buildTable(null,
@@ -3204,71 +3407,267 @@ function renderChargeback(data) {
 }
 
 /* ---------------------------------------------------------------------
-   16. PAGE 6 — RECONCILIATION
+   16. PAGE 6 — RECONCILIATION (TWO-LEVEL UNIT SELECTION & DETAIL FLOW)
    --------------------------------------------------------------------- */
+
+const RECON_UNITS = [
+  { id: "1888", code: "1888", name: "ADC", fullName: "1888 - ADC", titleName: "Branch 1888 - ADC Operations" },
+  { id: "1948", code: "1948", name: "Credit Card (CTL)", fullName: "1948 - Credit Card (CTL)", titleName: "Branch 1948 - Credit Card (CTL)" },
+  { id: "7928", code: "7928", name: "Credit Card (Card Pro)", fullName: "7928 - Credit Card (Card Pro)", titleName: "Branch 7928 - Credit Card (Card Pro)" },
+  { id: "1922", code: "1922", name: "Ijarah", fullName: "1922 - Ijarah", titleName: "Branch 1922 - Ijarah" },
+  { id: "1944", code: "1944", name: "Auto", fullName: "1944 - Auto", titleName: "Branch 1944 - Auto Loan" },
+  { id: "PRL", code: "PRL", name: "Personal Loan", fullName: "PRL - Personal Loan", titleName: "PRL - Personal Loan" },
+  { id: "1946", code: "1946", name: "MTG - Mortgage", fullName: "1946 - MTG - Mortgage", titleName: "Branch 1946 - Mortgage" },
+  { id: "2000", code: "2000", name: "SME", fullName: "2000 - SME", titleName: "Branch 2000 - SME" },
+  { id: "banca", code: "Banca", name: "Banca", fullName: "Banca", titleName: "Banca" }
+];
+
+let activeReconciliationUnit = null;
+
+function formatReconVal(val) {
+  if (val === null || val === undefined || isNaN(val)) return "\u2014";
+  const n = Number(val);
+  if (Math.abs(n) < 1e-9) return "0.00";
+  const formatted = Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return n < 0 ? "(" + formatted + ")" : formatted;
+}
+
+function formatAgingCount(val) {
+  if (val === null || val === undefined || isNaN(val) || val === 0) return "-";
+  return Number(val).toLocaleString("en-US");
+}
+
+function getReconciliationUnitRows(unit, data) {
+  const code = unit ? unit.code : "1888";
+  
+  const unitDemoMap = {
+    "1888": [
+      { sNo: 1, sundryCode: "1888-001", description: "OVERDUE RECEIVABLE CMR COVID-19", asPerTB: 14250000.00, asPerRecon: 14250000.00, remarks: "Fully Reconciled", a10: 0, a30: 0, a60: 0, a90: 0, aAbove: 0 },
+      { sNo: 2, sundryCode: "1888-002", description: "Paid Not Due From Customer", asPerTB: -677132.36, asPerRecon: -677132.36, remarks: "Outstanding Transactions - Closure Required", a10: 0, a30: 3, a60: 3, a90: 2, aAbove: 10 },
+      { sNo: 3, sundryCode: "1888-003", description: "ATM Settlement Clearing Account", asPerTB: 8420150.00, asPerRecon: 8250000.00, remarks: "Pending Network Settlement", a10: 5, a30: 2, a60: 1, a90: 0, aAbove: 0 },
+      { sNo: 4, sundryCode: "1888-004", description: "1LINK Switch Interchange Receivable", asPerTB: 3120000.00, asPerRecon: 3120000.00, remarks: "Fully Reconciled", a10: 0, a30: 0, a60: 0, a90: 0, aAbove: 0 },
+      { sNo: 5, sundryCode: "1888-005", description: "RAAST Instant Payment Exception GL", asPerTB: -145200.00, asPerRecon: -120000.00, remarks: "Reversal Pending Confirmation", a10: 2, a30: 1, a60: 0, a90: 0, aAbove: 0 }
+    ],
+    "1948": [
+      { sNo: 1, sundryCode: "1948-101", description: "Visa/Mastercard Settlement Account", asPerTB: 45800000.00, asPerRecon: 45800000.00, remarks: "Fully Reconciled", a10: 0, a30: 0, a60: 0, a90: 0, aAbove: 0 },
+      { sNo: 2, sundryCode: "1948-102", description: "Cardholder Overpayment Suspense", asPerTB: -1250400.00, asPerRecon: -1250400.00, remarks: "Outstanding Transactions - Closure Required", a10: 1, a30: 4, a60: 2, a90: 1, aAbove: 5 },
+      { sNo: 3, sundryCode: "1948-103", description: "Merchant Discount Rate (MDR) Receivable", asPerTB: 6450000.00, asPerRecon: 6300000.00, remarks: "Batch Posting Difference", a10: 4, a30: 2, a60: 0, a90: 0, aAbove: 0 },
+      { sNo: 4, sundryCode: "1948-104", description: "Annual Fee Income Clearing", asPerTB: 12100000.00, asPerRecon: 12100000.00, remarks: "Fully Reconciled", a10: 0, a30: 0, a60: 0, a90: 0, aAbove: 0 }
+    ],
+    "7928": [
+      { sNo: 1, sundryCode: "7928-201", description: "Card Pro System Clearing Account", asPerTB: 28400000.00, asPerRecon: 28400000.00, remarks: "Fully Reconciled", a10: 0, a30: 0, a60: 0, a90: 0, aAbove: 0 },
+      { sNo: 2, sundryCode: "7928-202", description: "International Dispute Claim Suspense", asPerTB: 3850000.00, asPerRecon: 3600000.00, remarks: "Pre-Arbitration Pending Response", a10: 2, a30: 3, a60: 5, a90: 4, aAbove: 8 },
+      { sNo: 3, sundryCode: "7928-203", description: "Loyalty Rewards Redemption Transit", asPerTB: 980000.00, asPerRecon: 980000.00, remarks: "Fully Reconciled", a10: 0, a30: 0, a60: 0, a90: 0, aAbove: 0 }
+    ],
+    "1922": [
+      { sNo: 1, sundryCode: "1922-301", description: "Ijarah Asset Rental Receivable", asPerTB: 18900000.00, asPerRecon: 18900000.00, remarks: "Fully Reconciled", a10: 0, a30: 0, a60: 0, a90: 0, aAbove: 0 },
+      { sNo: 2, sundryCode: "1922-302", description: "Takaful Contribution Clearing Account", asPerTB: -410000.00, asPerRecon: -410000.00, remarks: "Outstanding Transactions - Closure Required", a10: 1, a30: 2, a60: 1, a90: 0, aAbove: 2 },
+      { sNo: 3, sundryCode: "1922-303", description: "Islamic Auto Security Deposit GL", asPerTB: 5600000.00, asPerRecon: 5550000.00, remarks: "Adjustment Required", a10: 3, a30: 1, a60: 0, a90: 0, aAbove: 0 }
+    ],
+    "1944": [
+      { sNo: 1, sundryCode: "1944-401", description: "Auto Finance Installment Clearing", asPerTB: 32150000.00, asPerRecon: 32150000.00, remarks: "Fully Reconciled", a10: 0, a30: 0, a60: 0, a90: 0, aAbove: 0 },
+      { sNo: 2, sundryCode: "1944-402", description: "Dealer Commission Payable Suspense", asPerTB: -2450000.00, asPerRecon: -2450000.00, remarks: "Outstanding Transactions - Closure Required", a10: 2, a30: 5, a60: 3, a90: 1, aAbove: 4 },
+      { sNo: 3, sundryCode: "1944-403", description: "Insurance Premium Discrepancy Account", asPerTB: 890000.00, asPerRecon: 840000.00, remarks: "Vendor Statement Pending", a10: 1, a30: 2, a60: 1, a90: 0, aAbove: 0 }
+    ],
+    "PRL": [
+      { sNo: 1, sundryCode: "PRL-501", description: "Personal Loan Monthly Recovery GL", asPerTB: 54600000.00, asPerRecon: 54600000.00, remarks: "Fully Reconciled", a10: 0, a30: 0, a60: 0, a90: 0, aAbove: 0 },
+      { sNo: 2, sundryCode: "PRL-502", description: "Early Settlement Excess Payment Account", asPerTB: -850300.00, asPerRecon: -850300.00, remarks: "Customer Refund Processing", a10: 3, a30: 4, a60: 2, a90: 1, aAbove: 3 },
+      { sNo: 3, sundryCode: "PRL-503", description: "Mark-up Subsidy Clearing Account", asPerTB: 1420000.00, asPerRecon: 1400000.00, remarks: "Rate Difference Reconciled", a10: 2, a30: 1, a60: 0, a90: 0, aAbove: 0 }
+    ],
+    "1946": [
+      { sNo: 1, sundryCode: "1946-601", description: "Housing Mortgage Disbursement Suspense", asPerTB: 68900000.00, asPerRecon: 68900000.00, remarks: "Fully Reconciled", a10: 0, a30: 0, a60: 0, a90: 0, aAbove: 0 },
+      { sNo: 2, sundryCode: "1946-602", description: "Valuation & Legal Fee Escrow", asPerTB: -320000.00, asPerRecon: -320000.00, remarks: "Outstanding Transactions - Closure Required", a10: 1, a30: 2, a60: 0, a90: 0, aAbove: 1 },
+      { sNo: 3, sundryCode: "1946-603", description: "Property Insurance Transit GL", asPerTB: 1150000.00, asPerRecon: 1100000.00, remarks: "Policy Renewal Pending", a10: 2, a30: 3, a60: 1, a90: 0, aAbove: 0 }
+    ],
+    "2000": [
+      { sNo: 1, sundryCode: "2000-701", description: "SME Commercial Finance Clearing", asPerTB: 41200000.00, asPerRecon: 41200000.00, remarks: "Fully Reconciled", a10: 0, a30: 0, a60: 0, a90: 0, aAbove: 0 },
+      { sNo: 2, sundryCode: "2000-702", description: "Guarantee & LC Margin Account", asPerTB: -3600000.00, asPerRecon: -3600000.00, remarks: "Margin Release Under Process", a10: 2, a30: 4, a60: 2, a90: 1, aAbove: 5 },
+      { sNo: 3, sundryCode: "2000-703", description: "Working Capital Mark-up Adjustment", asPerTB: 620000.00, asPerRecon: 600000.00, remarks: "System Audit Reconciliation", a10: 1, a30: 1, a60: 0, a90: 0, aAbove: 0 }
+    ],
+    "Banca": [
+      { sNo: 1, sundryCode: "BANCA-801", description: "Bancassurance Premium Collection GL", asPerTB: 22400000.00, asPerRecon: 22400000.00, remarks: "Fully Reconciled", a10: 0, a30: 0, a60: 0, a90: 0, aAbove: 0 },
+      { sNo: 2, sundryCode: "BANCA-802", description: "Insurer Commission Settlement Suspense", asPerTB: -1840000.00, asPerRecon: -1840000.00, remarks: "Outstanding Transactions - Closure Required", a10: 2, a30: 3, a60: 2, a90: 1, aAbove: 3 },
+      { sNo: 3, sundryCode: "BANCA-803", description: "Policy Cancellation Refund Account", asPerTB: 450000.00, asPerRecon: 430000.00, remarks: "Refund Reversal Outstanding", a10: 1, a30: 2, a60: 1, a90: 0, aAbove: 0 }
+    ]
+  };
+
+  const baseRows = unitDemoMap[code] || unitDemoMap["1888"];
+
+  return baseRows.map(function (r) {
+    const diff = Number(r.asPerTB || 0) - Number(r.asPerRecon || 0);
+    return Object.assign({}, r, { difference: diff });
+  });
+}
+
+function buildReconSummaryTable(rows) {
+  const wrap = el("div", { class: "table-wrap recon-table-wrap" });
+  const table = el("table", { class: "recon-detail-table" });
+
+  const thead = el("thead");
+  const trHead = el("tr");
+
+  [
+    { text: "S.No",          cls: "col-center" },
+    { text: "Sundry Code",   cls: "col-left" },
+    { text: "Description",   cls: "col-left col-wide" },
+    { text: "As per TB" },
+    { text: "As per Recon" },
+    { text: "Difference" },
+    { text: "Recon Remarks", cls: "col-left col-wide" }
+  ].forEach(function (c) {
+    const th = el("th", { text: c.text });
+    if (c.cls) th.className = c.cls;
+    trHead.appendChild(th);
+  });
+  thead.appendChild(trHead);
+  table.appendChild(thead);
+
+  const tbody = el("tbody");
+  let totTB = 0, totRecon = 0, totDiff = 0;
+
+  rows.forEach(function (r) {
+    totTB   += Number(r.asPerTB)    || 0;
+    totRecon += Number(r.asPerRecon) || 0;
+    totDiff  += Number(r.difference) || 0;
+
+    const tr = el("tr");
+    tr.appendChild(el("td", { text: String(r.sNo), class: "center" }));
+    tr.appendChild(el("td", { text: r.sundryCode, style: "font-weight:600;" }));
+    tr.appendChild(el("td", { text: r.description, style: "font-weight:600;" }));
+    tr.appendChild(el("td", { text: formatReconVal(r.asPerTB),     class: "num" }));
+    tr.appendChild(el("td", { text: formatReconVal(r.asPerRecon),  class: "num" }));
+    tr.appendChild(el("td", { text: formatReconVal(r.difference),  class: "num recon-diff-cell" }));
+    tr.appendChild(el("td", { text: r.remarks }));
+    tbody.appendChild(tr);
+  });
+
+  const trTotal = el("tr", { class: "total-row" });
+  trTotal.appendChild(el("td", { text: "", class: "center" }));
+  trTotal.appendChild(el("td", { text: "TOTAL", style: "font-weight:700;" }));
+  trTotal.appendChild(el("td", { text: "Summary Total", style: "font-weight:700;" }));
+  trTotal.appendChild(el("td", { text: formatReconVal(totTB),    class: "num" }));
+  trTotal.appendChild(el("td", { text: formatReconVal(totRecon), class: "num" }));
+  trTotal.appendChild(el("td", { text: formatReconVal(totDiff),  class: "num recon-diff-cell" }));
+  trTotal.appendChild(el("td", { text: "" }));
+  tbody.appendChild(trTotal);
+
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+  return wrap;
+}
+
+function buildReconAgingTable(rows) {
+  const wrap = el("div", { class: "table-wrap recon-table-wrap" });
+  const table = el("table", { class: "recon-detail-table" });
+
+  const thead = el("thead");
+  const trHead = el("tr");
+
+  [
+    { text: "S.No",                cls: "col-center" },
+    { text: "Description",         cls: "col-left col-wide" },
+    { text: "01 to 10 Days" },
+    { text: "11 to 30 Days" },
+    { text: "31 to 60 Days" },
+    { text: "61 to 90 Days" },
+    { text: "91 and above Days" }
+  ].forEach(function (c) {
+    const th = el("th", { text: c.text });
+    if (c.cls) th.className = c.cls;
+    trHead.appendChild(th);
+  });
+  thead.appendChild(trHead);
+  table.appendChild(thead);
+
+  const tbody = el("tbody");
+  let totA10 = 0, totA30 = 0, totA60 = 0, totA90 = 0, totAAbove = 0;
+
+  rows.forEach(function (r) {
+    totA10    += Number(r.a10)    || 0;
+    totA30    += Number(r.a30)    || 0;
+    totA60    += Number(r.a60)    || 0;
+    totA90    += Number(r.a90)    || 0;
+    totAAbove += Number(r.aAbove) || 0;
+
+    const tr = el("tr");
+    tr.appendChild(el("td", { text: String(r.sNo), class: "center" }));
+    tr.appendChild(el("td", { text: r.description, style: "font-weight:600;" }));
+    tr.appendChild(el("td", { text: formatAgingCount(r.a10),    class: "num" }));
+    tr.appendChild(el("td", { text: formatAgingCount(r.a30),    class: "num" }));
+    tr.appendChild(el("td", { text: formatAgingCount(r.a60),    class: "num" }));
+    tr.appendChild(el("td", { text: formatAgingCount(r.a90),    class: "num" }));
+    tr.appendChild(el("td", { text: formatAgingCount(r.aAbove), class: "num" }));
+    tbody.appendChild(tr);
+  });
+
+  const trTotal = el("tr", { class: "total-row" });
+  trTotal.appendChild(el("td", { text: "", class: "center" }));
+  trTotal.appendChild(el("td", { text: "TOTAL", style: "font-weight:700;" }));
+  trTotal.appendChild(el("td", { text: formatAgingCount(totA10),    class: "num" }));
+  trTotal.appendChild(el("td", { text: formatAgingCount(totA30),    class: "num" }));
+  trTotal.appendChild(el("td", { text: formatAgingCount(totA60),    class: "num" }));
+  trTotal.appendChild(el("td", { text: formatAgingCount(totA90),    class: "num" }));
+  trTotal.appendChild(el("td", { text: formatAgingCount(totAAbove), class: "num" }));
+  tbody.appendChild(trTotal);
+
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+  return wrap;
+}
 
 function renderReconciliation(data) {
   const root = document.getElementById("reconciliation-body");
+  if (!root) return;
   root.innerHTML = "";
 
-  root.appendChild(sectionTitle("Receivables Over 30 Days"));
-  if (data.reconciliation && data.reconciliation.receivables) {
-    root.appendChild(buildTable(null,
-      [{ key: "gl", label: "GL Number" }, { key: "description", label: "GL Description" }, { key: "txnCount", label: "Transaction Count", numeric: true },
-       { key: "amount", label: "Transaction Amount", currency: true }, { key: "bucket", label: "Aging Bucket" }],
-      data.reconciliation.receivables));
-  } else {
-    root.appendChild(el("div", { class: "no-data-note", text: "Reconciliation sheet is missing. No data available for receivables." }));
-  }
-
-  root.appendChild(sectionTitle("Payables Over 30 Days"));
-  if (data.reconciliation && data.reconciliation.payables) {
-    root.appendChild(buildTable(null,
-      [{ key: "gl", label: "GL Number" }, { key: "description", label: "GL Description" }, { key: "txnCount", label: "Transaction Count", numeric: true },
-       { key: "amount", label: "Transaction Amount", currency: true }, { key: "bucket", label: "Aging Bucket" }],
-      data.reconciliation.payables));
-  } else {
-    root.appendChild(el("div", { class: "no-data-note", text: "Reconciliation sheet is missing. No data available for payables." }));
-  }
-
-  root.appendChild(sectionTitle("Aging Buckets"));
-  const agingSource = (data.reconciliation && data.reconciliation.agingBuckets)
-    || (data.reconciliation && !data.reconciliation.agingBuckets ? deriveAgingBuckets(data.reconciliation) : null);
-  if (agingSource) {
-    const totalCount = sumBy(agingSource, "txnCount"), totalAmount = sumBy(agingSource, "amount");
-    root.appendChild(buildTable(null,
-      [{ key: "bucket", label: "Aging Bucket" }, { key: "txnCount", label: "Transaction Count", numeric: true },
-       { key: "amount", label: "Transaction Amount", currency: true },
-       { key: "share", label: "Share %", percent: true, title: "Share % represents this aging bucket's proportion of the total reconciliation balance." }],
-      agingSource.concat([{ bucket: "Total", txnCount: totalCount, amount: totalAmount, share: 100 }])));
-  } else {
-    root.appendChild(el("div", { class: "no-data-note", text: "No data available for aging buckets." }));
-  }
-
-  root.appendChild(sectionTitle("Rejected Transactions and Reposting"));
-  if (data.rejected) {
-    const r = data.rejected;
-    root.appendChild(buildTable(null,
-      [{ key: "gl", label: "GL" }, { key: "rejectedCount", label: "Rejected Count", numeric: true }, { key: "rejectedAmount", label: "Rejected Amount", currency: true },
-       { key: "repostedCount", label: "Reposted Count", numeric: true }, { key: "repostedAmount", label: "Reposted Amount", currency: true },
-       { key: "pendingCount", label: "Pending Count", numeric: true }, { key: "pendingAmount", label: "Pending Amount", currency: true }],
-      [r]));
-  } else {
-    root.appendChild(el("div", { class: "no-data-note", text: "Rejected_Transactions sheet is missing. No data available." }));
-  }
-
-  root.appendChild(sectionTitle("OIF Monitoring"));
-  if (data.oif) {
-    const grid = el("div", { class: "kpi-grid" });
-    grid.appendChild(kpiCard("OIF Case Count (Current Month)", formatNumber(data.oif.caseCountCurrent),
-      calculateComparisons(data.oif.caseCountCurrent, data.oif.caseCountPrevious, false, true).html + " vs Previous Month"));
-    grid.appendChild(kpiCard("OIF Value (Current Month)", formatCurrency(data.oif.valueCurrent),
-      calculateComparisons(data.oif.valueCurrent, data.oif.valuePrevious, false, true).html + " vs Previous Month"));
+  if (!activeReconciliationUnit) {
+    // LEVEL 1: Unit Selection Window
+    root.appendChild(sectionTitle("Reconciliation Unit Selection"));
+    
+    const grid = el("div", { class: "recon-unit-grid" });
+    RECON_UNITS.forEach(function (unit) {
+      const card = el("div", { class: "recon-unit-card", type: "button" });
+      card.appendChild(el("div", { class: "recon-unit-code", text: unit.code }));
+      card.appendChild(el("div", { class: "recon-unit-name", text: unit.name }));
+      
+      card.addEventListener("click", function () {
+        activeReconciliationUnit = unit;
+        renderReconciliation(currentData());
+      });
+      grid.appendChild(card);
+    });
     root.appendChild(grid);
   } else {
-    root.appendChild(el("div", { class: "no-data-note", text: "No data available for OIF monitoring." }));
+    // LEVEL 2: Unit-specific Reconciliation Details
+    const unit = activeReconciliationUnit;
+
+    // --- Top bar: small back button ---
+    const topBar = el("div", { class: "recon-detail-topbar" });
+    const backBtn = el("button", { class: "btn btn-sm recon-back-btn", type: "button" });
+    backBtn.innerHTML = "&#8592; Back to Reconciliation";
+    backBtn.addEventListener("click", function () {
+      activeReconciliationUnit = null;
+      renderReconciliation(currentData());
+    });
+    topBar.appendChild(backBtn);
+    root.appendChild(topBar);
+
+    // --- Centered unit heading ---
+    const heading = el("h3", { class: "recon-centered-heading" });
+    heading.textContent = "Reconciliation OF " + (unit.titleName || unit.fullName);
+    root.appendChild(heading);
+
+    // --- Table 1: Reconciliation Summary ---
+    root.appendChild(sectionTitle("Reconciliation Summary"));
+    const rows = getReconciliationUnitRows(unit, data);
+    root.appendChild(buildReconSummaryTable(rows));
+
+    // --- Table 2: Aging Analysis ---
+    root.appendChild(sectionTitle("Aging Analysis"));
+    root.appendChild(buildReconAgingTable(rows));
   }
 }
+
 
 function deriveAgingBuckets(rec) {
   const buckets = {};
