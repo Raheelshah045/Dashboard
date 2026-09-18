@@ -3054,6 +3054,88 @@ table.recon-detail-table td.recon-diff-cell {
   box-shadow: var(--shadow-sm);
 }
 
+/* ---------- Overview Page ATM KPI Boxes Visual Redesign ---------- */
+.ov-exec-card-redesign {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 16px;
+  background: var(--surface, #FFFFFF);
+  border: 1px solid var(--border, #E2E8F0);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.05));
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.ov-exec-card-redesign:hover {
+  transform: translateY(-2px);
+  border-color: var(--brand-border, #90C4E4);
+  box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+}
+
+.ov-exec-title {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--brand-dark, #0D5F92);
+  margin-bottom: 12px;
+  letter-spacing: 0.01em;
+}
+
+.ov-exec-cols-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border-light, #F1F5F9);
+  border-bottom: 1px solid var(--border-light, #F1F5F9);
+  margin-bottom: 10px;
+}
+
+.ov-exec-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.ov-exec-col-lbl {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary, #64748B);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.ov-exec-col-val {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-main, #0F172A);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.ov-exec-perf-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12.5px;
+  padding-top: 2px;
+}
+
+.ov-exec-perf-lbl {
+  font-weight: 600;
+  color: var(--text-secondary, #64748B);
+}
+
+.ov-exec-perf-val {
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+}
+
 /* ---------- Accessibility: Prefers Reduced Motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
@@ -3061,5 +3143,6 @@ table.recon-detail-table td.recon-diff-cell {
     transition: none !important;
   }
 }
+
 
 

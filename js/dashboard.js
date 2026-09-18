@@ -2458,11 +2458,17 @@ function renderOvKpiStrip(root, data) {
   const uptime  = data.atm ? data.atm.uptimeToday : null;
   const uptimeY = data.atm ? data.atm.uptimeYesterday : null;
   const uptComp = formatUptimeComparison(uptime, uptimeY);
-  const atmCard = ovExecCard("ATM Uptime", uptComp.todayStr,
-    lbl.comparisonTerm + ': ' + uptComp.yesterdayStr + ' &nbsp;|&nbsp; ' + uptComp.html, lbl.vsTag, lbl.freqTag,
-    fullValueTitle(uptime));
+
+  const atmCard = ovExecCardRedesign(
+    "ATM Uptime",
+    lbl.shortPrimary,
+    uptComp.todayStr,
+    lbl.comparisonTerm,
+    uptComp.yesterdayStr,
+    uptComp.html,
+    "Click to view ATM Performance in ADC Operations"
+  );
   atmCard.style.cursor = "pointer";
-  atmCard.setAttribute("title", "Click to view ATM Performance in ADC Operations");
   atmCard.addEventListener("click", function () {
     navigateToPage("adc-operations", "atm-performance");
   });
@@ -2474,10 +2480,17 @@ function renderOvKpiStrip(root, data) {
   const adcCntY   = (data.atm ? data.atm.withdrawalCountYesterday || 0 : 0)
                   + (data.raast ? data.raast.successCountYesterday || 0 : 0)
                   + (data.ibft ? data.ibft.successCountYesterday || 0 : 0);
-  const cntCard = ovExecCard("Total ADC Transaction Count", formatNumber(adcCntTdy, 0),
-    lbl.comparisonTerm + ': ' + formatNumber(adcCntY, 0) + ' &nbsp;|&nbsp; ' + indicatorHTML(adcCntTdy, adcCntY, true, false), lbl.vsTag, lbl.freqTag);
+
+  const cntCard = ovExecCardRedesign(
+    "ATM Transaction Count",
+    lbl.shortPrimary,
+    formatNumber(adcCntTdy, 0),
+    lbl.comparisonTerm,
+    formatNumber(adcCntY, 0),
+    indicatorHTML(adcCntTdy, adcCntY, true, false),
+    "Click to view ADC Operations"
+  );
   cntCard.style.cursor = "pointer";
-  cntCard.setAttribute("title", "Click to view ADC Operations");
   cntCard.addEventListener("click", function () {
     navigateToPage("adc-operations");
   });
@@ -2489,11 +2502,17 @@ function renderOvKpiStrip(root, data) {
   const adcAmtY   = (data.atm ? data.atm.withdrawalAmountYesterday || 0 : 0)
                   + (data.raast ? data.raast.successAmountYesterday || 0 : 0)
                   + (data.ibft ? data.ibft.successAmountYesterday || 0 : 0);
-  const amtCard = ovExecCard("Total ADC Transaction Amount", formatCurrency(adcAmtTdy),
-    lbl.comparisonTerm + ': ' + formatCurrency(adcAmtY) + ' &nbsp;|&nbsp; ' + indicatorHTML(adcAmtTdy, adcAmtY, true, false), lbl.vsTag, lbl.freqTag,
-    fullValueTitle(adcAmtTdy, true));
+
+  const amtCard = ovExecCardRedesign(
+    "ATM Transaction Amount",
+    lbl.shortPrimary,
+    formatCurrency(adcAmtTdy),
+    lbl.comparisonTerm,
+    formatCurrency(adcAmtY),
+    indicatorHTML(adcAmtTdy, adcAmtY, true, false),
+    "Click to view ADC Operations"
+  );
   amtCard.style.cursor = "pointer";
-  amtCard.setAttribute("title", "Click to view ADC Operations");
   amtCard.addEventListener("click", function () {
     navigateToPage("adc-operations");
   });
@@ -2553,6 +2572,36 @@ function renderOvKpiStrip(root, data) {
 
   strip.appendChild(cardsGrid);
   root.appendChild(strip);
+}
+
+function ovExecCardRedesign(title, todayLabel, todayVal, yestLabel, yestVal, perfHtml, titleAttr) {
+  const card = el("div", { class: "ov-kpi-card ov-exec-card-redesign" });
+  if (titleAttr) card.setAttribute("title", titleAttr);
+
+  card.appendChild(el("div", { class: "ov-exec-title", text: title }));
+
+  const colsRow = el("div", { class: "ov-exec-cols-row" });
+
+  const colToday = el("div", { class: "ov-exec-col" });
+  colToday.appendChild(el("div", { class: "ov-exec-col-lbl", text: todayLabel }));
+  colToday.appendChild(el("div", { class: "ov-exec-col-val", text: todayVal }));
+
+  const colYest = el("div", { class: "ov-exec-col" });
+  colYest.appendChild(el("div", { class: "ov-exec-col-lbl", text: yestLabel }));
+  colYest.appendChild(el("div", { class: "ov-exec-col-val", text: yestVal }));
+
+  colsRow.appendChild(colToday);
+  colsRow.appendChild(colYest);
+  card.appendChild(colsRow);
+
+  const perfRow = el("div", { class: "ov-exec-perf-row" });
+  perfRow.appendChild(el("span", { class: "ov-exec-perf-lbl", text: "Performance:" }));
+  const perfVal = el("span", { class: "ov-exec-perf-val" });
+  perfVal.innerHTML = perfHtml;
+  perfRow.appendChild(perfVal);
+  card.appendChild(perfRow);
+
+  return card;
 }
 
 function ovExecCard(label, value, indicHtml, vsLabel, freq, titleAttr) {
