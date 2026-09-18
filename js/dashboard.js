@@ -2620,7 +2620,7 @@ function renderOvModules(root, data) {
   const grid = el("div", { class: "ov-modules-grid" });
   grid.appendChild(ovModuleCard("ADC Operations",                  "adc-operations",    buildOvAdcTable(data)));
   grid.appendChild(ovModuleCard("Complain / Chargeback / Disputes","chargeback",        buildOvCbDisputesTable(data)));
-  grid.appendChild(ovModuleCard("Card Financials",                 "card-financials",   buildOvCardFinTable(data)));
+  grid.appendChild(ovModuleCard("Card Financial Performance",       "card-financials",   buildOvCardFinTable(data)));
   grid.appendChild(ovModuleCard("Inventory / Stock Position",      "card-non-financials", buildOvInventoryTable(data)));
   grid.appendChild(ovModuleCard("Secure Operations",               "secure-operations", ovSecOpsRows(data)));
   grid.appendChild(ovModuleCard("Unsecured Operations",            "unsecured-operations", ovUnsecOpsRows(data)));
