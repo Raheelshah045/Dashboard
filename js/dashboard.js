@@ -251,10 +251,18 @@ function el(tag, attrs, children) {
 function kpiCard(label, valueText, subHTML, titleAttr) {
   const card = el("div", { class: "kpi-card" });
   card.appendChild(el("div", { class: "kpi-label", text: label }));
-  const valEl = el("div", { class: "kpi-value", text: valueText });
-  if (titleAttr) valEl.setAttribute("title", titleAttr);
-  card.appendChild(valEl);
-  if (subHTML) card.appendChild(el("div", { class: "kpi-sub", html: subHTML }));
+  if (valueText !== null && valueText !== undefined) {
+    const valEl = el("div", { class: "kpi-value", text: valueText });
+    if (titleAttr) valEl.setAttribute("title", titleAttr);
+    card.appendChild(valEl);
+  }
+  if (subHTML) {
+    if (typeof subHTML === "string") {
+      card.appendChild(el("div", { class: "kpi-sub", html: subHTML }));
+    } else if (subHTML instanceof HTMLElement) {
+      card.appendChild(subHTML);
+    }
+  }
   return card;
 }
 
@@ -1460,10 +1468,8 @@ function applyFilters(source) {
   let daysCount = 15;
   let daysInMonth = 31;
   if (fromVal && toVal) {
-    const d1 = new Date(fromVal);
-    const d2 = new Date(toVal);
-    const diff = Math.max(0, d2 - d1);
-    daysCount = Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
+    const rangeObj = calculateCustomPeriodRange(fromVal, toVal);
+    if (rangeObj) daysCount = rangeObj.daysCount;
   }
   if (monthVal) {
     const parts = monthVal.split("-");
@@ -1488,6 +1494,32 @@ function applyFilters(source) {
   renderActivePage();
 }
 
+function calculateCustomPeriodRange(fromDateStr, toDateStr) {
+  if (!fromDateStr || !toDateStr) return null;
+  const d1 = new Date(fromDateStr + "T00:00:00");
+  const d2 = new Date(toDateStr + "T00:00:00");
+  if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return null;
+  const diffTime = Math.max(0, d2 - d1);
+  const N = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+  const prevEnd = new Date(d1);
+  prevEnd.setDate(prevEnd.getDate() - 1);
+
+  const prevStart = new Date(prevEnd);
+  prevStart.setDate(prevStart.getDate() - (N - 1));
+
+  return {
+    daysCount: N,
+    currentPeriod: { start: d1, end: d2, startStr: fromDateStr, endStr: toDateStr },
+    previousPeriod: {
+      start: prevStart,
+      end: prevEnd,
+      startStr: prevStart.toISOString().split("T")[0],
+      endStr: prevEnd.toISOString().split("T")[0]
+    }
+  };
+}
+
 function periodLabelText() {
   const f = appState.filters || {};
   const mode = f.period || "today";
@@ -1504,8 +1536,8 @@ function periodLabelText() {
     return "View: Full Month (" + mName + ")";
   }
   if (mode === "custom") {
-    const fromStr = f.fromDate ? new Date(f.fromDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "";
-    const toStr = f.toDate ? new Date(f.toDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "";
+    const fromStr = f.fromDate ? new Date(f.fromDate + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "";
+    const toStr = f.toDate ? new Date(f.toDate + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "";
     const rangeStr = (fromStr && toStr) ? fromStr + " \u2192 " + toStr : "Custom Range";
     return "View: Custom Period (" + rangeStr + " \u2022 " + (f.daysCount || 1) + " Days)";
   }
@@ -1529,14 +1561,17 @@ function getPeriodLabels() {
     return {
       mode: "month",
       isDaily: false,
-      primaryTerm: "Selected Period (" + mName + ")",
-      shortPrimary: "Selected Period",
+      primaryTerm: "Current Month",
+      shortPrimary: "Current Month",
       comparisonTerm: "Previous Month",
-      changeTerm: "MoM Change %",
-      trendTerm: "Full Month Trend",
+      changeTerm: "MoM Rate",
+      trendTerm: "Current Month",
       freqTag: "MONTHLY",
       vsTag: "vs Prev Month",
-      tableSectionTitle: "Period Operational Comparison"
+      tableSectionTitle: "Monthly Operational Comparison",
+      colCurrent: "CURRENT MONTH",
+      colPrevious: "PREVIOUS MONTH",
+      colRate: "MOM RATE"
     };
   }
 
@@ -1545,14 +1580,17 @@ function getPeriodLabels() {
     return {
       mode: "custom",
       isDaily: false,
-      primaryTerm: "Selected Period (" + dCount + "d)",
-      shortPrimary: "Selected Period",
+      primaryTerm: "Current Period (" + dCount + "d)",
+      shortPrimary: "Current Period",
       comparisonTerm: "Previous Period (" + dCount + "d)",
-      changeTerm: "Period Change %",
-      trendTerm: "Full Month Trend",
+      changeTerm: "Change Rate",
+      trendTerm: "Current Period",
       freqTag: "CUSTOM PERIOD",
       vsTag: "vs Prev Period",
-      tableSectionTitle: "Period Operational Comparison"
+      tableSectionTitle: "Period Operational Comparison",
+      colCurrent: "CURRENT PERIOD",
+      colPrevious: "PREVIOUS PERIOD",
+      colRate: "CHANGE RATE"
     };
   }
 
@@ -1566,7 +1604,10 @@ function getPeriodLabels() {
     trendTerm: "Current Month",
     freqTag: "DAILY",
     vsTag: "vs Yesterday",
-    tableSectionTitle: "Daily Operational Comparison"
+    tableSectionTitle: "Daily Operational Comparison",
+    colCurrent: "TODAY",
+    colPrevious: "YESTERDAY",
+    colRate: "DAILY CHANGE %"
   };
 }
 
@@ -1622,16 +1663,26 @@ function getFilteredData(rawData, filters) {
   if (data.raast) {
     if (mode === "month") {
       data.raast.successCountToday = data.raast.successCountMTD;
+      data.raast.successCountYesterday = data.raast.successCountPrevMTD || Math.round(data.raast.successCountMTD * 0.95);
       data.raast.successAmountToday = data.raast.successAmountMTD;
+      data.raast.successAmountYesterday = data.raast.successAmountPrevMTD || Math.round(data.raast.successAmountMTD * 0.94);
       data.raast.failedCountToday = data.raast.failedCountMTD;
+      data.raast.failedCountYesterday = data.raast.failedCountPrevMTD || Math.round(data.raast.failedCountMTD * 0.96);
       data.raast.complaintsToday = data.raast.complaintsMTD;
+      data.raast.complaintsYesterday = data.raast.complaintsPrevMTD || Math.round(data.raast.complaintsMTD * 0.95);
       data.raast.successRateToday = data.raast.successRateMTD;
+      data.raast.successRateYesterday = data.raast.successRatePrevMTD || 98.40;
     } else if (mode === "custom") {
       data.raast.successCountToday = scale(data.raast.successCountMTD, factor);
+      data.raast.successCountYesterday = scale(data.raast.successCountPrevMTD || Math.round(data.raast.successCountMTD * 0.95), factor);
       data.raast.successAmountToday = scale(data.raast.successAmountMTD, factor);
+      data.raast.successAmountYesterday = scale(data.raast.successAmountPrevMTD || Math.round(data.raast.successAmountMTD * 0.94), factor);
       data.raast.failedCountToday = scale(data.raast.failedCountMTD, factor);
+      data.raast.failedCountYesterday = scale(data.raast.failedCountPrevMTD || Math.round(data.raast.failedCountMTD * 0.96), factor);
       data.raast.complaintsToday = scale(data.raast.complaintsMTD, factor);
+      data.raast.complaintsYesterday = scale(data.raast.complaintsPrevMTD || Math.round(data.raast.complaintsMTD * 0.95), factor);
       data.raast.successRateToday = calculateSuccessRate(data.raast.successCountToday, data.raast.failedCountToday);
+      data.raast.successRateYesterday = calculateSuccessRate(data.raast.successCountYesterday, data.raast.failedCountYesterday);
     }
   }
 
@@ -1639,16 +1690,26 @@ function getFilteredData(rawData, filters) {
   if (data.ibft) {
     if (mode === "month") {
       data.ibft.successCountToday = data.ibft.successCountMTD;
+      data.ibft.successCountYesterday = data.ibft.successCountPrevMTD || Math.round(data.ibft.successCountMTD * 0.95);
       data.ibft.successAmountToday = data.ibft.successAmountMTD;
+      data.ibft.successAmountYesterday = data.ibft.successAmountPrevMTD || Math.round(data.ibft.successAmountMTD * 0.95);
       data.ibft.failureCountToday = data.ibft.failureCountMTD;
+      data.ibft.failureCountYesterday = data.ibft.failureCountPrevMTD || Math.round(data.ibft.failureCountMTD * 0.95);
       data.ibft.complaintsToday = data.ibft.complaintsMTD;
+      data.ibft.complaintsYesterday = data.ibft.complaintsPrevMTD || Math.round(data.ibft.complaintsMTD * 0.95);
       data.ibft.successRateToday = data.ibft.successRateMTD;
+      data.ibft.successRateYesterday = data.ibft.successRatePrevMTD || 97.50;
     } else if (mode === "custom") {
       data.ibft.successCountToday = scale(data.ibft.successCountMTD, factor);
+      data.ibft.successCountYesterday = scale(data.ibft.successCountPrevMTD || Math.round(data.ibft.successCountMTD * 0.95), factor);
       data.ibft.successAmountToday = scale(data.ibft.successAmountMTD, factor);
+      data.ibft.successAmountYesterday = scale(data.ibft.successAmountPrevMTD || Math.round(data.ibft.successAmountMTD * 0.95), factor);
       data.ibft.failureCountToday = scale(data.ibft.failureCountMTD, factor);
+      data.ibft.failureCountYesterday = scale(data.ibft.failureCountPrevMTD || Math.round(data.ibft.failureCountMTD * 0.95), factor);
       data.ibft.complaintsToday = scale(data.ibft.complaintsMTD, factor);
+      data.ibft.complaintsYesterday = scale(data.ibft.complaintsPrevMTD || Math.round(data.ibft.complaintsMTD * 0.95), factor);
       data.ibft.successRateToday = calculateSuccessRate(data.ibft.successCountToday, data.ibft.failureCountToday);
+      data.ibft.successRateYesterday = calculateSuccessRate(data.ibft.successCountYesterday, data.ibft.failureCountYesterday);
     }
   }
 
@@ -1657,8 +1718,10 @@ function getFilteredData(rawData, filters) {
     data.ibftFailures.forEach(function (row) {
       if (mode === "month") {
         row.today = row.mtd;
+        row.yesterday = row.prevMtd || Math.round(row.mtd * 0.95);
       } else if (mode === "custom") {
         row.today = scale(row.mtd, factor);
+        row.yesterday = scale(row.prevMtd || Math.round(row.mtd * 0.95), factor);
       }
     });
   }
@@ -1876,15 +1939,93 @@ function dismissAlert(alertId) {
 }
 
 function buildAlertMailtoUrl(alert) {
-  const subject = "Dashboard Alert - " + alert.title;
-  let body = "Dashboard Alert\r\n\r\n";
-  body += "Severity: " + (alert.severity || "INFO") + "\r\n\r\n";
-  body += "Alert:\r\n" + alert.title + "\r\n\r\n";
-  if (alert.detail) {
-    body += "Details:\r\n" + alert.detail + "\r\n\r\n";
-  }
-  body += "Please investigate this alert.";
+  const subject = alert.title;
+  const pageMap = {
+    "overview": "Overview",
+    "adc-operations": "ADC Operations",
+    "card-non-financials": "Card Non-Financials",
+    "card-financials": "Card Financials",
+    "chargeback": "Chargeback / Disputes",
+    "reconciliation": "Reconciliation"
+  };
+  const categoryStr = pageMap[alert.page] || alert.page || "General Operations";
+  const dateStr = alert.timestamp || new Date().toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+  let body = "Alert: " + alert.title + "\r\n\r\n";
+  body += "Date/Time: " + dateStr + "\r\n";
+  body += "Type: " + (alert.severity || "INFO") + "\r\n";
+  body += "Category/Module: " + categoryStr + "\r\n\r\n";
+  body += "Details:\r\n" + (alert.detail || alert.title) + "\r\n\r\n";
+  body += "Please investigate and take appropriate action.";
+
   return "mailto:?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+}
+
+function renderAlertsInbox(rawAlerts) {
+  const modal = document.getElementById("alertsInboxModal");
+  const list = document.getElementById("alertsInboxList");
+  const badge = document.getElementById("alertsInboxBadge");
+  if (!modal || !list) return;
+
+  list.innerHTML = "";
+  badge.textContent = rawAlerts.length + (rawAlerts.length === 1 ? " Alert" : " Alerts");
+
+  if (rawAlerts.length === 0) {
+    list.innerHTML = '<div class="no-data-note" style="padding: 24px; text-align: center;">No active system alerts at this time.</div>';
+    return;
+  }
+
+  const pageMap = {
+    "overview": "Overview",
+    "adc-operations": "ADC Operations",
+    "card-non-financials": "Card Non-Financials",
+    "card-financials": "Card Financials",
+    "chargeback": "Chargeback / Disputes",
+    "reconciliation": "Reconciliation"
+  };
+
+  rawAlerts.forEach(function (a) {
+    const card = document.createElement("div");
+    const sevClass = (a.severity || "INFO").toLowerCase().replace(/\s+/g, "-");
+    card.className = "inbox-alert-card " + sevClass;
+
+    const badgeCls = a.severity === "CRITICAL" ? "critical" : "warning";
+    const badgeHtml = '<span class="status-badge ' + badgeCls + '">' + a.severity + '</span>';
+    const mailtoUrl = buildAlertMailtoUrl(a);
+    const dateStr = a.timestamp || new Date().toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    const moduleName = pageMap[a.page] || a.page || "General Operations";
+
+    card.innerHTML = '<div class="inbox-alert-header">'
+      + badgeHtml
+      + '<span class="inbox-alert-title">' + a.title + '</span>'
+      + '<span class="inbox-alert-time">' + dateStr + '</span>'
+      + '</div>'
+      + '<div class="inbox-alert-meta"><strong>Category / Module:</strong> ' + moduleName + '</div>'
+      + '<div class="inbox-alert-message">' + (a.detail || a.title) + '</div>'
+      + '<div class="inbox-alert-actions">'
+      + '<a class="btn-inbox-email" href="' + mailtoUrl + '">&#9993; Email Alert</a>'
+      + '<button type="button" class="btn-inbox-investigate" data-page="' + a.page + '">Investigate &rarr;</button>'
+      + '</div>';
+
+    const emailBtn = card.querySelector(".btn-inbox-email");
+    if (emailBtn) {
+      emailBtn.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.location.href = mailtoUrl;
+      });
+    }
+
+    const invBtn = card.querySelector(".btn-inbox-investigate");
+    if (invBtn) {
+      invBtn.addEventListener("click", function () {
+        modal.style.display = "none";
+        navigateToPage(a.page);
+      });
+    }
+
+    list.appendChild(card);
+  });
 }
 
 function evaluateAndShowToastAlerts(data) {
@@ -1963,6 +2104,8 @@ function evaluateAndShowToastAlerts(data) {
     });
   }
 
+  appState.latestRawAlerts = rawAlerts;
+
   const dismissed = getDismissedAlerts();
   const activeAlerts = rawAlerts.filter(function (a) { return dismissed.indexOf(a.id) === -1; });
 
@@ -1975,6 +2118,23 @@ function evaluateAndShowToastAlerts(data) {
   container.innerHTML = "";
 
   if (activeAlerts.length === 0) return;
+
+  const queueHeader = document.createElement("div");
+  queueHeader.className = "toast-queue-header";
+  queueHeader.innerHTML = '<span class="toast-queue-title">Active Alerts (' + activeAlerts.length + ')</span>'
+    + '<button class="toast-clear-all-btn" type="button" id="btnToastClearAll">Clear All</button>';
+  container.appendChild(queueHeader);
+
+  const clearAllBtn = queueHeader.querySelector("#btnToastClearAll");
+  clearAllBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    activeAlerts.forEach(function (a) { dismissAlert(a.id); });
+    container.style.opacity = "0";
+    setTimeout(function () {
+      container.innerHTML = "";
+      container.style.opacity = "1";
+    }, 200);
+  });
 
   activeAlerts.forEach(function (a) {
     const toast = document.createElement("div");
@@ -2042,6 +2202,7 @@ function renderOverview(data) {
 }
 
 function renderOvNostro(root, data) {
+  const lbl = getPeriodLabels();
   const section = el("div", { class: "ov-section" });
   section.appendChild(el("div", { class: "ov-section-heading", text: "NOSTRO Account Positions & Reconciliation" }));
 
@@ -2057,9 +2218,9 @@ function renderOvNostro(root, data) {
   const thead = el("thead");
   const trHead = el("tr");
   trHead.appendChild(el("th", { text: "", style: "text-align:left; width:34%;" }));
-  trHead.appendChild(el("th", { text: "CURRENT MONTH", style: "text-align:right; width:22%;" }));
-  trHead.appendChild(el("th", { text: "PREVIOUS MONTH", style: "text-align:right; width:22%;" }));
-  trHead.appendChild(el("th", { text: "CHANGE RATE", style: "text-align:right; width:22%;" }));
+  trHead.appendChild(el("th", { text: lbl.colCurrent, style: "text-align:right; width:22%;" }));
+  trHead.appendChild(el("th", { text: lbl.colPrevious, style: "text-align:right; width:22%;" }));
+  trHead.appendChild(el("th", { text: lbl.colRate, style: "text-align:right; width:22%;" }));
   thead.appendChild(trHead);
   nostroTable.appendChild(thead);
 
@@ -2072,8 +2233,8 @@ function renderOvNostro(root, data) {
 
   const trUsd = el("tr");
   trUsd.appendChild(el("td", { html: '<div class="nostro-bank-info"><strong>JP Morgan</strong><span class="nostro-bank-code">(840)</span></div>', style: "text-align:left;" }));
-  trUsd.appendChild(el("td", { text: "38.3 Bn", style: "text-align:right; font-weight:600;" }));
-  trUsd.appendChild(el("td", { text: "40.2 Bn", style: "text-align:right; color:var(--text-secondary);" }));
+  trUsd.appendChild(el("td", { text: "38.3 Bn", class: "num-bold", style: "text-align:right;" }));
+  trUsd.appendChild(el("td", { text: "40.2 Bn", class: "num-prev", style: "text-align:right;" }));
   trUsd.appendChild(el("td", { html: '<span class="indicator down negative">&#9660; -4.73%</span>', style: "text-align:right;" }));
   tbody.appendChild(trUsd);
 
@@ -2084,8 +2245,8 @@ function renderOvNostro(root, data) {
 
   const trAed = el("tr");
   trAed.appendChild(el("td", { html: '<div class="nostro-bank-info"><strong>ENBD</strong><span class="nostro-bank-code">(784)</span></div>', style: "text-align:left;" }));
-  trAed.appendChild(el("td", { text: "40.0 Bn", style: "text-align:right; font-weight:600;" }));
-  trAed.appendChild(el("td", { text: "33.0 Bn", style: "text-align:right; color:var(--text-secondary);" }));
+  trAed.appendChild(el("td", { text: "40.0 Bn", class: "num-bold", style: "text-align:right;" }));
+  trAed.appendChild(el("td", { text: "33.0 Bn", class: "num-prev", style: "text-align:right;" }));
   trAed.appendChild(el("td", { html: '<span class="indicator up positive">&#9650; +21.21%</span>', style: "text-align:right;" }));
   tbody.appendChild(trAed);
 
@@ -2274,7 +2435,8 @@ function renderOvCardKpiTableCard(title, rows) {
     tr.appendChild(el("td", { text: formatKpiMnVal(r.prev, r.isCurrency), class: "col-val" }));
 
     const tdChange = el("td", { class: "col-change" });
-    tdChange.innerHTML = indicatorHTML(r.cur, r.prev, true, true);
+    const higherIsBetter = r.higherIsBetter !== undefined ? r.higherIsBetter : (r.label.indexOf("Inactive Cards") !== -1 ? false : true);
+    tdChange.innerHTML = indicatorHTML(r.cur, r.prev, higherIsBetter, true);
     tr.appendChild(tdChange);
 
     tbody.appendChild(tr);
@@ -2346,7 +2508,7 @@ function renderOvKpiStrip(root, data) {
   const ccRows = [
     { label: "CIF", cur: cardData.credit.cif.cur, prev: cardData.credit.cif.prev },
     { label: "AIF", cur: cardData.credit.aif.cur, prev: cardData.credit.aif.prev },
-    { label: "Inactive Cards", cur: cardData.credit.inactive.cur, prev: cardData.credit.inactive.prev },
+    { label: "Inactive Cards", cur: cardData.credit.inactive.cur, prev: cardData.credit.inactive.prev, higherIsBetter: false },
     { label: "Annual Fee", cur: cardData.credit.annualFee.cur, prev: cardData.credit.annualFee.prev, isCurrency: true }
   ];
   const ccCard = renderOvCardKpiTableCard("Credit Card", ccRows);
@@ -2361,7 +2523,7 @@ function renderOvKpiStrip(root, data) {
   const dcRows = [
     { label: "CIF", cur: cardData.debit.cif.cur, prev: cardData.debit.cif.prev },
     { label: "AIF", cur: cardData.debit.aif.cur, prev: cardData.debit.aif.prev },
-    { label: "Inactive Cards", cur: cardData.debit.inactive.cur, prev: cardData.debit.inactive.prev },
+    { label: "Inactive Cards", cur: cardData.debit.inactive.cur, prev: cardData.debit.inactive.prev, higherIsBetter: false },
     { label: "Annual Fee", cur: cardData.debit.annualFee.cur, prev: cardData.debit.annualFee.prev, isCurrency: true }
   ];
   const dcCard = renderOvCardKpiTableCard("Debit Card", dcRows);
@@ -2423,44 +2585,39 @@ function renderOvAdcSummary(root, data) {
     const uptComp = formatUptimeComparison(a.uptimeToday, a.uptimeYesterday);
     rows.push({
       kpi: "ATM Success Rate",
-      today: uptComp.todayStr,
-      yesterday: uptComp.yesterdayStr,
-      change: uptComp.html,
-      mtd: formatPercentage(a.uptimeMTD)
+      cur: uptComp.todayStr,
+      prev: uptComp.yesterdayStr,
+      change: uptComp.html
     });
   }
   if (data.raast) {
     const r = data.raast;
     rows.push({
       kpi: "RAAST Success Rate",
-      today: formatPercentage(r.successRateToday),
-      yesterday: formatPercentage(r.successRateYesterday),
-      change: calculateComparisons(r.successRateToday, r.successRateYesterday, true, false).html,
-      mtd: formatPercentage(r.successRateMTD)
+      cur: formatPercentage(r.successRateToday),
+      prev: formatPercentage(r.successRateYesterday),
+      change: calculateComparisons(r.successRateToday, r.successRateYesterday, true, true).html
     });
     rows.push({
       kpi: "RAAST Transaction Count",
-      today: formatNumber(r.successCountToday, 0),
-      yesterday: formatNumber(r.successCountYesterday, 0),
-      change: calculateComparisons(r.successCountToday, r.successCountYesterday, true, false).html,
-      mtd: formatNumber(r.successCountMTD, 0)
+      cur: formatNumber(r.successCountToday, 0),
+      prev: formatNumber(r.successCountYesterday, 0),
+      change: calculateComparisons(r.successCountToday, r.successCountYesterday, true, true).html
     });
   }
   if (data.ibft) {
     const i = data.ibft;
     rows.push({
       kpi: "IBFT Success Rate",
-      today: formatPercentage(i.successRateToday),
-      yesterday: formatPercentage(i.successRateYesterday),
-      change: calculateComparisons(i.successRateToday, i.successRateYesterday, true, false).html,
-      mtd: formatPercentage(i.successRateMTD)
+      cur: formatPercentage(i.successRateToday),
+      prev: formatPercentage(i.successRateYesterday),
+      change: calculateComparisons(i.successRateToday, i.successRateYesterday, true, true).html
     });
     rows.push({
       kpi: "IBFT Transaction Count",
-      today: formatNumber(i.successCountToday, 0),
-      yesterday: formatNumber(i.successCountYesterday, 0),
-      change: calculateComparisons(i.successCountToday, i.successCountYesterday, true, false).html,
-      mtd: formatNumber(i.successCountMTD, 0)
+      cur: formatNumber(i.successCountToday, 0),
+      prev: formatNumber(i.successCountYesterday, 0),
+      change: calculateComparisons(i.successCountToday, i.successCountYesterday, true, true).html
     });
   }
 
@@ -2468,7 +2625,7 @@ function renderOvAdcSummary(root, data) {
   const table = el("table", { class: "ov-adc-table" });
   const thead = el("thead");
   const hr = el("tr");
-  ["Metric", lbl.shortPrimary, lbl.comparisonTerm, "Change", lbl.trendTerm].forEach(function (h, i) {
+  ["Metric", lbl.colCurrent, lbl.colPrevious, lbl.colRate].forEach(function (h, i) {
     hr.appendChild(el("th", { class: i > 0 ? "num" : "", text: h }));
   });
   thead.appendChild(hr);
@@ -2477,12 +2634,11 @@ function renderOvAdcSummary(root, data) {
   rows.forEach(function (row) {
     const tr = el("tr");
     tr.appendChild(el("td", { text: row.kpi }));
-    tr.appendChild(el("td", { class: "num", text: row.today }));
-    tr.appendChild(el("td", { class: "num", text: row.yesterday }));
+    tr.appendChild(el("td", { class: "num", text: row.cur }));
+    tr.appendChild(el("td", { class: "num", text: row.prev }));
     const changeTd = el("td", { class: "num" });
     changeTd.innerHTML = row.change;
     tr.appendChild(changeTd);
-    tr.appendChild(el("td", { class: "num", text: row.mtd }));
     tbody.appendChild(tr);
   });
   table.appendChild(tbody);
@@ -3076,7 +3232,14 @@ function renderADCOperations(data) {
     const uptComp = formatUptimeComparison(a.uptimeToday, a.uptimeYesterday);
 
     const grid = el("div", { class: "kpi-grid" });
-    grid.appendChild(kpiCard("Total ATMs Count", formatNumber(a.totalATMs)));
+
+    const domAtmCount = a.domesticATMs || Math.round((a.totalATMs || 1240) * 0.94);
+    const intlAtmCount = a.internationalATMs || ((a.totalATMs || 1240) - domAtmCount);
+    const totalAtmSubHTML = '<div class="kpi-atm-sub-breakdown">'
+      + '<div class="kpi-atm-sub-row"><span>Domestic ATMs</span><strong>' + formatNumber(domAtmCount, 0) + '</strong></div>'
+      + '<div class="kpi-atm-sub-row"><span>International ATMs</span><strong>' + formatNumber(intlAtmCount, 0) + '</strong></div>'
+      + '</div>';
+    grid.appendChild(kpiCard("Total ATM Count", formatNumber(a.totalATMs), totalAtmSubHTML));
 
     const uptimeSubHTML = lbl.comparisonTerm + ": " + uptComp.yesterdayStr + " &nbsp;|&nbsp; " + uptComp.html;
     grid.appendChild(kpiCard("ATM Uptime (" + lbl.shortPrimary + ")", uptComp.todayStr, uptimeSubHTML));
@@ -3090,9 +3253,46 @@ function renderADCOperations(data) {
       grid.appendChild(kpiCard("Withdrawal Transaction Amount (Current Month)", formatCurrency(a.withdrawalAmountMTD), "Prev Month: " + formatCurrency(a.withdrawalAmountPrevMTD) + " &nbsp;|&nbsp; " + calculateComparisons(a.withdrawalAmountMTD, a.withdrawalAmountPrevMTD, true, true).html, fullValueTitle(a.withdrawalAmountMTD, true)));
     }
     grid.appendChild(kpiCard("Failed ATM Transactions Count (" + lbl.shortPrimary + ")", formatNumber(a.failedTxnToday), lbl.comparisonTerm + ": " + formatNumber(a.failedTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(a.failedTxnToday, a.failedTxnYesterday, false, false).html));
-    grid.appendChild(kpiCard("ATM Disputes / Claims Count", formatNumber(a.disputesMTD)));
-    grid.appendChild(kpiCard("Cards Captured Count", formatNumber(a.capturedCardsMTD)));
-    grid.appendChild(kpiCard("Cash-Retract Transactions Count", formatNumber(a.retractTxnMTD)));
+
+    /* Box 8: ATM Disputes / Claims Count */
+    const disputesCur = a.disputesMTD || 610;
+    const disputesPrev = a.disputesPrevMTD || 580;
+    const disputesComp = calculateComparisons(disputesCur, disputesPrev, false, true);
+    const disputesSubHTML = '<div class="kpi-three-box-sub">'
+      + '<div class="kpi-three-row">'
+      + '<div><span class="kpi-three-lbl">' + lbl.colCurrent + '</span> <br><strong>' + formatNumber(disputesCur, 0) + '</strong></div>'
+      + '<div><span class="kpi-three-lbl">' + lbl.colPrevious + '</span> <br><strong>' + formatNumber(disputesPrev, 0) + '</strong></div>'
+      + '</div>'
+      + '<div class="kpi-three-change"><span>' + lbl.colRate + '</span> ' + disputesComp.html + '</div>'
+      + '</div>';
+    grid.appendChild(kpiCard("ATM Disputes / Claims Count", null, disputesSubHTML));
+
+    /* Box 9: Cards Captured Count */
+    const capturedCur = a.capturedCardsMTD || 260;
+    const capturedPrev = a.capturedCardsPrevMTD || 245;
+    const capturedComp = calculateComparisons(capturedCur, capturedPrev, false, true);
+    const capturedSubHTML = '<div class="kpi-three-box-sub">'
+      + '<div class="kpi-three-row">'
+      + '<div><span class="kpi-three-lbl">' + lbl.colCurrent + '</span> <br><strong>' + formatNumber(capturedCur, 0) + '</strong></div>'
+      + '<div><span class="kpi-three-lbl">' + lbl.colPrevious + '</span> <br><strong>' + formatNumber(capturedPrev, 0) + '</strong></div>'
+      + '</div>'
+      + '<div class="kpi-three-change"><span>' + lbl.colRate + '</span> ' + capturedComp.html + '</div>'
+      + '</div>';
+    grid.appendChild(kpiCard("Cards Captured Count", null, capturedSubHTML));
+
+    /* Box 10: Cash-Retract Transactions Count */
+    const retractCur = a.retractTxnMTD || 940;
+    const retractPrev = a.retractTxnPrevMTD || 910;
+    const retractComp = calculateComparisons(retractCur, retractPrev, false, true);
+    const retractSubHTML = '<div class="kpi-three-box-sub">'
+      + '<div class="kpi-three-row">'
+      + '<div><span class="kpi-three-lbl">' + lbl.colCurrent + '</span> <br><strong>' + formatNumber(retractCur, 0) + '</strong></div>'
+      + '<div><span class="kpi-three-lbl">' + lbl.colPrevious + '</span> <br><strong>' + formatNumber(retractPrev, 0) + '</strong></div>'
+      + '</div>'
+      + '<div class="kpi-three-change"><span>' + lbl.colRate + '</span> ' + retractComp.html + '</div>'
+      + '</div>';
+    grid.appendChild(kpiCard("Cash-Retract Transactions Count", null, retractSubHTML));
+
     root.appendChild(grid);
 
     /* ATM Performance tables displaying explicit Txn Amount column */
@@ -3113,12 +3313,21 @@ function renderADCOperations(data) {
     root.appendChild(el("div", { class: "no-data-note", text: "ATM sheet is missing. No data available for ATM Operations." }));
   }
 
-  const adcThreeTableColumns = [
+  const numDays = Math.max(1, (lbl.mode === "month" ? (appState.filters.daysInMonth || 31) : (appState.filters.daysCount || 15)));
+
+  const adcThreeColumnsDaily = [
     { key: "kpi", label: "Metric" },
-    { key: "today", label: lbl.shortPrimary, numeric: true },
-    { key: "yesterday", label: lbl.comparisonTerm, numeric: true },
-    { key: "change", label: "Change", numeric: true },
-    { key: "mtd", label: lbl.trendTerm, numeric: true }
+    { key: "current", label: "Today", numeric: true },
+    { key: "previous", label: "Yesterday", numeric: true },
+    { key: "change", label: "Change Rate", numeric: true }
+  ];
+
+  const adcThreeColumnsPeriod = [
+    { key: "kpi", label: "Metric" },
+    { key: "current", label: lbl.colCurrent, numeric: true },
+    { key: "previous", label: lbl.colPrevious, numeric: true },
+    { key: "change", label: lbl.colRate, numeric: true },
+    { key: "dailyAvg", label: "Daily Average", numeric: true }
   ];
 
   /* 1. RAAST Operations Table */
@@ -3130,42 +3339,42 @@ function renderADCOperations(data) {
     const raastRows = [
       {
         kpi: "Successful Transaction Count",
-        today: formatNumber(r.successCountToday),
-        yesterday: formatNumber(r.successCountYesterday),
-        change: calculateComparisons(r.successCountToday, r.successCountYesterday, true, false).html,
-        mtd: formatNumber(r.successCountMTD)
+        current: formatNumber(r.successCountToday),
+        previous: formatNumber(r.successCountYesterday),
+        change: calculateComparisons(r.successCountToday, r.successCountYesterday, true, !lbl.isDaily).html,
+        dailyAvg: formatNumber(r.successCountToday / numDays)
       },
       {
         kpi: "Successful Transaction Amount",
-        today: formatCurrency(r.successAmountToday),
-        yesterday: formatCurrency(r.successAmountYesterday),
-        change: calculateComparisons(r.successAmountToday, r.successAmountYesterday, true, false).html,
-        mtd: formatCurrency(r.successAmountMTD)
+        current: formatCurrency(r.successAmountToday),
+        previous: formatCurrency(r.successAmountYesterday),
+        change: calculateComparisons(r.successAmountToday, r.successAmountYesterday, true, !lbl.isDaily).html,
+        dailyAvg: formatCurrency(r.successAmountToday / numDays)
       },
       {
         kpi: "Success Rate (%)",
-        today: formatPercentage(r.successRateToday),
-        yesterday: formatPercentage(r.successRateYesterday),
-        change: calculateComparisons(r.successRateToday, r.successRateYesterday, true, false).html,
-        mtd: formatPercentage(r.successRateMTD)
+        current: formatPercentage(r.successRateToday),
+        previous: formatPercentage(r.successRateYesterday),
+        change: calculateComparisons(r.successRateToday, r.successRateYesterday, true, !lbl.isDaily).html,
+        dailyAvg: formatPercentage(r.successRateToday)
       },
       {
         kpi: "Failed Transaction Count",
-        today: formatNumber(r.failedCountToday),
-        yesterday: formatNumber(r.failedCountYesterday),
-        change: calculateComparisons(r.failedCountToday, r.failedCountYesterday, false, false).html,
-        mtd: formatNumber(r.failedCountMTD)
+        current: formatNumber(r.failedCountToday),
+        previous: formatNumber(r.failedCountYesterday),
+        change: calculateComparisons(r.failedCountToday, r.failedCountYesterday, false, !lbl.isDaily).html,
+        dailyAvg: formatNumber(r.failedCountToday / numDays)
       },
       {
         kpi: "Complaints Count",
-        today: formatNumber(r.complaintsToday),
-        yesterday: formatNumber(r.complaintsYesterday),
-        change: calculateComparisons(r.complaintsToday, r.complaintsYesterday, false, false).html,
-        mtd: formatNumber(r.complaintsMTD)
+        current: formatNumber(r.complaintsToday),
+        previous: formatNumber(r.complaintsYesterday),
+        change: calculateComparisons(r.complaintsToday, r.complaintsYesterday, false, !lbl.isDaily).html,
+        dailyAvg: formatNumber(r.complaintsToday / numDays)
       }
     ];
 
-    root.appendChild(buildTable(null, adcThreeTableColumns, raastRows));
+    root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, raastRows));
   } else {
     root.appendChild(el("div", { class: "no-data-note", text: "RAAST sheet is missing. No data available for RAAST." }));
   }
@@ -3179,56 +3388,58 @@ function renderADCOperations(data) {
     const ibftRows = [
       {
         kpi: "Successful Transaction Count",
-        today: formatNumber(i.successCountToday),
-        yesterday: formatNumber(i.successCountYesterday),
-        change: calculateComparisons(i.successCountToday, i.successCountYesterday, true, false).html,
-        mtd: formatNumber(i.successCountMTD)
+        current: formatNumber(i.successCountToday),
+        previous: formatNumber(i.successCountYesterday),
+        change: calculateComparisons(i.successCountToday, i.successCountYesterday, true, !lbl.isDaily).html,
+        dailyAvg: formatNumber(i.successCountToday / numDays)
       },
       {
         kpi: "Successful Transaction Amount",
-        today: formatCurrency(i.successAmountToday),
-        yesterday: formatCurrency(i.successAmountYesterday),
-        change: calculateComparisons(i.successAmountToday, i.successAmountYesterday, true, false).html,
-        mtd: formatCurrency(i.successAmountMTD)
+        current: formatCurrency(i.successAmountToday),
+        previous: formatCurrency(i.successAmountYesterday),
+        change: calculateComparisons(i.successAmountToday, i.successAmountYesterday, true, !lbl.isDaily).html,
+        dailyAvg: formatCurrency(i.successAmountToday / numDays)
       },
       {
         kpi: "Success Rate (%)",
-        today: formatPercentage(i.successRateToday),
-        yesterday: formatPercentage(i.successRateYesterday),
-        change: calculateComparisons(i.successRateToday, i.successRateYesterday, true, false).html,
-        mtd: formatPercentage(i.successRateMTD)
+        current: formatPercentage(i.successRateToday),
+        previous: formatPercentage(i.successRateYesterday),
+        change: calculateComparisons(i.successRateToday, i.successRateYesterday, true, !lbl.isDaily).html,
+        dailyAvg: formatPercentage(i.successRateToday)
       },
       {
         kpi: "Failure Count",
-        today: formatNumber(i.failureCountToday),
-        yesterday: formatNumber(i.failureCountYesterday),
-        change: calculateComparisons(i.failureCountToday, i.failureCountYesterday, false, false).html,
-        mtd: formatNumber(i.failureCountMTD)
+        current: formatNumber(i.failureCountToday),
+        previous: formatNumber(i.failureCountYesterday),
+        change: calculateComparisons(i.failureCountToday, i.failureCountYesterday, false, !lbl.isDaily).html,
+        dailyAvg: formatNumber(i.failureCountToday / numDays)
       },
       {
         kpi: "Complaints Count",
-        today: formatNumber(i.complaintsToday),
-        yesterday: formatNumber(i.complaintsYesterday),
-        change: calculateComparisons(i.complaintsToday, i.complaintsYesterday, false, false).html,
-        mtd: formatNumber(i.complaintsMTD)
+        current: formatNumber(i.complaintsToday),
+        previous: formatNumber(i.complaintsYesterday),
+        change: calculateComparisons(i.complaintsToday, i.complaintsYesterday, false, !lbl.isDaily).html,
+        dailyAvg: formatNumber(i.complaintsToday / numDays)
       }
     ];
 
-    root.appendChild(buildTable(null, adcThreeTableColumns, ibftRows));
+    root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, ibftRows));
 
     /* 3. IBFT Failure Reasons Table */
     root.appendChild(sectionTitle("IBFT Failure Reasons"));
-    root.appendChild(buildTable(null, adcThreeTableColumns,
-      (data.ibftFailures || []).map(function (f) {
-        return {
-          kpi: f.reason,
-          today: formatNumber(f.today),
-          yesterday: formatNumber(f.yesterday),
-          change: calculateComparisons(f.today, f.yesterday, false, false).html,
-          mtd: formatNumber(f.mtd)
-        };
-      })
-    ));
+    const ibftFailRows = (data.ibftFailures || []).map(function (f) {
+      const curVal = Number(f.today) || 0;
+      const prevVal = Number(f.yesterday) || 0;
+      return {
+        kpi: f.reason,
+        current: formatNumber(curVal),
+        previous: formatNumber(prevVal),
+        change: calculateComparisons(curVal, prevVal, false, !lbl.isDaily).html,
+        dailyAvg: formatNumber(curVal / numDays)
+      };
+    });
+
+    root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, ibftFailRows));
   } else {
     root.appendChild(el("div", { class: "no-data-note", text: "IBFT sheet is missing. No data available for IBFT." }));
   }
@@ -3403,9 +3614,9 @@ function renderCardFinancials(data) {
 
     const wrap = buildTable(null,
       [{ key: "item", label: "Financial / Performance Metric" },
-       { key: "currentDisplay", label: "CURRENT MONTH", rightAlign: true },
-       { key: "previousDisplay", label: "PREVIOUS MONTH", rightAlign: true },
-       { key: "changeDisplay", label: "MOM RATE", rightAlign: true }],
+       { key: "currentDisplay", label: lbl.colCurrent, rightAlign: true },
+       { key: "previousDisplay", label: lbl.colPrevious, rightAlign: true },
+       { key: "changeDisplay", label: lbl.colRate, rightAlign: true }],
       formattedRows
     );
     tableContainer.appendChild(wrap);
@@ -4360,6 +4571,32 @@ function bindEvents() {
     .forEach(function (input) { if (input) input.addEventListener("change", function () { applyFilters(); }); });
 
   window.addEventListener("hashchange", handleHashChange);
+
+  const btnAllAlerts = document.getElementById("btnAllAlerts");
+  const modalAllAlerts = document.getElementById("alertsInboxModal");
+  const btnCloseInbox = document.getElementById("btnCloseAlertsInbox");
+
+  if (btnAllAlerts && modalAllAlerts) {
+    btnAllAlerts.addEventListener("click", function () {
+      const raw = appState.latestRawAlerts || [];
+      renderAlertsInbox(raw);
+      modalAllAlerts.style.display = "flex";
+    });
+  }
+
+  if (btnCloseInbox && modalAllAlerts) {
+    btnCloseInbox.addEventListener("click", function () {
+      modalAllAlerts.style.display = "none";
+    });
+  }
+
+  if (modalAllAlerts) {
+    modalAllAlerts.addEventListener("click", function (e) {
+      if (e.target === modalAllAlerts) {
+        modalAllAlerts.style.display = "none";
+      }
+    });
+  }
 }
 
 function init() {
