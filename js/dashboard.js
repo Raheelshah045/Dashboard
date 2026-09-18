@@ -2482,7 +2482,7 @@ function renderOvKpiStrip(root, data) {
                   + (data.ibft ? data.ibft.successCountYesterday || 0 : 0);
 
   const cntCard = ovExecCardRedesign(
-    "ATM Transaction Count",
+    "Total ADC Transaction Count",
     lbl.shortPrimary,
     formatNumber(adcCntTdy, 0),
     lbl.comparisonTerm,
@@ -2504,7 +2504,7 @@ function renderOvKpiStrip(root, data) {
                   + (data.ibft ? data.ibft.successAmountYesterday || 0 : 0);
 
   const amtCard = ovExecCardRedesign(
-    "ATM Transaction Amount",
+    "Total ADC Transaction Amount",
     lbl.shortPrimary,
     formatCurrency(adcAmtTdy),
     lbl.comparisonTerm,
@@ -2826,6 +2826,7 @@ function renderOvModules(root, data) {
   grid.appendChild(ovModuleCard("ADC Operations",                  "adc-operations",    buildOvAdcTable(data)));
   grid.appendChild(ovModuleCard("Complain / Chargeback / Disputes","chargeback",        buildOvCbDisputesTable(data)));
   grid.appendChild(ovModuleCard("Income Stream",                   "card-financials",   buildOvCardFinTable(data)));
+  grid.appendChild(ovModuleCard("Provisional Taxes",               "card-financials",   buildOvProvisionalTaxesTable(data)));
   grid.appendChild(ovModuleCard("Inventory / Stock Position",      "card-non-financials", buildOvInventoryTable(data)));
   grid.appendChild(ovModuleCard("Secure Operations",               "secure-operations", ovSecOpsRows(data)));
   grid.appendChild(ovModuleCard("Unsecured Operations",            "unsecured-operations", ovUnsecOpsRows(data)));
@@ -2915,10 +2916,24 @@ function buildOvAdcTable(data) {
   const raastYestAmt = raast.successAmountYesterday || 11900000000;
   const raastComp = calculateComparisons(raastTdyAmt, raastYestAmt, true, false);
 
+  const posTdyCnt = 75400;
+  const posTdyAmt = 4800000000;
+  const posYestCnt = 72100;
+  const posYestAmt = 4500000000;
+  const posComp = calculateComparisons(posTdyAmt, posYestAmt, true, false);
+
+  const ecomTdyCnt = 52300;
+  const ecomTdyAmt = 3600000000;
+  const ecomYestCnt = 49800;
+  const ecomYestAmt = 3400000000;
+  const ecomComp = calculateComparisons(ecomTdyAmt, ecomYestAmt, true, false);
+
   const rowsData = [
     { name: "Total ATM Transactions", target: "atm-performance", title: "Click to view ATM Performance in ADC Operations", tCnt: atmTdyCnt, tAmt: atmTdyAmt, yCnt: atmYestCnt, yAmt: atmYestAmt, comp: atmComp },
     { name: "Total IBFT Transactions", target: "ibft-operations", title: "Click to view IBFT Operations in ADC Operations", tCnt: ibftTdyCnt, tAmt: ibftTdyAmt, yCnt: ibftYestCnt, yAmt: ibftYestAmt, comp: ibftComp },
-    { name: "Total RAAST Transactions", target: "raast-operations", title: "Click to view RAAST Operations in ADC Operations", tCnt: raastTdyCnt, tAmt: raastTdyAmt, yCnt: raastYestCnt, yAmt: raastYestAmt, comp: raastComp }
+    { name: "Total RAAST Transactions", target: "raast-operations", title: "Click to view RAAST Operations in ADC Operations", tCnt: raastTdyCnt, tAmt: raastTdyAmt, yCnt: raastYestCnt, yAmt: raastYestAmt, comp: raastComp },
+    { name: "Total POS Transactions", target: null, title: "", tCnt: posTdyCnt, tAmt: posTdyAmt, yCnt: posYestCnt, yAmt: posYestAmt, comp: posComp },
+    { name: "Total Ecommerce Transactions", target: null, title: "", tCnt: ecomTdyCnt, tAmt: ecomTdyAmt, yCnt: ecomYestCnt, yAmt: ecomYestAmt, comp: ecomComp }
   ];
 
   rowsData.forEach(function (r) {
@@ -2985,7 +3000,7 @@ function buildOvInventoryTable(data) {
       title: "Click to view Card Stationery in Card Non-Financials"
     },
     {
-      item: "Mailers Stock",
+      item: "Card Mailers Stock",
       cur: 41000,
       prev: 45000,
       subtext: "(2.1 mos)",
@@ -3065,6 +3080,42 @@ function buildOvCardFinTable(data) {
   return table;
 }
 
+function buildOvProvisionalTaxesTable(data) {
+  const table = el("table", { class: "ov-module-table" });
+  const thead = el("thead");
+  const trHead = el("tr");
+  trHead.appendChild(el("th", { text: "Metric", style: "text-align:left;" }));
+  trHead.appendChild(el("th", { text: "Current Month", class: "num", style: "text-align:center;" }));
+  trHead.appendChild(el("th", { text: "Previous Month", class: "num", style: "text-align:center;" }));
+  trHead.appendChild(el("th", { text: "MoM Rate", class: "num", style: "text-align:center;" }));
+  thead.appendChild(trHead);
+  table.appendChild(thead);
+
+  const tbody = el("tbody");
+
+  const rows = [
+    { metric: "PRA", curVal: 24.50, prevVal: 22.10, curStr: "PKR 24.50 Mn", prevStr: "PKR 22.10 Mn" },
+    { metric: "SRB", curVal: 18.20, prevVal: 16.80, curStr: "PKR 18.20 Mn", prevStr: "PKR 16.80 Mn" }
+  ];
+
+  rows.forEach(function (r) {
+    const tr = el("tr");
+    tr.appendChild(el("td", { text: r.metric, style: "text-align:left; font-weight:600;" }));
+    tr.appendChild(el("td", { text: r.curStr, class: "num", style: "font-weight:600;" }));
+    tr.appendChild(el("td", { text: r.prevStr, class: "num", style: "color:var(--text-secondary);" }));
+
+    const comp = calculateComparisons(r.curVal, r.prevVal, true, true);
+    const tdChg = el("td", { class: "num", style: "text-align:center;" });
+    tdChg.innerHTML = comp.html;
+    tr.appendChild(tdChg);
+
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  return table;
+}
+
 function buildOvCbDisputesTable(data) {
   const table = el("table", { class: "ov-module-table ov-cb-disputes-table" });
   const thead = el("thead");
@@ -3089,11 +3140,12 @@ function buildOvCbDisputesTable(data) {
 
   // Demo data — realistic complaint/chargeback dispute counts by channel
   const cbRows = [
-    { channel: "RAAST", cur: 1248, prev: 1105 },
-    { channel: "IBFT",  cur: 3872, prev: 4210 },
-    { channel: "ATM",   cur: 2561, prev: 2389 },
-    { channel: "POS",   cur: 984,  prev: 876  },
-    { channel: "UBPS",  cur: 432,  prev: 398  }
+    { channel: "RAAST",     cur: 1248, prev: 1105 },
+    { channel: "IBFT",      cur: 3872, prev: 4210 },
+    { channel: "ATM",       cur: 2561, prev: 2389 },
+    { channel: "UBPS",      cur: 432,  prev: 398  },
+    { channel: "POS",       cur: 984,  prev: 876  },
+    { channel: "Ecommerce", cur: 645,  prev: 590  }
   ];
 
   cbRows.forEach(function (r) {

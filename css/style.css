@@ -2748,7 +2748,7 @@ table.recon-detail-table td.recon-diff-cell {
   }
 
   .ov-modules-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
   }
 
   .kpi-grid {
@@ -3062,6 +3062,7 @@ table.recon-detail-table td.recon-diff-cell {
   padding: 16px;
   background: var(--surface, #FFFFFF);
   border: 1px solid var(--border, #E2E8F0);
+  border-top: 3.5px solid var(--brand, #117ABF);
   border-radius: var(--radius-md, 8px);
   box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.05));
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
