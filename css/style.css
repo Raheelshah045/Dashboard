@@ -1219,6 +1219,43 @@ table.data-table th {
   z-index: 2;
 }
 
+/* ADC Operations Page - Header Row Background & Full Table Borders */
+#page-adc-operations table.data-table,
+#adc-operations-body table.data-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: var(--radius-sm, 6px);
+  overflow: hidden;
+}
+
+#page-adc-operations table.data-table th,
+#adc-operations-body table.data-table th,
+#page-adc-operations table.data-table thead tr,
+#adc-operations-body table.data-table thead tr {
+  background: #D0E5F3 !important;
+}
+
+#page-adc-operations table.data-table th,
+#adc-operations-body table.data-table th,
+#page-adc-operations table.data-table td,
+#adc-operations-body table.data-table td {
+  border-bottom: 1px solid #cbd5e1 !important;
+  border-right: 1px solid #cbd5e1 !important;
+}
+
+#page-adc-operations table.data-table th:last-child,
+#adc-operations-body table.data-table th:last-child,
+#page-adc-operations table.data-table td:last-child,
+#adc-operations-body table.data-table td:last-child {
+  border-right: none !important;
+}
+
+#page-adc-operations table.data-table tbody tr:last-child td,
+#adc-operations-body table.data-table tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
 table.data-table td.num, table.data-table th.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -3265,15 +3302,14 @@ tr.clickable-failure-row:hover td {
 .kpi-interactive-wrapper {
   display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
+  justify-content: flex-start;
+  gap: 4px;
 }
 
 .kpi-details-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   font-size: 11px;
   font-weight: 600;
   color: var(--brand, #117ABF);
@@ -3281,16 +3317,17 @@ tr.clickable-failure-row:hover td {
   border: 1px solid var(--brand-border, #90C4E4);
   border-radius: var(--radius-pill, 9999px);
   padding: 2px 8px;
-  margin-left: 8px;
+  margin-left: 4px;
   transition: all 0.15s ease-in-out;
   line-height: 1.3;
+  cursor: pointer;
 }
 
 tr.clickable-failure-row:hover .kpi-details-chip {
   background-color: var(--brand, #117ABF);
   color: #ffffff;
   border-color: var(--brand-dark, #0D5F92);
-  transform: translateX(2px);
+  transform: translateX(1px);
 }
 
 /* Modal Overlay Styles */

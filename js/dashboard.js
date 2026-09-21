@@ -3896,7 +3896,7 @@ function renderADCOperations(data) {
       dailyAvg: formatPercentage(r.successRateToday)
     },
     {
-      kpi: '<div class="kpi-interactive-wrapper"><span>Failed Transaction Count</span><span class="kpi-details-chip">View Details &rarr;</span></div>',
+      kpi: '<div class="kpi-interactive-wrapper"><span>Failed Transaction Count</span><span class="kpi-details-chip">Reasons &rarr;</span></div>',
       current: formatNumber(r.failedCountToday),
       previous: formatNumber(r.failedCountYesterday),
       change: calculateComparisons(r.failedCountToday, r.failedCountYesterday, false, !lbl.isDaily).html,
@@ -3943,7 +3943,7 @@ function renderADCOperations(data) {
       dailyAvg: formatPercentage(i.successRateToday)
     },
     {
-      kpi: '<div class="kpi-interactive-wrapper"><span>Failure Count</span><span class="kpi-details-chip">View Details &rarr;</span></div>',
+      kpi: '<div class="kpi-interactive-wrapper"><span>Failure Count</span><span class="kpi-details-chip">Reasons &rarr;</span></div>',
       current: formatNumber(i.failureCountToday),
       previous: formatNumber(i.failureCountYesterday),
       change: calculateComparisons(i.failureCountToday, i.failureCountYesterday, false, !lbl.isDaily).html,
@@ -3990,7 +3990,7 @@ function renderADCOperations(data) {
       dailyAvg: formatPercentage(p.successRateToday || 98.15)
     },
     {
-      kpi: '<div class="kpi-interactive-wrapper"><span>Failure Count</span><span class="kpi-details-chip">View Details &rarr;</span></div>',
+      kpi: '<div class="kpi-interactive-wrapper"><span>Failure Count</span><span class="kpi-details-chip">Reasons &rarr;</span></div>',
       current: formatNumber(p.failureCountToday || 1420),
       previous: formatNumber(p.failureCountYesterday || 1550),
       change: calculateComparisons(p.failureCountToday || 1420, p.failureCountYesterday || 1550, false, !lbl.isDaily).html,
@@ -4037,7 +4037,7 @@ function renderADCOperations(data) {
       dailyAvg: formatPercentage(ec.successRateToday || 97.45)
     },
     {
-      kpi: '<div class="kpi-interactive-wrapper"><span>Failure Count</span><span class="kpi-details-chip">View Details &rarr;</span></div>',
+      kpi: '<div class="kpi-interactive-wrapper"><span>Failure Count</span><span class="kpi-details-chip">Reasons &rarr;</span></div>',
       current: formatNumber(ec.failureCountToday || 1360),
       previous: formatNumber(ec.failureCountYesterday || 1430),
       change: calculateComparisons(ec.failureCountToday || 1360, ec.failureCountYesterday || 1430, false, !lbl.isDaily).html,
