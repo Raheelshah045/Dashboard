@@ -344,10 +344,10 @@ function generateIllustrativeData() {
       totalATMs: 1240, uptimeToday: 97.8, uptimeYesterday: 97.1, uptimeMTD: 97.4, uptimePrevMTD: 96.9,
       withdrawalCountToday: 68450, withdrawalCountYesterday: 65210, withdrawalCountMTD: 1452000, withdrawalCountPrevMTD: 1398000,
       withdrawalAmountToday: 812000000, withdrawalAmountYesterday: 779000000, withdrawalAmountMTD: 17650000000, withdrawalAmountPrevMTD: 16920000000,
-      failedTxnToday: 1120, failedTxnYesterday: 1340, failedTxnMTD: 24600,
-      disputesToday: 42, disputesMTD: 610,
-      capturedCardsToday: 18, capturedCardsMTD: 260,
-      retractTxnToday: 65, retractTxnMTD: 940
+      failedTxnToday: 1120, failedTxnYesterday: 1340, failedTxnMTD: 24600, failedTxnPrevMTD: 23370,
+      disputesToday: 42, disputesYesterday: 40, disputesMTD: 610, disputesPrevMTD: 580,
+      capturedCardsToday: 18, capturedCardsYesterday: 17, capturedCardsMTD: 260, capturedCardsPrevMTD: 245,
+      retractTxnToday: 65, retractTxnYesterday: 62, retractTxnMTD: 940, retractTxnPrevMTD: 910
     },
     atmTop5Best: [
       { rank: 1, atmId: "ATM-0142", location: "Gulberg Main, Lahore", txnCount: 2450, txnAmount: 28600000, successRate: 99.4, uptime: 99.8 },
@@ -378,12 +378,44 @@ function generateIllustrativeData() {
       failureCountToday: 620, failureCountYesterday: 680, failureCountMTD: 11800,
       complaintsToday: 9, complaintsYesterday: 12, complaintsMTD: 158
     },
+    pos: {
+      countToday: 75400, countYesterday: 72100, countMTD: 1650000, countPrevMTD: 1580000,
+      amountToday: 4800000000, amountYesterday: 4500000000, amountMTD: 105000000000, amountPrevMTD: 99000000000,
+      successCountToday: 75400, successCountYesterday: 72100, successCountMTD: 1650000, successCountPrevMTD: 1580000,
+      successAmountToday: 4800000000, successAmountYesterday: 4500000000, successAmountMTD: 105000000000, successAmountPrevMTD: 99000000000,
+      successRateToday: 98.15, successRateYesterday: 97.90, successRateMTD: 98.20, successRatePrevMTD: 97.85,
+      failureCountToday: 1420, failureCountYesterday: 1550, failureCountMTD: 30200, failureCountPrevMTD: 31800,
+      complaintsToday: 18, complaintsYesterday: 22, complaintsMTD: 390, complaintsPrevMTD: 410
+    },
+    posFailures: [
+      { reason: "Card Chip Read / Fallback Error", today: 480, yesterday: 510, mtd: 10200, prevMtd: 10800 },
+      { reason: "Host / Switch Timeout", today: 350, yesterday: 390, mtd: 7450, prevMtd: 7800 },
+      { reason: "Insufficient Funds", today: 290, yesterday: 310, mtd: 6200, prevMtd: 6500 },
+      { reason: "Invalid PIN / Auth Failure", today: 180, yesterday: 200, mtd: 3900, prevMtd: 4100 },
+      { reason: "Network Communication Error", today: 120, yesterday: 140, mtd: 2450, prevMtd: 2600 }
+    ],
+    ecom: {
+      countToday: 52300, countYesterday: 49800, countMTD: 1140000, countPrevMTD: 1090000,
+      amountToday: 3600000000, amountYesterday: 3400000000, amountMTD: 78000000000, amountPrevMTD: 74000000000,
+      successCountToday: 52300, successCountYesterday: 49800, successCountMTD: 1140000, successCountPrevMTD: 1090000,
+      successAmountToday: 3600000000, successAmountYesterday: 3400000000, successAmountMTD: 78000000000, successAmountPrevMTD: 74000000000,
+      successRateToday: 97.45, successRateYesterday: 97.20, successRateMTD: 97.50, successRatePrevMTD: 97.10,
+      failureCountToday: 1360, failureCountYesterday: 1430, failureCountMTD: 29200, failureCountPrevMTD: 30500,
+      complaintsToday: 15, complaintsYesterday: 19, complaintsMTD: 310, complaintsPrevMTD: 330
+    },
+    ecomFailures: [
+      { reason: "3DS OTP Timeout / Validation Failure", today: 450, yesterday: 480, mtd: 9650, prevMtd: 10100 },
+      { reason: "Issuer System Unavailable", today: 340, yesterday: 360, mtd: 7300, prevMtd: 7600 },
+      { reason: "Insufficient Funds", today: 280, yesterday: 300, mtd: 6000, prevMtd: 6300 },
+      { reason: "Card Expired / Invalid CVV", today: 170, yesterday: 175, mtd: 3650, prevMtd: 3800 },
+      { reason: "Risk / Fraud Rule Declined", today: 120, yesterday: 115, mtd: 2600, prevMtd: 2700 }
+    ],
     ibftFailures: [
-      { reason: "Beneficiary invalid", today: 180, yesterday: 195, mtd: 3550 },
-      { reason: "Timeout", today: 150, yesterday: 162, mtd: 2890 },
-      { reason: "Insufficient funds", today: 140, yesterday: 132, mtd: 2650 },
-      { reason: "Core banking issue", today: 90, yesterday: 105, mtd: 1620 },
-      { reason: "Network error", today: 60, yesterday: 68, mtd: 1090 }
+      { reason: "Beneficiary invalid", today: 180, yesterday: 195, mtd: 3550, prevMtd: 3700 },
+      { reason: "Timeout", today: 150, yesterday: 162, mtd: 2890, prevMtd: 3000 },
+      { reason: "Insufficient funds", today: 140, yesterday: 132, mtd: 2650, prevMtd: 2750 },
+      { reason: "Core banking issue", today: 90, yesterday: 105, mtd: 1620, prevMtd: 1700 },
+      { reason: "Network error", today: 60, yesterday: 68, mtd: 1090, prevMtd: 1150 }
     ],
 
     cardInventory: [
@@ -849,6 +881,110 @@ function normalizeWorkbookData(rawSheets, missingSheets) {
       else map[reason].mtd += cnt;
     });
     data.ibftFailures = Object.keys(map).map(function(k){ return map[k]; });
+  }
+
+  // 4b. POS sheet
+  if (rawSheets["POS"] && rawSheets["POS"].length) {
+    const rows = rawSheets["POS"];
+    const tRow = filterByPeriod(rows, ["today"])[0] || rows[0] || {};
+    const yRow = filterByPeriod(rows, ["yesterday"])[0] || rows[1] || {};
+    const mRow = filterByPeriod(rows, ["current month", "mtd"])[0] || rows[2] || {};
+
+    const succT = num(tRow, "successfulTxn", ["Successful Transaction Count"]) || 0;
+    const failT = num(tRow, "failedTxn", ["Failed Transaction Count"]) || 0;
+    const succY = num(yRow, "successfulTxn", ["Successful Transaction Count"]) || 0;
+    const failY = num(yRow, "failedTxn", ["Failed Transaction Count"]) || 0;
+    const succM = num(mRow, "successfulTxn", ["Successful Transaction Count"]) || 0;
+    const failM = num(mRow, "failedTxn", ["Failed Transaction Count"]) || 0;
+
+    data.pos = {
+      successCountToday: succT,
+      successAmountToday: num(tRow, "successfulAmt", ["Successful Transaction Amount"]),
+      failureCountToday: failT,
+      complaintsToday: num(tRow, "complaintCount", ["Complaints"]),
+      successRateToday: calculateSuccessRate(succT, failT),
+
+      successCountYesterday: succY,
+      successAmountYesterday: num(yRow, "successfulAmt", ["Successful Transaction Amount"]),
+      failureCountYesterday: failY,
+      complaintsYesterday: num(yRow, "complaintCount", ["Complaints"]),
+      successRateYesterday: calculateSuccessRate(succY, failY),
+
+      successCountMTD: succM,
+      successAmountMTD: num(mRow, "successfulAmt", ["Successful Transaction Amount"]),
+      failureCountMTD: failM,
+      complaintsMTD: num(mRow, "complaintCount", ["Complaints"]),
+      successRateMTD: calculateSuccessRate(succM, failM)
+    };
+  }
+
+  // 4c. POS_Failures
+  if (rawSheets["POS_Failures"] && rawSheets["POS_Failures"].length) {
+    const rows = rawSheets["POS_Failures"];
+    const map = {};
+    rows.forEach(function (r) {
+      const reason = str(r, null, ["Failure Reason", "Reason"]) || "Other";
+      if (!map[reason]) map[reason] = { reason: reason, today: 0, yesterday: 0, mtd: 0 };
+      const period = normalizeHeader(str(r, null, ["Period"]));
+      const cnt = num(r, "txnCount", ["Failure Count", "Count"]) || 0;
+      if (period === "today") map[reason].today += cnt;
+      else if (period === "yesterday") map[reason].yesterday += cnt;
+      else map[reason].mtd += cnt;
+    });
+    data.posFailures = Object.keys(map).map(function(k){ return map[k]; });
+  }
+
+  // 4d. ECOMMERCE sheet
+  const ecomSheet = rawSheets["ECOMMERCE"] || rawSheets["ECOM"];
+  if (ecomSheet && ecomSheet.length) {
+    const rows = ecomSheet;
+    const tRow = filterByPeriod(rows, ["today"])[0] || rows[0] || {};
+    const yRow = filterByPeriod(rows, ["yesterday"])[0] || rows[1] || {};
+    const mRow = filterByPeriod(rows, ["current month", "mtd"])[0] || rows[2] || {};
+
+    const succT = num(tRow, "successfulTxn", ["Successful Transaction Count"]) || 0;
+    const failT = num(tRow, "failedTxn", ["Failed Transaction Count"]) || 0;
+    const succY = num(yRow, "successfulTxn", ["Successful Transaction Count"]) || 0;
+    const failY = num(yRow, "failedTxn", ["Failed Transaction Count"]) || 0;
+    const succM = num(mRow, "successfulTxn", ["Successful Transaction Count"]) || 0;
+    const failM = num(mRow, "failedTxn", ["Failed Transaction Count"]) || 0;
+
+    data.ecom = {
+      successCountToday: succT,
+      successAmountToday: num(tRow, "successfulAmt", ["Successful Transaction Amount"]),
+      failureCountToday: failT,
+      complaintsToday: num(tRow, "complaintCount", ["Complaints"]),
+      successRateToday: calculateSuccessRate(succT, failT),
+
+      successCountYesterday: succY,
+      successAmountYesterday: num(yRow, "successfulAmt", ["Successful Transaction Amount"]),
+      failureCountYesterday: failY,
+      complaintsYesterday: num(yRow, "complaintCount", ["Complaints"]),
+      successRateYesterday: calculateSuccessRate(succY, failY),
+
+      successCountMTD: succM,
+      successAmountMTD: num(mRow, "successfulAmt", ["Successful Transaction Amount"]),
+      failureCountMTD: failM,
+      complaintsMTD: num(mRow, "complaintCount", ["Complaints"]),
+      successRateMTD: calculateSuccessRate(succM, failM)
+    };
+  }
+
+  // 4e. Ecommerce_Failures
+  const ecomFailSheet = rawSheets["Ecommerce_Failures"] || rawSheets["ECOM_Failures"];
+  if (ecomFailSheet && ecomFailSheet.length) {
+    const rows = ecomFailSheet;
+    const map = {};
+    rows.forEach(function (r) {
+      const reason = str(r, null, ["Failure Reason", "Reason"]) || "Other";
+      if (!map[reason]) map[reason] = { reason: reason, today: 0, yesterday: 0, mtd: 0 };
+      const period = normalizeHeader(str(r, null, ["Period"]));
+      const cnt = num(r, "txnCount", ["Failure Count", "Count"]) || 0;
+      if (period === "today") map[reason].today += cnt;
+      else if (period === "yesterday") map[reason].yesterday += cnt;
+      else map[reason].mtd += cnt;
+    });
+    data.ecomFailures = Object.keys(map).map(function(k){ return map[k]; });
   }
 
   // 5. Card_Inventory
@@ -1640,9 +1776,13 @@ function getFilteredData(rawData, filters) {
       data.atm.withdrawalAmountToday = data.atm.withdrawalAmountMTD;
       data.atm.withdrawalAmountYesterday = data.atm.withdrawalAmountPrevMTD;
       data.atm.failedTxnToday = data.atm.failedTxnMTD;
+      data.atm.failedTxnYesterday = data.atm.failedTxnPrevMTD || Math.round((data.atm.failedTxnMTD || 24600) * 0.95);
       data.atm.disputesToday = data.atm.disputesMTD;
+      data.atm.disputesYesterday = data.atm.disputesPrevMTD || 580;
       data.atm.capturedCardsToday = data.atm.capturedCardsMTD;
+      data.atm.capturedCardsYesterday = data.atm.capturedCardsPrevMTD || 245;
       data.atm.retractTxnToday = data.atm.retractTxnMTD;
+      data.atm.retractTxnYesterday = data.atm.retractTxnPrevMTD || 910;
       data.atm.uptimeToday = data.atm.uptimeMTD;
       data.atm.uptimeYesterday = data.atm.uptimePrevMTD;
     } else if (mode === "custom") {
@@ -1651,9 +1791,13 @@ function getFilteredData(rawData, filters) {
       data.atm.withdrawalAmountToday = scale(data.atm.withdrawalAmountMTD, factor);
       data.atm.withdrawalAmountYesterday = scale(data.atm.withdrawalAmountPrevMTD, factor);
       data.atm.failedTxnToday = scale(data.atm.failedTxnMTD, factor);
+      data.atm.failedTxnYesterday = scale(data.atm.failedTxnPrevMTD || Math.round((data.atm.failedTxnMTD || 24600) * 0.95), factor);
       data.atm.disputesToday = scale(data.atm.disputesMTD, factor);
+      data.atm.disputesYesterday = scale(data.atm.disputesPrevMTD || 580, factor);
       data.atm.capturedCardsToday = scale(data.atm.capturedCardsMTD, factor);
+      data.atm.capturedCardsYesterday = scale(data.atm.capturedCardsPrevMTD || 245, factor);
       data.atm.retractTxnToday = scale(data.atm.retractTxnMTD, factor);
+      data.atm.retractTxnYesterday = scale(data.atm.retractTxnPrevMTD || 910, factor);
       data.atm.uptimeToday = data.atm.uptimeMTD;
       data.atm.uptimeYesterday = data.atm.uptimePrevMTD;
     }
@@ -1713,7 +1857,119 @@ function getFilteredData(rawData, filters) {
     }
   }
 
-  // 4. IBFT Failures table
+  // 3b. POS Operations
+  if (data.pos) {
+    if (mode === "month") {
+      data.pos.successCountToday = data.pos.successCountMTD || 1650000;
+      data.pos.successCountYesterday = data.pos.successCountPrevMTD || 1580000;
+      data.pos.successAmountToday = data.pos.successAmountMTD || 105000000000;
+      data.pos.successAmountYesterday = data.pos.successAmountPrevMTD || 99000000000;
+      data.pos.failureCountToday = data.pos.failureCountMTD || 30200;
+      data.pos.failureCountYesterday = data.pos.failureCountPrevMTD || 31800;
+      data.pos.complaintsToday = data.pos.complaintsMTD || 390;
+      data.pos.complaintsYesterday = data.pos.complaintsPrevMTD || 410;
+      data.pos.successRateToday = data.pos.successRateMTD || 98.20;
+      data.pos.successRateYesterday = data.pos.successRatePrevMTD || 97.85;
+      data.pos.countToday = data.pos.successCountToday;
+      data.pos.countYesterday = data.pos.successCountYesterday;
+      data.pos.amountToday = data.pos.successAmountToday;
+      data.pos.amountYesterday = data.pos.successAmountYesterday;
+    } else if (mode === "custom") {
+      const posMtdCount = data.pos.successCountMTD || 1650000;
+      const posPrevCount = data.pos.successCountPrevMTD || 1580000;
+      const posMtdAmt = data.pos.successAmountMTD || 105000000000;
+      const posPrevAmt = data.pos.successAmountPrevMTD || 99000000000;
+      const posMtdFail = data.pos.failureCountMTD || 30200;
+      const posPrevFail = data.pos.failureCountPrevMTD || 31800;
+      const posMtdComp = data.pos.complaintsMTD || 390;
+      const posPrevComp = data.pos.complaintsPrevMTD || 410;
+
+      data.pos.successCountToday = scale(posMtdCount, factor);
+      data.pos.successCountYesterday = scale(posPrevCount, factor);
+      data.pos.successAmountToday = scale(posMtdAmt, factor);
+      data.pos.successAmountYesterday = scale(posPrevAmt, factor);
+      data.pos.failureCountToday = scale(posMtdFail, factor);
+      data.pos.failureCountYesterday = scale(posPrevFail, factor);
+      data.pos.complaintsToday = scale(posMtdComp, factor);
+      data.pos.complaintsYesterday = scale(posPrevComp, factor);
+      data.pos.successRateToday = calculateSuccessRate(data.pos.successCountToday, data.pos.failureCountToday);
+      data.pos.successRateYesterday = calculateSuccessRate(data.pos.successCountYesterday, data.pos.failureCountYesterday);
+      data.pos.countToday = data.pos.successCountToday;
+      data.pos.countYesterday = data.pos.successCountYesterday;
+      data.pos.amountToday = data.pos.successAmountToday;
+      data.pos.amountYesterday = data.pos.successAmountYesterday;
+    }
+  }
+
+  // 3c. Ecommerce Operations
+  if (data.ecom) {
+    if (mode === "month") {
+      data.ecom.successCountToday = data.ecom.successCountMTD || 1140000;
+      data.ecom.successCountYesterday = data.ecom.successCountPrevMTD || 1090000;
+      data.ecom.successAmountToday = data.ecom.successAmountMTD || 78000000000;
+      data.ecom.successAmountYesterday = data.ecom.successAmountPrevMTD || 74000000000;
+      data.ecom.failureCountToday = data.ecom.failureCountMTD || 29200;
+      data.ecom.failureCountYesterday = data.ecom.failureCountPrevMTD || 30500;
+      data.ecom.complaintsToday = data.ecom.complaintsMTD || 310;
+      data.ecom.complaintsYesterday = data.ecom.complaintsPrevMTD || 330;
+      data.ecom.successRateToday = data.ecom.successRateMTD || 97.50;
+      data.ecom.successRateYesterday = data.ecom.successRatePrevMTD || 97.10;
+      data.ecom.countToday = data.ecom.successCountToday;
+      data.ecom.countYesterday = data.ecom.successCountYesterday;
+      data.ecom.amountToday = data.ecom.successAmountToday;
+      data.ecom.amountYesterday = data.ecom.successAmountYesterday;
+    } else if (mode === "custom") {
+      const ecomMtdCount = data.ecom.successCountMTD || 1140000;
+      const ecomPrevCount = data.ecom.successCountPrevMTD || 1090000;
+      const ecomMtdAmt = data.ecom.successAmountMTD || 78000000000;
+      const ecomPrevAmt = data.ecom.successAmountPrevMTD || 74000000000;
+      const ecomMtdFail = data.ecom.failureCountMTD || 29200;
+      const ecomPrevFail = data.ecom.failureCountPrevMTD || 30500;
+      const ecomMtdComp = data.ecom.complaintsMTD || 310;
+      const ecomPrevComp = data.ecom.complaintsPrevMTD || 330;
+
+      data.ecom.successCountToday = scale(ecomMtdCount, factor);
+      data.ecom.successCountYesterday = scale(ecomPrevCount, factor);
+      data.ecom.successAmountToday = scale(ecomMtdAmt, factor);
+      data.ecom.successAmountYesterday = scale(ecomPrevAmt, factor);
+      data.ecom.failureCountToday = scale(ecomMtdFail, factor);
+      data.ecom.failureCountYesterday = scale(ecomPrevFail, factor);
+      data.ecom.complaintsToday = scale(ecomMtdComp, factor);
+      data.ecom.complaintsYesterday = scale(ecomPrevComp, factor);
+      data.ecom.successRateToday = calculateSuccessRate(data.ecom.successCountToday, data.ecom.failureCountToday);
+      data.ecom.successRateYesterday = calculateSuccessRate(data.ecom.successCountYesterday, data.ecom.failureCountYesterday);
+      data.ecom.countToday = data.ecom.successCountToday;
+      data.ecom.countYesterday = data.ecom.successCountYesterday;
+      data.ecom.amountToday = data.ecom.successAmountToday;
+      data.ecom.amountYesterday = data.ecom.successAmountYesterday;
+    }
+  }
+
+  // 4. Failure tables (IBFT, POS, Ecommerce)
+  if (Array.isArray(data.posFailures)) {
+    data.posFailures.forEach(function (row) {
+      if (mode === "month") {
+        row.today = row.mtd;
+        row.yesterday = row.prevMtd || Math.round(row.mtd * 0.95);
+      } else if (mode === "custom") {
+        row.today = scale(row.mtd, factor);
+        row.yesterday = scale(row.prevMtd || Math.round(row.mtd * 0.95), factor);
+      }
+    });
+  }
+
+  if (Array.isArray(data.ecomFailures)) {
+    data.ecomFailures.forEach(function (row) {
+      if (mode === "month") {
+        row.today = row.mtd;
+        row.yesterday = row.prevMtd || Math.round(row.mtd * 0.95);
+      } else if (mode === "custom") {
+        row.today = scale(row.mtd, factor);
+        row.yesterday = scale(row.prevMtd || Math.round(row.mtd * 0.95), factor);
+      }
+    });
+  }
+
   if (Array.isArray(data.ibftFailures)) {
     data.ibftFailures.forEach(function (row) {
       if (mode === "month") {
@@ -2873,14 +3129,16 @@ function ovModuleCard(title, page, content, extraClass) {
 }
 
 function buildOvAdcTable(data) {
+  const lbl = getPeriodLabels();
+  const isMoM = !lbl.isDaily;
   const table = el("table", { class: "ov-module-table ov-adc-summary-table" });
   const thead = el("thead");
 
   const tr1 = el("tr");
   tr1.appendChild(el("th", { text: "COUNTRYWIDE", rowspan: "2", style: "text-align:left; vertical-align:bottom;" }));
-  tr1.appendChild(el("th", { text: "TODAY", colspan: "2", class: "grouped-hdr group-today", style: "text-align:center;" }));
-  tr1.appendChild(el("th", { text: "YESTERDAY", colspan: "2", class: "grouped-hdr group-yesterday", style: "text-align:center;" }));
-  tr1.appendChild(el("th", { text: "CHANGE RATE", rowspan: "2", style: "text-align:center; vertical-align:bottom;" }));
+  tr1.appendChild(el("th", { text: lbl.colCurrent, colspan: "2", class: "grouped-hdr group-today", style: "text-align:center;" }));
+  tr1.appendChild(el("th", { text: lbl.colPrevious, colspan: "2", class: "grouped-hdr group-yesterday", style: "text-align:center;" }));
+  tr1.appendChild(el("th", { text: lbl.colRate, rowspan: "2", style: "text-align:center; vertical-align:bottom;" }));
   thead.appendChild(tr1);
 
   const tr2 = el("tr");
@@ -2897,43 +3155,51 @@ function buildOvAdcTable(data) {
   const atm = data.atm || {};
   const ibft = data.ibft || {};
   const raast = data.raast || {};
+  const pos = data.pos || {
+    countToday: 75400, countYesterday: 72100, countMTD: 1650000, countPrevMTD: 1580000,
+    amountToday: 4800000000, amountYesterday: 4500000000, amountMTD: 105000000000, amountPrevMTD: 99000000000
+  };
+  const ecom = data.ecom || {
+    countToday: 52300, countYesterday: 49800, countMTD: 1140000, countPrevMTD: 1090000,
+    amountToday: 3600000000, amountYesterday: 3400000000, amountMTD: 78000000000, amountPrevMTD: 74000000000
+  };
 
   const atmTdyCnt = atm.withdrawalCountToday || 48500;
   const atmTdyAmt = atm.withdrawalAmountToday || 14200000000;
   const atmYestCnt = atm.withdrawalCountYesterday || 46200;
   const atmYestAmt = atm.withdrawalAmountYesterday || 13500000000;
-  const atmComp = calculateComparisons(atmTdyAmt, atmYestAmt, true, false);
+  const atmComp = calculateComparisons(atmTdyAmt, atmYestAmt, true, isMoM);
 
   const ibftTdyCnt = ibft.successCountToday || 125400;
   const ibftTdyAmt = ibft.successAmountToday || 18600000000;
   const ibftYestCnt = ibft.successCountYesterday || 119800;
   const ibftYestAmt = ibft.successAmountYesterday || 17800000000;
-  const ibftComp = calculateComparisons(ibftTdyAmt, ibftYestAmt, true, false);
+  const ibftComp = calculateComparisons(ibftTdyAmt, ibftYestAmt, true, isMoM);
 
   const raastTdyCnt = raast.successCountToday || 98200;
   const raastTdyAmt = raast.successAmountToday || 12800000000;
   const raastYestCnt = raast.successCountYesterday || 92500;
   const raastYestAmt = raast.successAmountYesterday || 11900000000;
-  const raastComp = calculateComparisons(raastTdyAmt, raastYestAmt, true, false);
+  const raastComp = calculateComparisons(raastTdyAmt, raastYestAmt, true, isMoM);
 
-  const posTdyCnt = 75400;
-  const posTdyAmt = 4800000000;
-  const posYestCnt = 72100;
-  const posYestAmt = 4500000000;
-  const posComp = calculateComparisons(posTdyAmt, posYestAmt, true, false);
+  const posTdyCnt = pos.countToday || 75400;
+  const posTdyAmt = pos.amountToday || 4800000000;
+  const posYestCnt = pos.countYesterday || 72100;
+  const posYestAmt = pos.amountYesterday || 4500000000;
+  const posComp = calculateComparisons(posTdyAmt, posYestAmt, true, isMoM);
 
-  const ecomTdyCnt = 52300;
-  const ecomTdyAmt = 3600000000;
-  const ecomYestCnt = 49800;
-  const ecomYestAmt = 3400000000;
-  const ecomComp = calculateComparisons(ecomTdyAmt, ecomYestAmt, true, false);
+  const ecomTdyCnt = ecom.countToday || 52300;
+  const ecomTdyAmt = ecom.amountToday || 3600000000;
+  const ecomYestCnt = ecom.countYesterday || 49800;
+  const ecomYestAmt = ecom.amountYesterday || 3400000000;
+  const ecomComp = calculateComparisons(ecomTdyAmt, ecomYestAmt, true, isMoM);
 
   const rowsData = [
     { name: "Total ATM Transactions", target: "atm-performance", title: "Click to view ATM Performance in ADC Operations", tCnt: atmTdyCnt, tAmt: atmTdyAmt, yCnt: atmYestCnt, yAmt: atmYestAmt, comp: atmComp },
     { name: "Total IBFT Transactions", target: "ibft-operations", title: "Click to view IBFT Operations in ADC Operations", tCnt: ibftTdyCnt, tAmt: ibftTdyAmt, yCnt: ibftYestCnt, yAmt: ibftYestAmt, comp: ibftComp },
     { name: "Total RAAST Transactions", target: "raast-operations", title: "Click to view RAAST Operations in ADC Operations", tCnt: raastTdyCnt, tAmt: raastTdyAmt, yCnt: raastYestCnt, yAmt: raastYestAmt, comp: raastComp },
-    { name: "Total POS Transactions", target: null, title: "", tCnt: posTdyCnt, tAmt: posTdyAmt, yCnt: posYestCnt, yAmt: posYestAmt, comp: posComp },
-    { name: "Total Ecommerce Transactions", target: null, title: "", tCnt: ecomTdyCnt, tAmt: ecomTdyAmt, yCnt: ecomYestCnt, yAmt: ecomYestAmt, comp: ecomComp }
+    { name: "Total POS Transactions", target: "pos-operations", title: "Click to view POS Operations in ADC Operations", tCnt: posTdyCnt, tAmt: posTdyAmt, yCnt: posYestCnt, yAmt: posYestAmt, comp: posComp },
+    { name: "Total Ecommerce Transactions", target: "ecommerce-operations", title: "Click to view Ecommerce Operations in ADC Operations", tCnt: ecomTdyCnt, tAmt: ecomTdyAmt, yCnt: ecomYestCnt, yAmt: ecomYestAmt, comp: ecomComp }
   ];
 
   rowsData.forEach(function (r) {
@@ -3337,64 +3603,96 @@ function renderADCOperations(data) {
     const domAtmCount = a.domesticATMs || Math.round((a.totalATMs || 1240) * 0.94);
     const intlAtmCount = a.internationalATMs || ((a.totalATMs || 1240) - domAtmCount);
     const totalAtmSubHTML = '<div class="kpi-atm-sub-breakdown">'
-      + '<div class="kpi-atm-sub-row"><span>Domestic ATMs</span><strong>' + formatNumber(domAtmCount, 0) + '</strong></div>'
-      + '<div class="kpi-atm-sub-row"><span>International ATMs</span><strong>' + formatNumber(intlAtmCount, 0) + '</strong></div>'
+      + '<div class="atm-badge-chip dom-chip"><span class="chip-label">DOMESTIC ATMs</span><strong class="chip-value">' + formatNumber(domAtmCount, 0) + '</strong></div>'
+      + '<div class="atm-badge-chip intl-chip"><span class="chip-label">INTL ATMs</span><strong class="chip-value">' + formatNumber(intlAtmCount, 0) + '</strong></div>'
       + '</div>';
-    grid.appendChild(kpiCard("Total ATM Count", formatNumber(a.totalATMs), totalAtmSubHTML));
+    const totalAtmCard = kpiCard("Total ATM Count", formatNumber(a.totalATMs), totalAtmSubHTML);
+    totalAtmCard.classList.add("total-atm-long-box");
+    root.appendChild(totalAtmCard);
 
-    const uptimeSubHTML = lbl.comparisonTerm + ": " + uptComp.yesterdayStr + " &nbsp;|&nbsp; " + uptComp.html;
-    grid.appendChild(kpiCard("ATM Uptime (" + lbl.shortPrimary + ")", uptComp.todayStr, uptimeSubHTML));
+    const numDays = Math.max(1, (lbl.mode === "month" ? (appState.filters.daysInMonth || 31) : (appState.filters.daysCount || 15)));
+    const isMoM = !lbl.isDaily;
 
-    grid.appendChild(kpiCard("Withdrawal Transaction Count (" + lbl.shortPrimary + ")", formatNumber(a.withdrawalCountToday), lbl.comparisonTerm + ": " + formatNumber(a.withdrawalCountYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(a.withdrawalCountToday, a.withdrawalCountYesterday, true, false).html));
-    if (lbl.isDaily) {
-      grid.appendChild(kpiCard("Withdrawal Transaction Count (Current Month)", formatNumber(a.withdrawalCountMTD), "Prev Month: " + formatNumber(a.withdrawalCountPrevMTD) + " &nbsp;|&nbsp; " + calculateComparisons(a.withdrawalCountMTD, a.withdrawalCountPrevMTD, true, true).html));
-    }
-    grid.appendChild(kpiCard("Withdrawal Transaction Amount (" + lbl.shortPrimary + ")", formatCurrency(a.withdrawalAmountToday), lbl.comparisonTerm + ": " + formatCurrency(a.withdrawalAmountYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(a.withdrawalAmountToday, a.withdrawalAmountYesterday, true, false).html, fullValueTitle(a.withdrawalAmountToday, true)));
-    if (lbl.isDaily) {
-      grid.appendChild(kpiCard("Withdrawal Transaction Amount (Current Month)", formatCurrency(a.withdrawalAmountMTD), "Prev Month: " + formatCurrency(a.withdrawalAmountPrevMTD) + " &nbsp;|&nbsp; " + calculateComparisons(a.withdrawalAmountMTD, a.withdrawalAmountPrevMTD, true, true).html, fullValueTitle(a.withdrawalAmountMTD, true)));
-    }
-    grid.appendChild(kpiCard("Failed ATM Transactions Count (" + lbl.shortPrimary + ")", formatNumber(a.failedTxnToday), lbl.comparisonTerm + ": " + formatNumber(a.failedTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(a.failedTxnToday, a.failedTxnYesterday, false, false).html));
+    const disputesCur = a.disputesToday !== undefined ? a.disputesToday : (a.disputesMTD || 610);
+    const disputesPrev = a.disputesYesterday !== undefined ? a.disputesYesterday : (a.disputesPrevMTD || 580);
+    const disputesComp = calculateComparisons(disputesCur, disputesPrev, false, isMoM);
 
-    /* Box 8: ATM Disputes / Claims Count */
-    const disputesCur = a.disputesMTD || 610;
-    const disputesPrev = a.disputesPrevMTD || 580;
-    const disputesComp = calculateComparisons(disputesCur, disputesPrev, false, true);
-    const disputesSubHTML = '<div class="kpi-three-box-sub">'
-      + '<div class="kpi-three-row">'
-      + '<div><span class="kpi-three-lbl">' + lbl.colCurrent + '</span> <br><strong>' + formatNumber(disputesCur, 0) + '</strong></div>'
-      + '<div><span class="kpi-three-lbl">' + lbl.colPrevious + '</span> <br><strong>' + formatNumber(disputesPrev, 0) + '</strong></div>'
-      + '</div>'
-      + '<div class="kpi-three-change"><span>' + lbl.colRate + '</span> ' + disputesComp.html + '</div>'
-      + '</div>';
-    grid.appendChild(kpiCard("ATM Disputes / Claims Count", null, disputesSubHTML));
+    const capturedCur = a.capturedCardsToday !== undefined ? a.capturedCardsToday : (a.capturedCardsMTD || 260);
+    const capturedPrev = a.capturedCardsYesterday !== undefined ? a.capturedCardsYesterday : (a.capturedCardsPrevMTD || 245);
+    const capturedComp = calculateComparisons(capturedCur, capturedPrev, false, isMoM);
 
-    /* Box 9: Cards Captured Count */
-    const capturedCur = a.capturedCardsMTD || 260;
-    const capturedPrev = a.capturedCardsPrevMTD || 245;
-    const capturedComp = calculateComparisons(capturedCur, capturedPrev, false, true);
-    const capturedSubHTML = '<div class="kpi-three-box-sub">'
-      + '<div class="kpi-three-row">'
-      + '<div><span class="kpi-three-lbl">' + lbl.colCurrent + '</span> <br><strong>' + formatNumber(capturedCur, 0) + '</strong></div>'
-      + '<div><span class="kpi-three-lbl">' + lbl.colPrevious + '</span> <br><strong>' + formatNumber(capturedPrev, 0) + '</strong></div>'
-      + '</div>'
-      + '<div class="kpi-three-change"><span>' + lbl.colRate + '</span> ' + capturedComp.html + '</div>'
-      + '</div>';
-    grid.appendChild(kpiCard("Cards Captured Count", null, capturedSubHTML));
+    const retractCur = a.retractTxnToday !== undefined ? a.retractTxnToday : (a.retractTxnMTD || 940);
+    const retractPrev = a.retractTxnYesterday !== undefined ? a.retractTxnYesterday : (a.retractTxnPrevMTD || 910);
+    const retractComp = calculateComparisons(retractCur, retractPrev, false, isMoM);
 
-    /* Box 10: Cash-Retract Transactions Count */
-    const retractCur = a.retractTxnMTD || 940;
-    const retractPrev = a.retractTxnPrevMTD || 910;
-    const retractComp = calculateComparisons(retractCur, retractPrev, false, true);
-    const retractSubHTML = '<div class="kpi-three-box-sub">'
-      + '<div class="kpi-three-row">'
-      + '<div><span class="kpi-three-lbl">' + lbl.colCurrent + '</span> <br><strong>' + formatNumber(retractCur, 0) + '</strong></div>'
-      + '<div><span class="kpi-three-lbl">' + lbl.colPrevious + '</span> <br><strong>' + formatNumber(retractPrev, 0) + '</strong></div>'
-      + '</div>'
-      + '<div class="kpi-three-change"><span>' + lbl.colRate + '</span> ' + retractComp.html + '</div>'
-      + '</div>';
-    grid.appendChild(kpiCard("Cash-Retract Transactions Count", null, retractSubHTML));
+    const atmSummaryRows = [
+      {
+        kpi: "ATM Uptime (%)",
+        current: uptComp.todayStr,
+        previous: uptComp.yesterdayStr,
+        change: uptComp.html,
+        dailyAvg: uptComp.todayStr
+      },
+      {
+        kpi: "Withdrawal Transaction Count",
+        current: formatNumber(a.withdrawalCountToday),
+        previous: formatNumber(a.withdrawalCountYesterday),
+        change: calculateComparisons(a.withdrawalCountToday, a.withdrawalCountYesterday, true, isMoM).html,
+        dailyAvg: formatNumber(a.withdrawalCountToday / numDays)
+      },
+      {
+        kpi: "Withdrawal Transaction Amount",
+        current: formatCurrency(a.withdrawalAmountToday),
+        previous: formatCurrency(a.withdrawalAmountYesterday),
+        change: calculateComparisons(a.withdrawalAmountToday, a.withdrawalAmountYesterday, true, isMoM).html,
+        dailyAvg: formatCurrency(a.withdrawalAmountToday / numDays)
+      },
+      {
+        kpi: "Failed ATM Transactions Count",
+        current: formatNumber(a.failedTxnToday),
+        previous: formatNumber(a.failedTxnYesterday),
+        change: calculateComparisons(a.failedTxnToday, a.failedTxnYesterday, false, isMoM).html,
+        dailyAvg: formatNumber(a.failedTxnToday / numDays)
+      },
+      {
+        kpi: "ATM Disputes / Claims Count",
+        current: formatNumber(disputesCur, 0),
+        previous: formatNumber(disputesPrev, 0),
+        change: disputesComp.html,
+        dailyAvg: formatNumber(disputesCur / numDays)
+      },
+      {
+        kpi: "Cards Captured Count",
+        current: formatNumber(capturedCur, 0),
+        previous: formatNumber(capturedPrev, 0),
+        change: capturedComp.html,
+        dailyAvg: formatNumber(capturedCur / numDays)
+      },
+      {
+        kpi: "Cash-Retract Transactions Count",
+        current: formatNumber(retractCur, 0),
+        previous: formatNumber(retractPrev, 0),
+        change: retractComp.html,
+        dailyAvg: formatNumber(retractCur / numDays)
+      }
+    ];
 
-    root.appendChild(grid);
+    const atmColumnsDaily = [
+      { key: "kpi", label: "Metric" },
+      { key: "current", label: "Today", numeric: true },
+      { key: "previous", label: "Yesterday", numeric: true },
+      { key: "change", label: "Change Rate", numeric: true }
+    ];
+
+    const atmColumnsPeriod = [
+      { key: "kpi", label: "Metric" },
+      { key: "current", label: lbl.colCurrent, numeric: true },
+      { key: "previous", label: lbl.colPrevious, numeric: true },
+      { key: "change", label: lbl.colRate, numeric: true },
+      { key: "dailyAvg", label: "Daily Average", numeric: true }
+    ];
+
+    root.appendChild(buildTable(null, lbl.isDaily ? atmColumnsDaily : atmColumnsPeriod, atmSummaryRows));
 
     /* ATM Performance tables displaying explicit Txn Amount column */
     const atmPerfTitle = sectionTitle("ATM Performance");
@@ -3431,119 +3729,231 @@ function renderADCOperations(data) {
     { key: "dailyAvg", label: "Daily Average", numeric: true }
   ];
 
-  /* 1. RAAST Operations Table */
+  const illustrativeFallback = generateIllustrativeData();
+
+  /* 3. RAAST Operations Table */
   const raastTitle = sectionTitle("RAAST Operations");
   raastTitle.id = "raast-operations";
   root.appendChild(raastTitle);
-  if (data.raast) {
-    const r = data.raast;
-    const raastRows = [
-      {
-        kpi: "Successful Transaction Count",
-        current: formatNumber(r.successCountToday),
-        previous: formatNumber(r.successCountYesterday),
-        change: calculateComparisons(r.successCountToday, r.successCountYesterday, true, !lbl.isDaily).html,
-        dailyAvg: formatNumber(r.successCountToday / numDays)
-      },
-      {
-        kpi: "Successful Transaction Amount",
-        current: formatCurrency(r.successAmountToday),
-        previous: formatCurrency(r.successAmountYesterday),
-        change: calculateComparisons(r.successAmountToday, r.successAmountYesterday, true, !lbl.isDaily).html,
-        dailyAvg: formatCurrency(r.successAmountToday / numDays)
-      },
-      {
-        kpi: "Success Rate (%)",
-        current: formatPercentage(r.successRateToday),
-        previous: formatPercentage(r.successRateYesterday),
-        change: calculateComparisons(r.successRateToday, r.successRateYesterday, true, !lbl.isDaily).html,
-        dailyAvg: formatPercentage(r.successRateToday)
-      },
-      {
-        kpi: "Failed Transaction Count",
-        current: formatNumber(r.failedCountToday),
-        previous: formatNumber(r.failedCountYesterday),
-        change: calculateComparisons(r.failedCountToday, r.failedCountYesterday, false, !lbl.isDaily).html,
-        dailyAvg: formatNumber(r.failedCountToday / numDays)
-      },
-      {
-        kpi: "Complaints Count",
-        current: formatNumber(r.complaintsToday),
-        previous: formatNumber(r.complaintsYesterday),
-        change: calculateComparisons(r.complaintsToday, r.complaintsYesterday, false, !lbl.isDaily).html,
-        dailyAvg: formatNumber(r.complaintsToday / numDays)
-      }
-    ];
+  const r = data.raast || illustrativeFallback.raast;
+  const raastRows = [
+    {
+      kpi: "Successful Transaction Count",
+      current: formatNumber(r.successCountToday),
+      previous: formatNumber(r.successCountYesterday),
+      change: calculateComparisons(r.successCountToday, r.successCountYesterday, true, !lbl.isDaily).html,
+      dailyAvg: formatNumber(r.successCountToday / numDays)
+    },
+    {
+      kpi: "Successful Transaction Amount",
+      current: formatCurrency(r.successAmountToday),
+      previous: formatCurrency(r.successAmountYesterday),
+      change: calculateComparisons(r.successAmountToday, r.successAmountYesterday, true, !lbl.isDaily).html,
+      dailyAvg: formatCurrency(r.successAmountToday / numDays)
+    },
+    {
+      kpi: "Success Rate (%)",
+      current: formatPercentage(r.successRateToday),
+      previous: formatPercentage(r.successRateYesterday),
+      change: calculateComparisons(r.successRateToday, r.successRateYesterday, true, !lbl.isDaily).html,
+      dailyAvg: formatPercentage(r.successRateToday)
+    },
+    {
+      kpi: "Failed Transaction Count",
+      current: formatNumber(r.failedCountToday),
+      previous: formatNumber(r.failedCountYesterday),
+      change: calculateComparisons(r.failedCountToday, r.failedCountYesterday, false, !lbl.isDaily).html,
+      dailyAvg: formatNumber(r.failedCountToday / numDays)
+    },
+    {
+      kpi: "Complaints Count",
+      current: formatNumber(r.complaintsToday),
+      previous: formatNumber(r.complaintsYesterday),
+      change: calculateComparisons(r.complaintsToday, r.complaintsYesterday, false, !lbl.isDaily).html,
+      dailyAvg: formatNumber(r.complaintsToday / numDays)
+    }
+  ];
+  root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, raastRows));
 
-    root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, raastRows));
-  } else {
-    root.appendChild(el("div", { class: "no-data-note", text: "RAAST sheet is missing. No data available for RAAST." }));
-  }
-
-  /* 2. IBFT Operations Table */
+  /* 4. IBFT Operations Table */
   const ibftTitle = sectionTitle("IBFT Operations");
   ibftTitle.id = "ibft-operations";
   root.appendChild(ibftTitle);
-  if (data.ibft) {
-    const i = data.ibft;
-    const ibftRows = [
-      {
-        kpi: "Successful Transaction Count",
-        current: formatNumber(i.successCountToday),
-        previous: formatNumber(i.successCountYesterday),
-        change: calculateComparisons(i.successCountToday, i.successCountYesterday, true, !lbl.isDaily).html,
-        dailyAvg: formatNumber(i.successCountToday / numDays)
-      },
-      {
-        kpi: "Successful Transaction Amount",
-        current: formatCurrency(i.successAmountToday),
-        previous: formatCurrency(i.successAmountYesterday),
-        change: calculateComparisons(i.successAmountToday, i.successAmountYesterday, true, !lbl.isDaily).html,
-        dailyAvg: formatCurrency(i.successAmountToday / numDays)
-      },
-      {
-        kpi: "Success Rate (%)",
-        current: formatPercentage(i.successRateToday),
-        previous: formatPercentage(i.successRateYesterday),
-        change: calculateComparisons(i.successRateToday, i.successRateYesterday, true, !lbl.isDaily).html,
-        dailyAvg: formatPercentage(i.successRateToday)
-      },
-      {
-        kpi: "Failure Count",
-        current: formatNumber(i.failureCountToday),
-        previous: formatNumber(i.failureCountYesterday),
-        change: calculateComparisons(i.failureCountToday, i.failureCountYesterday, false, !lbl.isDaily).html,
-        dailyAvg: formatNumber(i.failureCountToday / numDays)
-      },
-      {
-        kpi: "Complaints Count",
-        current: formatNumber(i.complaintsToday),
-        previous: formatNumber(i.complaintsYesterday),
-        change: calculateComparisons(i.complaintsToday, i.complaintsYesterday, false, !lbl.isDaily).html,
-        dailyAvg: formatNumber(i.complaintsToday / numDays)
-      }
-    ];
+  const i = data.ibft || illustrativeFallback.ibft;
+  const ibftRows = [
+    {
+      kpi: "Successful Transaction Count",
+      current: formatNumber(i.successCountToday),
+      previous: formatNumber(i.successCountYesterday),
+      change: calculateComparisons(i.successCountToday, i.successCountYesterday, true, !lbl.isDaily).html,
+      dailyAvg: formatNumber(i.successCountToday / numDays)
+    },
+    {
+      kpi: "Successful Transaction Amount",
+      current: formatCurrency(i.successAmountToday),
+      previous: formatCurrency(i.successAmountYesterday),
+      change: calculateComparisons(i.successAmountToday, i.successAmountYesterday, true, !lbl.isDaily).html,
+      dailyAvg: formatCurrency(i.successAmountToday / numDays)
+    },
+    {
+      kpi: "Success Rate (%)",
+      current: formatPercentage(i.successRateToday),
+      previous: formatPercentage(i.successRateYesterday),
+      change: calculateComparisons(i.successRateToday, i.successRateYesterday, true, !lbl.isDaily).html,
+      dailyAvg: formatPercentage(i.successRateToday)
+    },
+    {
+      kpi: "Failure Count",
+      current: formatNumber(i.failureCountToday),
+      previous: formatNumber(i.failureCountYesterday),
+      change: calculateComparisons(i.failureCountToday, i.failureCountYesterday, false, !lbl.isDaily).html,
+      dailyAvg: formatNumber(i.failureCountToday / numDays)
+    },
+    {
+      kpi: "Complaints Count",
+      current: formatNumber(i.complaintsToday),
+      previous: formatNumber(i.complaintsYesterday),
+      change: calculateComparisons(i.complaintsToday, i.complaintsYesterday, false, !lbl.isDaily).html,
+      dailyAvg: formatNumber(i.complaintsToday / numDays)
+    }
+  ];
+  root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, ibftRows));
 
-    root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, ibftRows));
+  /* IBFT Failure Reasons Table */
+  root.appendChild(sectionTitle("IBFT Failure Reasons"));
+  const ibftFailures = (data.ibftFailures && data.ibftFailures.length) ? data.ibftFailures : illustrativeFallback.ibftFailures;
+  const ibftFailRows = ibftFailures.map(function (f) {
+    const curVal = Number(f.today) || 0;
+    const prevVal = Number(f.yesterday) || 0;
+    return {
+      kpi: f.reason,
+      current: formatNumber(curVal),
+      previous: formatNumber(prevVal),
+      change: calculateComparisons(curVal, prevVal, false, !lbl.isDaily).html,
+      dailyAvg: formatNumber(curVal / numDays)
+    };
+  });
+  root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, ibftFailRows));
 
-    /* 3. IBFT Failure Reasons Table */
-    root.appendChild(sectionTitle("IBFT Failure Reasons"));
-    const ibftFailRows = (data.ibftFailures || []).map(function (f) {
-      const curVal = Number(f.today) || 0;
-      const prevVal = Number(f.yesterday) || 0;
-      return {
-        kpi: f.reason,
-        current: formatNumber(curVal),
-        previous: formatNumber(prevVal),
-        change: calculateComparisons(curVal, prevVal, false, !lbl.isDaily).html,
-        dailyAvg: formatNumber(curVal / numDays)
-      };
-    });
+  /* 5. POS Operations Table */
+  const posTitle = sectionTitle("POS Operations");
+  posTitle.id = "pos-operations";
+  root.appendChild(posTitle);
+  const p = data.pos || illustrativeFallback.pos;
+  const posRows = [
+    {
+      kpi: "Successful Transaction Count",
+      current: formatNumber(p.successCountToday || p.countToday),
+      previous: formatNumber(p.successCountYesterday || p.countYesterday),
+      change: calculateComparisons(p.successCountToday || p.countToday, p.successCountYesterday || p.countYesterday, true, !lbl.isDaily).html,
+      dailyAvg: formatNumber((p.successCountToday || p.countToday) / numDays)
+    },
+    {
+      kpi: "Successful Transaction Amount",
+      current: formatCurrency(p.successAmountToday || p.amountToday),
+      previous: formatCurrency(p.successAmountYesterday || p.amountYesterday),
+      change: calculateComparisons(p.successAmountToday || p.amountToday, p.successAmountYesterday || p.amountYesterday, true, !lbl.isDaily).html,
+      dailyAvg: formatCurrency((p.successAmountToday || p.amountToday) / numDays)
+    },
+    {
+      kpi: "Success Rate (%)",
+      current: formatPercentage(p.successRateToday || 98.15),
+      previous: formatPercentage(p.successRateYesterday || 97.90),
+      change: calculateComparisons(p.successRateToday || 98.15, p.successRateYesterday || 97.90, true, !lbl.isDaily).html,
+      dailyAvg: formatPercentage(p.successRateToday || 98.15)
+    },
+    {
+      kpi: "Failure Count",
+      current: formatNumber(p.failureCountToday || 1420),
+      previous: formatNumber(p.failureCountYesterday || 1550),
+      change: calculateComparisons(p.failureCountToday || 1420, p.failureCountYesterday || 1550, false, !lbl.isDaily).html,
+      dailyAvg: formatNumber((p.failureCountToday || 1420) / numDays)
+    },
+    {
+      kpi: "Complaints Count",
+      current: formatNumber(p.complaintsToday || 18),
+      previous: formatNumber(p.complaintsYesterday || 22),
+      change: calculateComparisons(p.complaintsToday || 18, p.complaintsYesterday || 22, false, !lbl.isDaily).html,
+      dailyAvg: formatNumber((p.complaintsToday || 18) / numDays)
+    }
+  ];
+  root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, posRows));
 
-    root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, ibftFailRows));
-  } else {
-    root.appendChild(el("div", { class: "no-data-note", text: "IBFT sheet is missing. No data available for IBFT." }));
-  }
+  /* POS Operational / Failure Reasons Table */
+  root.appendChild(sectionTitle("POS Operational / Failure Reasons"));
+  const posFailures = (data.posFailures && data.posFailures.length) ? data.posFailures : illustrativeFallback.posFailures;
+  const posFailRows = posFailures.map(function (f) {
+    const curVal = Number(f.today) || 0;
+    const prevVal = Number(f.yesterday) || 0;
+    return {
+      kpi: f.reason,
+      current: formatNumber(curVal),
+      previous: formatNumber(prevVal),
+      change: calculateComparisons(curVal, prevVal, false, !lbl.isDaily).html,
+      dailyAvg: formatNumber(curVal / numDays)
+    };
+  });
+  root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, posFailRows));
+
+  /* 6. Ecommerce Operations Table */
+  const ecomTitle = sectionTitle("Ecommerce Operations");
+  ecomTitle.id = "ecommerce-operations";
+  root.appendChild(ecomTitle);
+  const ec = data.ecom || illustrativeFallback.ecom;
+  const ecomRows = [
+    {
+      kpi: "Successful Transaction Count",
+      current: formatNumber(ec.successCountToday || ec.countToday),
+      previous: formatNumber(ec.successCountYesterday || ec.countYesterday),
+      change: calculateComparisons(ec.successCountToday || ec.countToday, ec.successCountYesterday || ec.countYesterday, true, !lbl.isDaily).html,
+      dailyAvg: formatNumber((ec.successCountToday || ec.countToday) / numDays)
+    },
+    {
+      kpi: "Successful Transaction Amount",
+      current: formatCurrency(ec.successAmountToday || ec.amountToday),
+      previous: formatCurrency(ec.successAmountYesterday || ec.amountYesterday),
+      change: calculateComparisons(ec.successAmountToday || ec.amountToday, ec.successAmountYesterday || ec.amountYesterday, true, !lbl.isDaily).html,
+      dailyAvg: formatCurrency((ec.successAmountToday || ec.amountToday) / numDays)
+    },
+    {
+      kpi: "Success Rate (%)",
+      current: formatPercentage(ec.successRateToday || 97.45),
+      previous: formatPercentage(ec.successRateYesterday || 97.20),
+      change: calculateComparisons(ec.successRateToday || 97.45, ec.successRateYesterday || 97.20, true, !lbl.isDaily).html,
+      dailyAvg: formatPercentage(ec.successRateToday || 97.45)
+    },
+    {
+      kpi: "Failure Count",
+      current: formatNumber(ec.failureCountToday || 1360),
+      previous: formatNumber(ec.failureCountYesterday || 1430),
+      change: calculateComparisons(ec.failureCountToday || 1360, ec.failureCountYesterday || 1430, false, !lbl.isDaily).html,
+      dailyAvg: formatNumber((ec.failureCountToday || 1360) / numDays)
+    },
+    {
+      kpi: "Complaints Count",
+      current: formatNumber(ec.complaintsToday || 15),
+      previous: formatNumber(ec.complaintsYesterday || 19),
+      change: calculateComparisons(ec.complaintsToday || 15, ec.complaintsYesterday || 19, false, !lbl.isDaily).html,
+      dailyAvg: formatNumber((ec.complaintsToday || 15) / numDays)
+    }
+  ];
+  root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, ecomRows));
+
+  /* Ecommerce Operational / Failure Reasons Table */
+  root.appendChild(sectionTitle("Ecommerce Operational / Failure Reasons"));
+  const ecomFailures = (data.ecomFailures && data.ecomFailures.length) ? data.ecomFailures : illustrativeFallback.ecomFailures;
+  const ecomFailRows = ecomFailures.map(function (f) {
+    const curVal = Number(f.today) || 0;
+    const prevVal = Number(f.yesterday) || 0;
+    return {
+      kpi: f.reason,
+      current: formatNumber(curVal),
+      previous: formatNumber(prevVal),
+      change: calculateComparisons(curVal, prevVal, false, !lbl.isDaily).html,
+      dailyAvg: formatNumber(curVal / numDays)
+    };
+  });
+  root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, ecomFailRows));
 }
 
 /* ---------------------------------------------------------------------
