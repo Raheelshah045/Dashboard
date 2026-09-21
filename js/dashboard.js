@@ -292,7 +292,16 @@ function buildTable(caption, columns, rows, emptyMessage) {
   table.appendChild(thead);
   const tbody = el("tbody");
   rows.forEach(function (row) {
-    const tr = el("tr");
+    const trAttrs = {};
+    if (row.rowClass) trAttrs.class = row.rowClass;
+    if (row.title) trAttrs.title = row.title;
+    const tr = el("tr", trAttrs);
+
+    if (typeof row.onClick === "function") {
+      tr.style.cursor = "pointer";
+      tr.addEventListener("click", row.onClick);
+    }
+
     columns.forEach(function (c) {
       let text;
       const raw = row[c.key];
@@ -409,6 +418,20 @@ function generateIllustrativeData() {
       { reason: "Insufficient Funds", today: 280, yesterday: 300, mtd: 6000, prevMtd: 6300 },
       { reason: "Card Expired / Invalid CVV", today: 170, yesterday: 175, mtd: 3650, prevMtd: 3800 },
       { reason: "Risk / Fraud Rule Declined", today: 120, yesterday: 115, mtd: 2600, prevMtd: 2700 }
+    ],
+    atmFailures: [
+      { reason: "Card Reader / Dispenser Error", today: 420, yesterday: 490, mtd: 9200, prevMtd: 9700 },
+      { reason: "Host / Switch Timeout", today: 290, yesterday: 340, mtd: 6400, prevMtd: 6800 },
+      { reason: "Insufficient Funds", today: 220, yesterday: 260, mtd: 4800, prevMtd: 5100 },
+      { reason: "Invalid PIN / Security Failure", today: 120, yesterday: 150, mtd: 2600, prevMtd: 2800 },
+      { reason: "Cash Jam / Hardware Issue", today: 70, yesterday: 100, mtd: 1600, prevMtd: 1800 }
+    ],
+    raastFailures: [
+      { reason: "Beneficiary Account Invalid / Frozen", today: 220, yesterday: 240, mtd: 4800, prevMtd: 5100 },
+      { reason: "Host / Switch Timeout", today: 160, yesterday: 180, mtd: 3500, prevMtd: 3700 },
+      { reason: "Insufficient Funds", today: 110, yesterday: 120, mtd: 2400, prevMtd: 2500 },
+      { reason: "Core Banking System Issue", today: 65, yesterday: 70, mtd: 1400, prevMtd: 1500 },
+      { reason: "Network / Gateway Error", today: 35, yesterday: 30, mtd: 700, prevMtd: 750 }
     ],
     ibftFailures: [
       { reason: "Beneficiary invalid", today: 180, yesterday: 195, mtd: 3550, prevMtd: 3700 },
@@ -1494,7 +1517,37 @@ function updateHeaderStatus() {
    7. NAVIGATION
    --------------------------------------------------------------------- */
 
-const VALID_PAGES = ["overview", "adc-operations", "card-non-financials", "card-financials", "chargeback", "reconciliation", "secure-operations", "unsecured-operations", "banca"];
+const VALID_PAGES = ["overview", "adc-operations", "failure-reasons", "card-non-financials", "card-financials", "chargeback", "reconciliation", "secure-operations", "unsecured-operations", "banca"];
+
+const navigationStack = [];
+
+function isEditableElement(el) {
+  if (!el) return false;
+  const tagName = el.tagName ? el.tagName.toUpperCase() : "";
+  if (tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT") {
+    return true;
+  }
+  if (el.isContentEditable) return true;
+  return false;
+}
+
+function goBack() {
+  if (window.history.length > 1 && navigationStack.length > 1) {
+    window.history.back();
+  } else if (navigationStack.length > 1) {
+    navigationStack.pop();
+    const prev = navigationStack[navigationStack.length - 1];
+    if (prev && prev.pageId) {
+      navigateToPage(prev.pageId, prev.targetId);
+    }
+  } else {
+    if (appState.activePage === "failure-reasons") {
+      navigateToPage("adc-operations");
+    } else if (appState.activePage !== "overview") {
+      navigateToPage("overview");
+    }
+  }
+}
 
 function navigateToPage(pageId, targetId) {
   if (VALID_PAGES.indexOf(pageId) === -1) pageId = "overview";
@@ -1505,6 +1558,10 @@ function navigateToPage(pageId, targetId) {
         const targetEl = document.getElementById(targetId);
         if (targetEl) {
           targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
+          targetEl.classList.add("target-highlight-card");
+          setTimeout(function () {
+            targetEl.classList.remove("target-highlight-card");
+          }, 2000);
         }
       }, 50);
     } else {
@@ -1526,15 +1583,26 @@ function applyActivePage(pageId) {
   VALID_PAGES.forEach(function (p) {
     const section = document.getElementById("page-" + p);
     if (section) section.classList.toggle("active", p === pageId);
-    const navBtn = dom.sideNav.querySelector('[data-page="' + p + '"]');
-    if (navBtn) navBtn.classList.toggle("active", p === pageId);
+    if (dom.sideNav) {
+      const navBtn = dom.sideNav.querySelector('[data-page="' + p + '"]');
+      if (navBtn) navBtn.classList.toggle("active", p === pageId);
+    }
   });
   renderActivePage();
 }
 
 function handleHashChange() {
-  const pageId = (window.location.hash || "#overview").replace("#", "");
-  applyActivePage(VALID_PAGES.indexOf(pageId) !== -1 ? pageId : "overview");
+  const hash = (window.location.hash || "#overview").replace("#", "");
+  const pageId = VALID_PAGES.indexOf(hash) !== -1 ? hash : "overview";
+
+  const stackLen = navigationStack.length;
+  if (stackLen >= 2 && navigationStack[stackLen - 2].pageId === pageId) {
+    navigationStack.pop();
+  } else if (stackLen === 0 || navigationStack[stackLen - 1].pageId !== pageId) {
+    navigationStack.push({ pageId: pageId });
+  }
+
+  applyActivePage(pageId);
 }
 
 /* ---------------------------------------------------------------------
@@ -1945,42 +2013,20 @@ function getFilteredData(rawData, filters) {
     }
   }
 
-  // 4. Failure tables (IBFT, POS, Ecommerce)
-  if (Array.isArray(data.posFailures)) {
-    data.posFailures.forEach(function (row) {
-      if (mode === "month") {
-        row.today = row.mtd;
-        row.yesterday = row.prevMtd || Math.round(row.mtd * 0.95);
-      } else if (mode === "custom") {
-        row.today = scale(row.mtd, factor);
-        row.yesterday = scale(row.prevMtd || Math.round(row.mtd * 0.95), factor);
-      }
-    });
-  }
-
-  if (Array.isArray(data.ecomFailures)) {
-    data.ecomFailures.forEach(function (row) {
-      if (mode === "month") {
-        row.today = row.mtd;
-        row.yesterday = row.prevMtd || Math.round(row.mtd * 0.95);
-      } else if (mode === "custom") {
-        row.today = scale(row.mtd, factor);
-        row.yesterday = scale(row.prevMtd || Math.round(row.mtd * 0.95), factor);
-      }
-    });
-  }
-
-  if (Array.isArray(data.ibftFailures)) {
-    data.ibftFailures.forEach(function (row) {
-      if (mode === "month") {
-        row.today = row.mtd;
-        row.yesterday = row.prevMtd || Math.round(row.mtd * 0.95);
-      } else if (mode === "custom") {
-        row.today = scale(row.mtd, factor);
-        row.yesterday = scale(row.prevMtd || Math.round(row.mtd * 0.95), factor);
-      }
-    });
-  }
+  // 4. Failure tables (ATM, RAAST, IBFT, POS, Ecommerce)
+  ["atmFailures", "raastFailures", "ibftFailures", "posFailures", "ecomFailures"].forEach(function (key) {
+    if (Array.isArray(data[key])) {
+      data[key].forEach(function (row) {
+        if (mode === "month") {
+          row.today = row.mtd;
+          row.yesterday = row.prevMtd || Math.round(row.mtd * 0.95);
+        } else if (mode === "custom") {
+          row.today = scale(row.mtd, factor);
+          row.yesterday = scale(row.prevMtd || Math.round(row.mtd * 0.95), factor);
+        }
+      });
+    }
+  });
 
   // 5. Card Financials
   if (data.cardFinancials) {
@@ -2162,6 +2208,7 @@ function renderActivePage() {
   switch (appState.activePage) {
     case "overview": renderOverview(data); break;
     case "adc-operations": renderADCOperations(data); break;
+    case "failure-reasons": renderFailureReasonsPage(data); break;
     case "card-non-financials": renderCardNonFinancials(data); break;
     case "card-financials": renderCardFinancials(data); break;
     case "chargeback": renderChargeback(data); break;
@@ -2199,6 +2246,7 @@ function buildAlertMailtoUrl(alert) {
   const pageMap = {
     "overview": "Overview",
     "adc-operations": "ADC Operations",
+    "failure-reasons": "Failure Reasons",
     "card-non-financials": "Card Non-Financials",
     "card-financials": "Card Financials",
     "chargeback": "Chargeback / Disputes",
@@ -2234,6 +2282,7 @@ function renderAlertsInbox(rawAlerts) {
   const pageMap = {
     "overview": "Overview",
     "adc-operations": "ADC Operations",
+    "failure-reasons": "Failure Reasons",
     "card-non-financials": "Card Non-Financials",
     "card-financials": "Card Financials",
     "chargeback": "Chargeback / Disputes",
@@ -3584,6 +3633,94 @@ function sumBy(arr, key) {
   return (arr || []).reduce(function (s, r) { return s + (Number(r[key]) || 0); }, 0);
 }
 
+function renderFailureReasonsPage(data) {
+  const root = document.getElementById("failure-reasons-body");
+  if (!root) return;
+  root.innerHTML = "";
+
+  const lbl = getPeriodLabels();
+  const numDays = Math.max(1, (lbl.mode === "month" ? (appState.filters.daysInMonth || 31) : (appState.filters.daysCount || 15)));
+  const illustrativeFallback = generateIllustrativeData();
+
+  // Top navigation & Header Bar
+  const topBar = el("div", { class: "failure-page-topbar" });
+
+  const headerInfo = el("div", { class: "failure-page-header" });
+  const backBtn = el("button", { class: "btn-back-compact", html: "&larr;", title: "Go Back", "aria-label": "Go Back" });
+  backBtn.addEventListener("click", function () {
+    goBack();
+  });
+  headerInfo.appendChild(backBtn);
+  headerInfo.appendChild(el("h2", { class: "failure-page-title", text: "Failure Reasons & Operational Breakdowns" }));
+
+  topBar.appendChild(headerInfo);
+  root.appendChild(topBar);
+
+  const columnsDaily = [
+    { key: "kpi", label: "Failure Reason / Operational Category" },
+    { key: "current", label: "Today", numeric: true },
+    { key: "previous", label: "Yesterday", numeric: true },
+    { key: "change", label: "Change Rate", numeric: true }
+  ];
+
+  const columnsPeriod = [
+    { key: "kpi", label: "Failure Reason / Operational Category" },
+    { key: "current", label: lbl.colCurrent, numeric: true },
+    { key: "previous", label: lbl.colPrevious, numeric: true },
+    { key: "change", label: lbl.colRate, numeric: true },
+    { key: "dailyAvg", label: "Daily Average", numeric: true }
+  ];
+
+  const tableCols = lbl.isDaily ? columnsDaily : columnsPeriod;
+
+  const sectionsConfig = [
+    {
+      id: "raast-failure-reasons",
+      title: "RAAST Failure Reasons",
+      dataKey: "raastFailures"
+    },
+    {
+      id: "ibft-failure-reasons",
+      title: "IBFT Failure Reasons",
+      dataKey: "ibftFailures"
+    },
+    {
+      id: "pos-failure-reasons",
+      title: "POS Failure Reasons",
+      dataKey: "posFailures"
+    },
+    {
+      id: "ecommerce-failure-reasons",
+      title: "Ecommerce Failure Reasons",
+      dataKey: "ecomFailures"
+    }
+  ];
+
+  sectionsConfig.forEach(function (sec) {
+    const card = el("div", { class: "card failure-section-card", id: sec.id });
+
+    const titleEl = sectionTitle(sec.title);
+    card.appendChild(titleEl);
+
+    const rawList = (data[sec.dataKey] && data[sec.dataKey].length) ? data[sec.dataKey] : illustrativeFallback[sec.dataKey];
+
+    const rows = (rawList || []).map(function (f) {
+      const curVal = Number(f.today) || 0;
+      const prevVal = Number(f.yesterday) || 0;
+      return {
+        kpi: f.reason,
+        current: formatNumber(curVal),
+        previous: formatNumber(prevVal),
+        change: calculateComparisons(curVal, prevVal, false, !lbl.isDaily).html,
+        dailyAvg: formatNumber(curVal / numDays)
+      };
+    });
+
+    card.appendChild(buildTable(null, tableCols, rows, "No failure reason data recorded for " + sec.title));
+    root.appendChild(card);
+  });
+}
+
 /* ---------------------------------------------------------------------
    12. PAGE 2 — ADC OPERATIONS
    --------------------------------------------------------------------- */
@@ -3759,11 +3896,14 @@ function renderADCOperations(data) {
       dailyAvg: formatPercentage(r.successRateToday)
     },
     {
-      kpi: "Failed Transaction Count",
+      kpi: '<div class="kpi-interactive-wrapper"><span>Failed Transaction Count</span><span class="kpi-details-chip">View Details &rarr;</span></div>',
       current: formatNumber(r.failedCountToday),
       previous: formatNumber(r.failedCountYesterday),
       change: calculateComparisons(r.failedCountToday, r.failedCountYesterday, false, !lbl.isDaily).html,
-      dailyAvg: formatNumber(r.failedCountToday / numDays)
+      dailyAvg: formatNumber(r.failedCountToday / numDays),
+      rowClass: "clickable-failure-row",
+      title: "Click to view RAAST Failure Reasons details",
+      onClick: function() { navigateToPage("failure-reasons", "raast-failure-reasons"); }
     },
     {
       kpi: "Complaints Count",
@@ -3803,11 +3943,14 @@ function renderADCOperations(data) {
       dailyAvg: formatPercentage(i.successRateToday)
     },
     {
-      kpi: "Failure Count",
+      kpi: '<div class="kpi-interactive-wrapper"><span>Failure Count</span><span class="kpi-details-chip">View Details &rarr;</span></div>',
       current: formatNumber(i.failureCountToday),
       previous: formatNumber(i.failureCountYesterday),
       change: calculateComparisons(i.failureCountToday, i.failureCountYesterday, false, !lbl.isDaily).html,
-      dailyAvg: formatNumber(i.failureCountToday / numDays)
+      dailyAvg: formatNumber(i.failureCountToday / numDays),
+      rowClass: "clickable-failure-row",
+      title: "Click to view IBFT Failure Reasons details",
+      onClick: function() { navigateToPage("failure-reasons", "ibft-failure-reasons"); }
     },
     {
       kpi: "Complaints Count",
@@ -3818,22 +3961,6 @@ function renderADCOperations(data) {
     }
   ];
   root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, ibftRows));
-
-  /* IBFT Failure Reasons Table */
-  root.appendChild(sectionTitle("IBFT Failure Reasons"));
-  const ibftFailures = (data.ibftFailures && data.ibftFailures.length) ? data.ibftFailures : illustrativeFallback.ibftFailures;
-  const ibftFailRows = ibftFailures.map(function (f) {
-    const curVal = Number(f.today) || 0;
-    const prevVal = Number(f.yesterday) || 0;
-    return {
-      kpi: f.reason,
-      current: formatNumber(curVal),
-      previous: formatNumber(prevVal),
-      change: calculateComparisons(curVal, prevVal, false, !lbl.isDaily).html,
-      dailyAvg: formatNumber(curVal / numDays)
-    };
-  });
-  root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, ibftFailRows));
 
   /* 5. POS Operations Table */
   const posTitle = sectionTitle("POS Operations");
@@ -3863,11 +3990,14 @@ function renderADCOperations(data) {
       dailyAvg: formatPercentage(p.successRateToday || 98.15)
     },
     {
-      kpi: "Failure Count",
+      kpi: '<div class="kpi-interactive-wrapper"><span>Failure Count</span><span class="kpi-details-chip">View Details &rarr;</span></div>',
       current: formatNumber(p.failureCountToday || 1420),
       previous: formatNumber(p.failureCountYesterday || 1550),
       change: calculateComparisons(p.failureCountToday || 1420, p.failureCountYesterday || 1550, false, !lbl.isDaily).html,
-      dailyAvg: formatNumber((p.failureCountToday || 1420) / numDays)
+      dailyAvg: formatNumber((p.failureCountToday || 1420) / numDays),
+      rowClass: "clickable-failure-row",
+      title: "Click to view POS Failure Reasons details",
+      onClick: function() { navigateToPage("failure-reasons", "pos-failure-reasons"); }
     },
     {
       kpi: "Complaints Count",
@@ -3878,22 +4008,6 @@ function renderADCOperations(data) {
     }
   ];
   root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, posRows));
-
-  /* POS Operational / Failure Reasons Table */
-  root.appendChild(sectionTitle("POS Operational / Failure Reasons"));
-  const posFailures = (data.posFailures && data.posFailures.length) ? data.posFailures : illustrativeFallback.posFailures;
-  const posFailRows = posFailures.map(function (f) {
-    const curVal = Number(f.today) || 0;
-    const prevVal = Number(f.yesterday) || 0;
-    return {
-      kpi: f.reason,
-      current: formatNumber(curVal),
-      previous: formatNumber(prevVal),
-      change: calculateComparisons(curVal, prevVal, false, !lbl.isDaily).html,
-      dailyAvg: formatNumber(curVal / numDays)
-    };
-  });
-  root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, posFailRows));
 
   /* 6. Ecommerce Operations Table */
   const ecomTitle = sectionTitle("Ecommerce Operations");
@@ -3923,11 +4037,14 @@ function renderADCOperations(data) {
       dailyAvg: formatPercentage(ec.successRateToday || 97.45)
     },
     {
-      kpi: "Failure Count",
+      kpi: '<div class="kpi-interactive-wrapper"><span>Failure Count</span><span class="kpi-details-chip">View Details &rarr;</span></div>',
       current: formatNumber(ec.failureCountToday || 1360),
       previous: formatNumber(ec.failureCountYesterday || 1430),
       change: calculateComparisons(ec.failureCountToday || 1360, ec.failureCountYesterday || 1430, false, !lbl.isDaily).html,
-      dailyAvg: formatNumber((ec.failureCountToday || 1360) / numDays)
+      dailyAvg: formatNumber((ec.failureCountToday || 1360) / numDays),
+      rowClass: "clickable-failure-row",
+      title: "Click to view Ecommerce Failure Reasons details",
+      onClick: function() { navigateToPage("failure-reasons", "ecommerce-failure-reasons"); }
     },
     {
       kpi: "Complaints Count",
@@ -3938,22 +4055,6 @@ function renderADCOperations(data) {
     }
   ];
   root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, ecomRows));
-
-  /* Ecommerce Operational / Failure Reasons Table */
-  root.appendChild(sectionTitle("Ecommerce Operational / Failure Reasons"));
-  const ecomFailures = (data.ecomFailures && data.ecomFailures.length) ? data.ecomFailures : illustrativeFallback.ecomFailures;
-  const ecomFailRows = ecomFailures.map(function (f) {
-    const curVal = Number(f.today) || 0;
-    const prevVal = Number(f.yesterday) || 0;
-    return {
-      kpi: f.reason,
-      current: formatNumber(curVal),
-      previous: formatNumber(prevVal),
-      change: calculateComparisons(curVal, prevVal, false, !lbl.isDaily).html,
-      dailyAvg: formatNumber(curVal / numDays)
-    };
-  });
-  root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, ecomFailRows));
 }
 
 /* ---------------------------------------------------------------------
@@ -5082,6 +5183,16 @@ function bindEvents() {
     .forEach(function (input) { if (input) input.addEventListener("change", function () { applyFilters(); }); });
 
   window.addEventListener("hashchange", handleHashChange);
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Backspace" || e.keyCode === 8) {
+      if (isEditableElement(e.target)) {
+        return;
+      }
+      e.preventDefault();
+      goBack();
+    }
+  });
 
   const btnAllAlerts = document.getElementById("btnAllAlerts");
   const modalAllAlerts = document.getElementById("alertsInboxModal");
