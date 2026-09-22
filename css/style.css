@@ -123,6 +123,9 @@ button, input, select {
 
 /* ---------- App Header ---------- */
 .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   background: linear-gradient(135deg, var(--header-bg-start) 0%, var(--header-bg-end) 100%);
   color: var(--white);
   padding: var(--space-2) var(--space-3);
@@ -349,8 +352,8 @@ button, input, select {
   flex-direction: column;
   padding: var(--space-1) 0;
   position: sticky;
-  top: 0;
-  height: calc(100vh - 120px);
+  top: 135px;
+  height: calc(100vh - 135px);
   gap: 1px;
   overflow-y: auto;
   overflow-x: hidden;
@@ -1100,6 +1103,7 @@ table.data-table {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  align-self: stretch;
 }
 
 .ov-nostro-card-container .table-responsive {
@@ -1112,32 +1116,34 @@ table.data-table {
 .ov-nostro-redesign-table {
   width: 100%;
   height: 100%;
+  flex: 1;
   border-collapse: separate;
   border-spacing: 0;
 }
 
 .ov-nostro-redesign-table thead th {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-secondary);
-  padding: 10px 12px;
+  padding: 12px;
   border-bottom: 1.5px solid var(--border);
   background: var(--bg);
 }
 
 .ov-nostro-redesign-table tr.nostro-group-row td {
-  padding: 14px 12px 6px 12px;
+  padding: 20px 12px 10px 12px;
   background: transparent;
   border: none;
+  vertical-align: bottom;
 }
 
 .ov-nostro-redesign-table tr:not(.nostro-group-row) td {
-  padding: 16px 12px;
+  padding: 26px 12px;
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
-  font-size: 13.5px;
+  font-size: 14px;
 }
 
 .ov-nostro-redesign-table tr:last-child td {
@@ -1146,12 +1152,12 @@ table.data-table {
 
 .nostro-currency-badge {
   display: inline-block;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 800;
   color: var(--brand-dark, #0D5F92);
   background: var(--brand-light, #EAF3FA);
   border: 1px solid var(--brand-border, #90C4E4);
-  padding: 3px 10px;
+  padding: 4px 12px;
   border-radius: var(--radius-pill);
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -1160,8 +1166,8 @@ table.data-table {
 .nostro-bank-info {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 14px;
+  gap: 8px;
+  font-size: 14.5px;
 }
 
 .nostro-bank-info strong {
@@ -1176,14 +1182,14 @@ table.data-table {
 }
 
 .ov-nostro-redesign-table td.num-bold {
-  font-size: 15px;
+  font-size: 15.5px;
   font-weight: 700;
   color: var(--text-main);
   font-variant-numeric: tabular-nums;
 }
 
 .ov-nostro-redesign-table td.num-prev {
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
@@ -1953,8 +1959,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 
 .ov-nostro-card-container {
-  height: auto;
-  align-self: start;
+  height: 100%;
+  align-self: stretch;
   display: flex;
   flex-direction: column;
 }
@@ -1993,13 +1999,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 
 .nostro-bank-info strong {
-  font-size: 11.5px;
+  font-size: 15.5px;
   color: var(--text-main);
   line-height: 1.25;
 }
 
 .nostro-bank-code {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--text-secondary);
   font-weight: 500;
 }
@@ -3560,6 +3566,208 @@ tr.clickable-failure-row:hover .kpi-details-chip {
   outline: 2px solid var(--brand, #117ABF) !important;
   box-shadow: 0 0 16px rgba(17, 122, 191, 0.25) !important;
   transition: outline 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* =====================================================================
+   NEW HOME PAGE STYLES — COMMAND CENTER & EXECUTIVE MODULES
+   ===================================================================== */
+
+.home-hero-card {
+  background: linear-gradient(135deg, #117ABF 0%, #0D5F92 100%);
+  color: var(--white);
+  padding: 24px var(--space-3);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  margin-bottom: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.home-hero-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 6px 0;
+  color: var(--white);
+  letter-spacing: -0.01em;
+}
+
+.home-hero-subtitle {
+  font-size: 13.5px;
+  color: #D0E5F3;
+  margin: 0 0 16px 0;
+  line-height: 1.5;
+  max-width: 900px;
+}
+
+.home-hero-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.home-badge {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--white);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.home-badge.status-ok {
+  background: rgba(16, 185, 129, 0.2);
+  color: #A7F3D0;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #34D399;
+  display: inline-block;
+  box-shadow: 0 0 6px #34D399;
+}
+
+.home-highlights-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.home-modules-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2-5);
+  margin-bottom: var(--space-4);
+}
+
+.home-module-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-top: 3.5px solid var(--brand);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  overflow: hidden;
+}
+
+.home-module-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-top-color: var(--brand-dark);
+}
+
+.home-module-header {
+  background: var(--ov-blue-xlight);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ov-blue-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.home-module-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--brand-dark);
+}
+
+.home-module-arrow {
+  font-size: 16px;
+  color: var(--brand);
+  transition: transform 0.2s ease;
+}
+
+.home-module-card:hover .home-module-arrow {
+  transform: translateX(4px);
+}
+
+.home-module-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: space-between;
+}
+
+.home-module-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin: 0 0 14px 0;
+}
+
+.home-module-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--bg);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 14px;
+}
+
+.home-module-stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11.5px;
+}
+
+.home-stat-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.home-stat-val {
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.home-module-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.home-explore-btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brand);
+  transition: color 0.15s ease;
+}
+
+.home-module-card:hover .home-explore-btn {
+  color: var(--brand-dark);
+  text-decoration: underline;
+}
+
+@media (max-width: 1200px) {
+  .home-highlights-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .home-modules-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .home-highlights-grid {
+    grid-template-columns: 1fr;
+  }
+  .home-modules-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 

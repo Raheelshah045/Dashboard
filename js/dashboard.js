@@ -124,7 +124,7 @@ const appState = {
   rawWorkbook: null,
   processedData: null,
   selectedFile: null,
-  activePage: "overview",
+  activePage: "home",
   filters: {},
   lastUpdated: null
 };
@@ -1522,7 +1522,7 @@ function updateHeaderStatus() {
    7. NAVIGATION
    --------------------------------------------------------------------- */
 
-const VALID_PAGES = ["overview", "adc-operations", "failure-reasons", "card-non-financials", "card-financials", "chargeback", "reconciliation", "secure-operations", "unsecured-operations", "banca"];
+const VALID_PAGES = ["home", "overview", "adc-operations", "failure-reasons", "card-non-financials", "card-financials", "chargeback", "reconciliation", "secure-operations", "unsecured-operations", "banca"];
 
 const navigationStack = [];
 
@@ -1548,14 +1548,14 @@ function goBack() {
   } else {
     if (appState.activePage === "failure-reasons") {
       navigateToPage("adc-operations");
-    } else if (appState.activePage !== "overview") {
-      navigateToPage("overview");
+    } else if (appState.activePage !== "home" && appState.activePage !== "overview") {
+      navigateToPage("home");
     }
   }
 }
 
 function navigateToPage(pageId, targetId) {
-  if (VALID_PAGES.indexOf(pageId) === -1) pageId = "overview";
+  if (VALID_PAGES.indexOf(pageId) === -1) pageId = "home";
 
   const scrollToTarget = function () {
     if (targetId) {
@@ -1597,8 +1597,8 @@ function applyActivePage(pageId) {
 }
 
 function handleHashChange() {
-  const hash = (window.location.hash || "#overview").replace("#", "");
-  const pageId = VALID_PAGES.indexOf(hash) !== -1 ? hash : "overview";
+  const hash = (window.location.hash || "#home").replace("#", "");
+  const pageId = VALID_PAGES.indexOf(hash) !== -1 ? hash : "home";
 
   const stackLen = navigationStack.length;
   if (stackLen >= 2 && navigationStack[stackLen - 2].pageId === pageId) {
@@ -2211,6 +2211,7 @@ function renderActivePage() {
   evaluateAndShowToastAlerts(data);
 
   switch (appState.activePage) {
+    case "home": renderHome(data); break;
     case "overview": renderOverview(data); break;
     case "adc-operations": renderADCOperations(data); break;
     case "failure-reasons": renderFailureReasonsPage(data); break;
@@ -2249,13 +2250,17 @@ function dismissAlert(alertId) {
 function buildAlertMailtoUrl(alert) {
   const subject = alert.title;
   const pageMap = {
+    "home": "Home",
     "overview": "Overview",
     "adc-operations": "ADC Operations",
     "failure-reasons": "Failure Reasons",
     "card-non-financials": "Card Non-Financials",
     "card-financials": "Card Financials",
     "chargeback": "Chargeback / Disputes",
-    "reconciliation": "Reconciliation"
+    "reconciliation": "Reconciliation",
+    "secure-operations": "Secure Operations",
+    "unsecured-operations": "Unsecured Operations",
+    "banca": "Banca"
   };
   const categoryStr = pageMap[alert.page] || alert.page || "General Operations";
   const dateStr = alert.timestamp || new Date().toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -2285,13 +2290,17 @@ function renderAlertsInbox(rawAlerts) {
   }
 
   const pageMap = {
+    "home": "Home",
     "overview": "Overview",
     "adc-operations": "ADC Operations",
     "failure-reasons": "Failure Reasons",
     "card-non-financials": "Card Non-Financials",
     "card-financials": "Card Financials",
     "chargeback": "Chargeback / Disputes",
-    "reconciliation": "Reconciliation"
+    "reconciliation": "Reconciliation",
+    "secure-operations": "Secure Operations",
+    "unsecured-operations": "Unsecured Operations",
+    "banca": "Banca"
   };
 
   rawAlerts.forEach(function (a) {
@@ -5455,7 +5464,6 @@ function cacheDom() {
   dom.btnLoadExcel = document.getElementById("btnLoadExcel");
   dom.fileInput = document.getElementById("fileInput");
   dom.btnRefresh = document.getElementById("btnRefresh");
-  dom.btnReset = document.getElementById("btnReset");
   dom.sideNav = document.getElementById("sideNav");
   dom.filterReportingDate = document.getElementById("filterReportingDate");
   dom.filterReportingMonth = document.getElementById("filterReportingMonth");
@@ -5468,31 +5476,30 @@ function cacheDom() {
 }
 
 function bindEvents() {
-  dom.btnLoadExcel.addEventListener("click", function () { dom.fileInput.click(); });
-  dom.fileInput.addEventListener("change", function (e) {
-    if (e.target.files && e.target.files[0]) loadWorkbook(e.target.files[0]);
-    e.target.value = "";
-  });
-  dom.btnRefresh.addEventListener("click", function () {
-    appState.lastUpdated = new Date();
-    updateHeaderStatus();
-    renderActivePage();
-    showMessage("Dashboard refreshed.", "success");
-  });
-  dom.btnReset.addEventListener("click", function () {
-    appState.rawWorkbook = null;
-    appState.processedData = null;
-    appState.selectedFile = null;
-    appState.lastUpdated = null;
-    updateHeaderStatus();
-    renderActivePage();
-    showMessage("Data reset to illustrative values.", "info");
-  });
+  if (dom.btnLoadExcel) {
+    dom.btnLoadExcel.addEventListener("click", function () { dom.fileInput.click(); });
+  }
+  if (dom.fileInput) {
+    dom.fileInput.addEventListener("change", function (e) {
+      if (e.target.files && e.target.files[0]) loadWorkbook(e.target.files[0]);
+      e.target.value = "";
+    });
+  }
+  if (dom.btnRefresh) {
+    dom.btnRefresh.addEventListener("click", function () {
+      appState.lastUpdated = new Date();
+      updateHeaderStatus();
+      renderActivePage();
+      showMessage("Dashboard refreshed.", "success");
+    });
+  }
 
-  dom.sideNav.addEventListener("click", function (e) {
-    const btn = e.target.closest(".nav-item");
-    if (btn) navigateToPage(btn.getAttribute("data-page"));
-  });
+  if (dom.sideNav) {
+    dom.sideNav.addEventListener("click", function (e) {
+      const btn = e.target.closest(".nav-item");
+      if (btn) navigateToPage(btn.getAttribute("data-page"));
+    });
+  }
 
   if (dom.filterPeriod) dom.filterPeriod.addEventListener("change", function () { applyFilters("period"); });
   if (dom.filterReportingMonth) dom.filterReportingMonth.addEventListener("change", function () { applyFilters("month"); });
@@ -5512,6 +5519,17 @@ function bindEvents() {
       }
       e.preventDefault();
       goBack();
+    }
+    // Shift + R shortcut to refresh dashboard
+    if (e.shiftKey && (e.key === "R" || e.key === "r")) {
+      if (isEditableElement(e.target)) {
+        return;
+      }
+      e.preventDefault();
+      appState.lastUpdated = new Date();
+      updateHeaderStatus();
+      renderActivePage();
+      showMessage("Dashboard Refreshed.", "success");
     }
   });
 
@@ -5565,7 +5583,7 @@ function init() {
 
   applyFilters();
   updateHeaderStatus();
-  if (!window.location.hash) window.location.hash = "#overview";
+  if (!window.location.hash) window.location.hash = "#home";
   handleHashChange();
   if (typeof XLSX === "undefined") {
     showMessage("Note: js/xlsx.min.js was not found, so only CSV files can be loaded until the library is added.", "info");

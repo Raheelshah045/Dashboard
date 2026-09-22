@@ -31,10 +31,6 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
         <span>Refresh Dashboard</span>
       </button>
-      <button id="btnReset" class="btn btn-ghost" type="button">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
-        <span>Reset Data</span>
-      </button>
     </div>
   </div>
   <div id="globalMessage" class="global-message" role="status" aria-live="polite"></div>
@@ -92,20 +88,24 @@
 
 <div class="app-body">
   <nav class="side-nav" id="sideNav" aria-label="Dashboard pages">
+    <button class="nav-item" data-page="home" type="button">
+      <span>Home</span>
+      <svg class="nav-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
     <button class="nav-item" data-page="overview" type="button">
       <span>Overview</span>
       <svg class="nav-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
     </button>
-    <button class="nav-item" data-page="adc-operations" type="button">
-      <span>ADC Operations</span>
+    <button class="nav-item" data-page="card-financials" type="button">
+      <span>Card Financials</span>
       <svg class="nav-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
     </button>
     <button class="nav-item" data-page="card-non-financials" type="button">
       <span>Card Non-Financials</span>
       <svg class="nav-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
     </button>
-    <button class="nav-item" data-page="card-financials" type="button">
-      <span>Card Financials</span>
+    <button class="nav-item" data-page="adc-operations" type="button">
+      <span>ADC Operations</span>
       <svg class="nav-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
     </button>
     <button class="nav-item" data-page="chargeback" type="button">
@@ -131,6 +131,10 @@
   </nav>
 
   <main class="page-content">
+
+    <section id="page-home" class="page">
+      <div id="home-body" class="page-body"></div>
+    </section>
 
     <section id="page-overview" class="page">
       <div class="page-head">
