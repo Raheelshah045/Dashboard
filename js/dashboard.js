@@ -283,9 +283,11 @@ function buildTable(caption, columns, rows, emptyMessage) {
   const thead = el("thead");
   const headRow = el("tr");
   columns.forEach(function (c) {
-    const isNum = c.numeric || c.percent || c.currency || c.rightAlign;
-    const attrs = { class: isNum ? "num" : "", text: c.label };
+    const isNum = !c.center && (c.numeric || c.percent || c.currency || c.rightAlign);
+    const cls = c.center ? "center" : (isNum ? "num" : "");
+    const attrs = { class: cls, text: c.label };
     if (c.title) attrs.title = c.title;
+    if (c.width) attrs.style = "width: " + c.width + "; min-width: " + c.width + ";";
     headRow.appendChild(el("th", attrs));
   });
   thead.appendChild(headRow);
@@ -321,8 +323,11 @@ function buildTable(caption, columns, rows, emptyMessage) {
       
       text = String(text);
       const isMarkup = text.indexOf("<") !== -1;
-      const isNum = c.numeric || c.percent || c.currency || c.rightAlign;
-      const td = el("td", isMarkup ? { class: isNum ? "num" : "", html: text } : { class: isNum ? "num" : "", text: text });
+      const isNum = !c.center && (c.numeric || c.percent || c.currency || c.rightAlign);
+      const cls = c.center ? "center" : (isNum ? "num" : "");
+      const tdAttrs = isMarkup ? { class: cls, html: text } : { class: cls, text: text };
+      if (c.width) tdAttrs.style = "width: " + c.width + "; min-width: " + c.width + ";";
+      const td = el("td", tdAttrs);
       if (c.numeric && typeof raw === "number") td.setAttribute("title", fullValueTitle(raw, !!c.currency));
       tr.appendChild(td);
     });
@@ -3247,31 +3252,140 @@ function buildOvAdcTable(data) {
     { name: "Total ATM Transactions", target: "atm-performance", title: "Click to view ATM Performance in ADC Operations", tCnt: atmTdyCnt, tAmt: atmTdyAmt, yCnt: atmYestCnt, yAmt: atmYestAmt, comp: atmComp },
     { name: "Total IBFT Transactions", target: "ibft-operations", title: "Click to view IBFT Operations in ADC Operations", tCnt: ibftTdyCnt, tAmt: ibftTdyAmt, yCnt: ibftYestCnt, yAmt: ibftYestAmt, comp: ibftComp },
     { name: "Total RAAST Transactions", target: "raast-operations", title: "Click to view RAAST Operations in ADC Operations", tCnt: raastTdyCnt, tAmt: raastTdyAmt, yCnt: raastYestCnt, yAmt: raastYestAmt, comp: raastComp },
-    { name: "Total POS Transactions", target: "pos-operations", title: "Click to view POS Operations in ADC Operations", tCnt: posTdyCnt, tAmt: posTdyAmt, yCnt: posYestCnt, yAmt: posYestAmt, comp: posComp },
-    { name: "Total Ecommerce Transactions", target: "ecommerce-operations", title: "Click to view Ecommerce Operations in ADC Operations", tCnt: ecomTdyCnt, tAmt: ecomTdyAmt, yCnt: ecomYestCnt, yAmt: ecomYestAmt, comp: ecomComp }
+    {
+      name: "Total POS Transactions",
+      expandable: true,
+      tCnt: posTdyCnt,
+      tAmt: posTdyAmt,
+      yCnt: posYestCnt,
+      yAmt: posYestAmt,
+      comp: posComp,
+      children: [
+        {
+          name: "Debit Card",
+          tCnt: Math.round(posTdyCnt * 0.65),
+          tAmt: Math.round(posTdyAmt * 0.65),
+          yCnt: Math.round(posYestCnt * 0.65),
+          yAmt: Math.round(posYestAmt * 0.65)
+        },
+        {
+          name: "Credit Card",
+          tCnt: posTdyCnt - Math.round(posTdyCnt * 0.65),
+          tAmt: posTdyAmt - Math.round(posTdyAmt * 0.65),
+          yCnt: posYestCnt - Math.round(posYestCnt * 0.65),
+          yAmt: posYestAmt - Math.round(posYestAmt * 0.65)
+        }
+      ]
+    },
+    {
+      name: "Total Ecommerce Transactions",
+      expandable: true,
+      tCnt: ecomTdyCnt,
+      tAmt: ecomTdyAmt,
+      yCnt: ecomYestCnt,
+      yAmt: ecomYestAmt,
+      comp: ecomComp,
+      children: [
+        {
+          name: "Debit Card",
+          tCnt: Math.round(ecomTdyCnt * 0.62),
+          tAmt: Math.round(ecomTdyAmt * 0.62),
+          yCnt: Math.round(ecomYestCnt * 0.62),
+          yAmt: Math.round(ecomYestAmt * 0.62)
+        },
+        {
+          name: "Credit Card",
+          tCnt: ecomTdyCnt - Math.round(ecomTdyCnt * 0.62),
+          tAmt: ecomTdyAmt - Math.round(ecomTdyAmt * 0.62),
+          yCnt: ecomYestCnt - Math.round(ecomYestCnt * 0.62),
+          yAmt: ecomYestAmt - Math.round(ecomYestAmt * 0.62)
+        }
+      ]
+    }
   ];
 
   rowsData.forEach(function (r) {
     const tr = el("tr");
-    if (r.target) {
-      tr.classList.add("clickable-row");
+
+    if (r.expandable) {
+      tr.classList.add("ov-expandable-parent");
       tr.style.cursor = "pointer";
-      tr.setAttribute("title", r.title);
-      tr.addEventListener("click", function () {
-        navigateToPage("adc-operations", r.target);
+      tr.setAttribute("title", "Click to expand/collapse " + r.name + " Debit and Credit Card breakdown");
+
+      const tdName = el("td", { style: "text-align:left; font-weight:600;" });
+      const chevronSpan = el("span", { class: "row-expand-chevron", html: "&#8250;" });
+      const labelSpan = el("span", { text: r.name });
+      tdName.appendChild(chevronSpan);
+      tdName.appendChild(labelSpan);
+      tr.appendChild(tdName);
+
+      tr.appendChild(el("td", { text: formatNumber(r.tCnt, 0), class: "num" }));
+      tr.appendChild(el("td", { text: formatCurrency(r.tAmt), class: "num border-group-end" }));
+      tr.appendChild(el("td", { text: formatNumber(r.yCnt, 0), class: "num" }));
+      tr.appendChild(el("td", { text: formatCurrency(r.yAmt), class: "num border-group-end" }));
+
+      const tdChg = el("td", { style: "text-align:center;" });
+      tdChg.innerHTML = r.comp.html;
+      tr.appendChild(tdChg);
+
+      tbody.appendChild(tr);
+
+      const childElements = [];
+      r.children.forEach(function (c) {
+        const childTr = el("tr", { class: "ov-expandable-child", style: "display: none;" });
+        const cComp = calculateComparisons(c.tAmt, c.yAmt, true, isMoM);
+
+        const tdChildName = el("td", { style: "text-align:left;" });
+        const nameSpan = el("span", { text: c.name });
+        tdChildName.appendChild(nameSpan);
+        childTr.appendChild(tdChildName);
+
+        childTr.appendChild(el("td", { text: formatNumber(c.tCnt, 0), class: "num" }));
+        childTr.appendChild(el("td", { text: formatCurrency(c.tAmt), class: "num border-group-end" }));
+        childTr.appendChild(el("td", { text: formatNumber(c.yCnt, 0), class: "num" }));
+        childTr.appendChild(el("td", { text: formatCurrency(c.yAmt), class: "num border-group-end" }));
+
+        const tdChildChg = el("td", { style: "text-align:center;" });
+        tdChildChg.innerHTML = cComp.html;
+        childTr.appendChild(tdChildChg);
+
+        tbody.appendChild(childTr);
+        childElements.push(childTr);
       });
+
+      tr.addEventListener("click", function () {
+        const isExpanded = tr.classList.contains("expanded");
+        if (isExpanded) {
+          tr.classList.remove("expanded");
+          chevronSpan.innerHTML = "&#8250;";
+          childElements.forEach(function (child) { child.style.display = "none"; });
+        } else {
+          tr.classList.add("expanded");
+          chevronSpan.innerHTML = "&#9660;";
+          childElements.forEach(function (child) { child.style.display = "table-row"; });
+        }
+      });
+    } else {
+      if (r.target) {
+        tr.classList.add("clickable-row");
+        tr.style.cursor = "pointer";
+        tr.setAttribute("title", r.title);
+        tr.addEventListener("click", function () {
+          navigateToPage("adc-operations", r.target);
+        });
+      }
+      tr.appendChild(el("td", { text: r.name, style: "text-align:left; font-weight:600;" }));
+      tr.appendChild(el("td", { text: formatNumber(r.tCnt, 0), class: "num" }));
+      tr.appendChild(el("td", { text: formatCurrency(r.tAmt), class: "num border-group-end" }));
+      tr.appendChild(el("td", { text: formatNumber(r.yCnt, 0), class: "num" }));
+      tr.appendChild(el("td", { text: formatCurrency(r.yAmt), class: "num border-group-end" }));
+
+      const tdChg = el("td", { style: "text-align:center;" });
+      tdChg.innerHTML = r.comp.html;
+      tr.appendChild(tdChg);
+
+      tbody.appendChild(tr);
     }
-    tr.appendChild(el("td", { text: r.name, style: "text-align:left; font-weight:600;" }));
-    tr.appendChild(el("td", { text: formatNumber(r.tCnt, 0), class: "num" }));
-    tr.appendChild(el("td", { text: formatCurrency(r.tAmt), class: "num border-group-end" }));
-    tr.appendChild(el("td", { text: formatNumber(r.yCnt, 0), class: "num" }));
-    tr.appendChild(el("td", { text: formatCurrency(r.yAmt), class: "num border-group-end" }));
-
-    const tdChg = el("td", { style: "text-align:center;" });
-    tdChg.innerHTML = r.comp.html;
-    tr.appendChild(tdChg);
-
-    tbody.appendChild(tr);
   });
 
   table.appendChild(tbody);
@@ -3410,7 +3524,8 @@ function buildOvProvisionalTaxesTable(data) {
 
   const rows = [
     { metric: "PRA", curVal: 24.50, prevVal: 22.10, curStr: "PKR 24.50 Mn", prevStr: "PKR 22.10 Mn" },
-    { metric: "SRB", curVal: 18.20, prevVal: 16.80, curStr: "PKR 18.20 Mn", prevStr: "PKR 16.80 Mn" }
+    { metric: "SRB", curVal: 18.20, prevVal: 16.80, curStr: "PKR 18.20 Mn", prevStr: "PKR 16.80 Mn" },
+    { metric: "KPRA", curVal: 12.40, prevVal: 11.20, curStr: "PKR 12.40 Mn", prevStr: "PKR 11.20 Mn" }
   ];
 
   rows.forEach(function (r) {
@@ -3453,26 +3568,98 @@ function buildOvCbDisputesTable(data) {
 
   const tbody = el("tbody");
 
-  // Demo data — realistic complaint/chargeback dispute counts by channel
+  // Demo data — realistic complaint/chargeback dispute counts by channel with POS & Ecommerce card breakdowns
   const cbRows = [
     { channel: "RAAST",     cur: 1248, prev: 1105 },
     { channel: "IBFT",      cur: 3872, prev: 4210 },
     { channel: "ATM",       cur: 2561, prev: 2389 },
     { channel: "UBPS",      cur: 432,  prev: 398  },
-    { channel: "POS",       cur: 984,  prev: 876  },
-    { channel: "Ecommerce", cur: 645,  prev: 590  }
+    {
+      channel: "POS",
+      cur: 984,
+      prev: 876,
+      expandable: true,
+      children: [
+        { name: "Debit Card",  cur: 642, prev: 570 },
+        { name: "Credit Card", cur: 342, prev: 306 }
+      ]
+    },
+    {
+      channel: "Ecommerce",
+      cur: 645,
+      prev: 590,
+      expandable: true,
+      children: [
+        { name: "Debit Card",  cur: 418, prev: 382 },
+        { name: "Credit Card", cur: 227, prev: 208 }
+      ]
+    }
   ];
 
   cbRows.forEach(function (r) {
     const comp = calculateComparisons(r.cur, r.prev, true, true);
     const tr = el("tr");
-    tr.appendChild(el("td", { text: r.channel, style: "text-align:left; font-weight:600;" }));
-    tr.appendChild(el("td", { text: formatNumber(r.cur, 0), class: "num cb-sub-cur", style: "text-align:center; font-weight:600;" }));
-    tr.appendChild(el("td", { text: formatNumber(r.prev, 0), class: "num cb-sub-prev", style: "text-align:center; color:var(--text-secondary);" }));
-    const tdMom = el("td", { class: "num", style: "text-align:center;" });
-    tdMom.innerHTML = comp.html;
-    tr.appendChild(tdMom);
-    tbody.appendChild(tr);
+
+    if (r.expandable) {
+      tr.classList.add("ov-expandable-parent");
+      tr.setAttribute("title", "Click to expand/collapse " + r.channel + " Debit and Credit Card breakdown");
+
+      const tdChannel = el("td", { style: "text-align:left; font-weight:600;" });
+      const chevronSpan = el("span", { class: "row-expand-chevron", html: "&#8250;" });
+      const labelSpan = el("span", { text: r.channel });
+      tdChannel.appendChild(chevronSpan);
+      tdChannel.appendChild(labelSpan);
+      tr.appendChild(tdChannel);
+
+      tr.appendChild(el("td", { text: formatNumber(r.cur, 0), class: "num cb-sub-cur", style: "text-align:center; font-weight:600;" }));
+      tr.appendChild(el("td", { text: formatNumber(r.prev, 0), class: "num cb-sub-prev", style: "text-align:center; color:var(--text-secondary);" }));
+
+      const tdMom = el("td", { class: "num", style: "text-align:center;" });
+      tdMom.innerHTML = comp.html;
+      tr.appendChild(tdMom);
+      tbody.appendChild(tr);
+
+      // Create child rows for Debit Card & Credit Card
+      const childElements = [];
+      r.children.forEach(function (c) {
+        const childTr = el("tr", { class: "ov-expandable-child", style: "display: none;" });
+        const cComp = calculateComparisons(c.cur, c.prev, true, true);
+
+        const tdChildChan = el("td", { style: "text-align:left;" });
+        const nameSpan = el("span", { text: c.name });
+        tdChildChan.appendChild(nameSpan);
+        childTr.appendChild(tdChildChan);
+
+        childTr.appendChild(el("td", { text: formatNumber(c.cur, 0), class: "num cb-sub-cur", style: "text-align:center;" }));
+        childTr.appendChild(el("td", { text: formatNumber(c.prev, 0), class: "num cb-sub-prev", style: "text-align:center; color:var(--text-secondary);" }));
+
+        const tdChildMom = el("td", { class: "num", style: "text-align:center;" });
+        tdChildMom.innerHTML = cComp.html;
+        childTr.appendChild(tdChildMom);
+
+        tbody.appendChild(childTr);
+        childElements.push(childTr);
+      });
+
+      // Independent toggle event listener
+      let isExpanded = false;
+      tr.addEventListener("click", function () {
+        isExpanded = !isExpanded;
+        chevronSpan.innerHTML = isExpanded ? "&#9660;" : "&#8250;";
+        tr.classList.toggle("expanded", isExpanded);
+        childElements.forEach(function (childEl) {
+          childEl.style.display = isExpanded ? "table-row" : "none";
+        });
+      });
+    } else {
+      tr.appendChild(el("td", { text: r.channel, style: "text-align:left; font-weight:600;" }));
+      tr.appendChild(el("td", { text: formatNumber(r.cur, 0), class: "num cb-sub-cur", style: "text-align:center; font-weight:600;" }));
+      tr.appendChild(el("td", { text: formatNumber(r.prev, 0), class: "num cb-sub-prev", style: "text-align:center; color:var(--text-secondary);" }));
+      const tdMom = el("td", { class: "num", style: "text-align:center;" });
+      tdMom.innerHTML = comp.html;
+      tr.appendChild(tdMom);
+      tbody.appendChild(tr);
+    }
   });
 
   table.appendChild(tbody);
@@ -3646,7 +3833,8 @@ function renderFailureReasonsPage(data) {
   const topBar = el("div", { class: "failure-page-topbar" });
 
   const headerInfo = el("div", { class: "failure-page-header" });
-  const backBtn = el("button", { class: "btn-back-compact", html: "&larr;", title: "Go Back", "aria-label": "Go Back" });
+  const backBtn = el("button", { class: "inline-back-chevron", type: "button", title: "Go Back", "aria-label": "Go Back" });
+  backBtn.innerHTML = "&#8249;";
   backBtn.addEventListener("click", function () {
     goBack();
   });
@@ -3740,8 +3928,8 @@ function renderADCOperations(data) {
     const domAtmCount = a.domesticATMs || Math.round((a.totalATMs || 1240) * 0.94);
     const intlAtmCount = a.internationalATMs || ((a.totalATMs || 1240) - domAtmCount);
     const totalAtmSubHTML = '<div class="kpi-atm-sub-breakdown">'
-      + '<div class="atm-badge-chip dom-chip"><span class="chip-label">DOMESTIC ATMs</span><strong class="chip-value">' + formatNumber(domAtmCount, 0) + '</strong></div>'
-      + '<div class="atm-badge-chip intl-chip"><span class="chip-label">INTL ATMs</span><strong class="chip-value">' + formatNumber(intlAtmCount, 0) + '</strong></div>'
+      + '<div class="atm-badge-chip dom-chip"><span class="chip-label">Domestic ATMs</span><strong class="chip-value">' + formatNumber(domAtmCount, 0) + '</strong></div>'
+      + '<div class="atm-badge-chip intl-chip"><span class="chip-label">International ATMs</span><strong class="chip-value">' + formatNumber(intlAtmCount, 0) + '</strong></div>'
       + '</div>';
     const totalAtmCard = kpiCard("Total ATM Count", formatNumber(a.totalATMs), totalAtmSubHTML);
     totalAtmCard.classList.add("total-atm-long-box");
@@ -3837,12 +4025,12 @@ function renderADCOperations(data) {
     root.appendChild(atmPerfTitle);
     root.appendChild(sectionTitle("Top 5 Best-Performing ATMs"));
     root.appendChild(buildTable(null,
-      [{ key: "rank", label: "Rank", numeric: true }, { key: "atmId", label: "ATM ID" }, { key: "location", label: "Location" },
+      [{ key: "rank", label: "Rank", center: true, width: "80px" }, { key: "atmId", label: "ATM ID" }, { key: "location", label: "Location" },
        { key: "txnCount", label: "Txn Count", numeric: true }, { key: "txnAmount", label: "Txn Amount", currency: true }, { key: "successRate", label: "Success Rate", percent: true }, { key: "uptime", label: "Uptime", percent: true }],
       data.atmTop5Best));
     root.appendChild(sectionTitle("Top 5 Lowest-Performing ATMs (Underperforming)"));
     root.appendChild(buildTable(null,
-      [{ key: "rank", label: "Rank", numeric: true }, { key: "atmId", label: "ATM ID" }, { key: "location", label: "Location" },
+      [{ key: "rank", label: "Rank", center: true, width: "80px" }, { key: "atmId", label: "ATM ID" }, { key: "location", label: "Location" },
        { key: "txnCount", label: "Txn Count", numeric: true }, { key: "txnAmount", label: "Txn Amount", currency: true }, { key: "successRate", label: "Success Rate", percent: true }, { key: "uptime", label: "Uptime", percent: true }],
       data.atmBottom5));
   } else {
@@ -3966,95 +4154,229 @@ function renderADCOperations(data) {
   const posTitle = sectionTitle("POS Operations");
   posTitle.id = "pos-operations";
   root.appendChild(posTitle);
-  const p = data.pos || illustrativeFallback.pos;
-  const posRows = [
-    {
-      kpi: "Successful Transaction Count",
-      current: formatNumber(p.successCountToday || p.countToday),
-      previous: formatNumber(p.successCountYesterday || p.countYesterday),
-      change: calculateComparisons(p.successCountToday || p.countToday, p.successCountYesterday || p.countYesterday, true, !lbl.isDaily).html,
-      dailyAvg: formatNumber((p.successCountToday || p.countToday) / numDays)
-    },
-    {
-      kpi: "Successful Transaction Amount",
-      current: formatCurrency(p.successAmountToday || p.amountToday),
-      previous: formatCurrency(p.successAmountYesterday || p.amountYesterday),
-      change: calculateComparisons(p.successAmountToday || p.amountToday, p.successAmountYesterday || p.amountYesterday, true, !lbl.isDaily).html,
-      dailyAvg: formatCurrency((p.successAmountToday || p.amountToday) / numDays)
-    },
-    {
-      kpi: "Success Rate (%)",
-      current: formatPercentage(p.successRateToday || 98.15),
-      previous: formatPercentage(p.successRateYesterday || 97.90),
-      change: calculateComparisons(p.successRateToday || 98.15, p.successRateYesterday || 97.90, true, !lbl.isDaily).html,
-      dailyAvg: formatPercentage(p.successRateToday || 98.15)
-    },
-    {
-      kpi: '<div class="kpi-interactive-wrapper"><span>Failure Count</span><span class="kpi-details-chip">Reasons &rarr;</span></div>',
-      current: formatNumber(p.failureCountToday || 1420),
-      previous: formatNumber(p.failureCountYesterday || 1550),
-      change: calculateComparisons(p.failureCountToday || 1420, p.failureCountYesterday || 1550, false, !lbl.isDaily).html,
-      dailyAvg: formatNumber((p.failureCountToday || 1420) / numDays),
-      rowClass: "clickable-failure-row",
-      title: "Click to view POS Failure Reasons details",
-      onClick: function() { navigateToPage("failure-reasons", "pos-failure-reasons"); }
-    },
-    {
-      kpi: "Complaints Count",
-      current: formatNumber(p.complaintsToday || 18),
-      previous: formatNumber(p.complaintsYesterday || 22),
-      change: calculateComparisons(p.complaintsToday || 18, p.complaintsYesterday || 22, false, !lbl.isDaily).html,
-      dailyAvg: formatNumber((p.complaintsToday || 18) / numDays)
-    }
-  ];
-  root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, posRows));
+
+  appState.posActiveTab = appState.posActiveTab || "debit";
+
+  const posToggleWrap = el("div", { class: "card-fin-toggle-bar" });
+  const btnPosDebit = el("button", { class: "fin-toggle-btn" + (appState.posActiveTab === "debit" ? " active" : ""), type: "button", text: "Debit Card" });
+  const btnPosCredit = el("button", { class: "fin-toggle-btn" + (appState.posActiveTab === "credit" ? " active" : ""), type: "button", text: "Credit Card" });
+
+  posToggleWrap.appendChild(btnPosDebit);
+  posToggleWrap.appendChild(btnPosCredit);
+  root.appendChild(posToggleWrap);
+
+  const posTableContainer = el("div", { id: "posOperationsTableContainer" });
+  root.appendChild(posTableContainer);
+
+  function renderPosOperationsTable() {
+    posTableContainer.innerHTML = "";
+    const p = data.pos || illustrativeFallback.pos;
+    const isCredit = appState.posActiveTab === "credit";
+
+    const pSuccessCntCur = isCredit
+      ? ((p.credit && p.credit.countToday) || Math.round((p.successCountToday || p.countToday || 75400) * 0.35))
+      : ((p.debit && p.debit.countToday) || Math.round((p.successCountToday || p.countToday || 75400) * 0.65));
+    const pSuccessCntPrev = isCredit
+      ? ((p.credit && p.credit.countYesterday) || Math.round((p.successCountYesterday || p.countYesterday || 72100) * 0.35))
+      : ((p.debit && p.debit.countYesterday) || Math.round((p.successCountYesterday || p.countYesterday || 72100) * 0.65));
+
+    const pSuccessAmtCur = isCredit
+      ? ((p.credit && p.credit.amountToday) || Math.round((p.successAmountToday || p.amountToday || 4800000000) * 0.35))
+      : ((p.debit && p.debit.amountToday) || Math.round((p.successAmountToday || p.amountToday || 4800000000) * 0.65));
+    const pSuccessAmtPrev = isCredit
+      ? ((p.credit && p.credit.amountYesterday) || Math.round((p.successAmountYesterday || p.amountYesterday || 4500000000) * 0.35))
+      : ((p.debit && p.debit.amountYesterday) || Math.round((p.successAmountYesterday || p.amountYesterday || 4500000000) * 0.65));
+
+    const pSuccessRateCur = isCredit ? (p.creditSuccessRateToday || 97.70) : (p.debitSuccessRateToday || 98.40);
+    const pSuccessRatePrev = isCredit ? (p.creditSuccessRateYesterday || 97.55) : (p.debitSuccessRateYesterday || 98.10);
+
+    const pFailCur = isCredit
+      ? ((p.credit && p.credit.failureCountToday) || Math.round((p.failureCountToday || 1420) * 0.35))
+      : ((p.debit && p.debit.failureCountToday) || Math.round((p.failureCountToday || 1420) * 0.65));
+    const pFailPrev = isCredit
+      ? ((p.credit && p.credit.failureCountYesterday) || Math.round((p.failureCountYesterday || 1550) * 0.35))
+      : ((p.debit && p.debit.failureCountYesterday) || Math.round((p.failureCountYesterday || 1550) * 0.65));
+
+    const pCompCur = isCredit
+      ? ((p.credit && p.credit.complaintsToday) || Math.round((p.complaintsToday || 18) * 0.35))
+      : ((p.debit && p.debit.complaintsToday) || Math.round((p.complaintsToday || 18) * 0.65));
+    const pCompPrev = isCredit
+      ? ((p.credit && p.credit.complaintsYesterday) || Math.round((p.complaintsYesterday || 22) * 0.35))
+      : ((p.debit && p.debit.complaintsYesterday) || Math.round((p.complaintsYesterday || 22) * 0.65));
+
+    const posRows = [
+      {
+        kpi: "Successful Transaction Count",
+        current: formatNumber(pSuccessCntCur),
+        previous: formatNumber(pSuccessCntPrev),
+        change: calculateComparisons(pSuccessCntCur, pSuccessCntPrev, true, !lbl.isDaily).html,
+        dailyAvg: formatNumber(pSuccessCntCur / numDays)
+      },
+      {
+        kpi: "Successful Transaction Amount",
+        current: formatCurrency(pSuccessAmtCur),
+        previous: formatCurrency(pSuccessAmtPrev),
+        change: calculateComparisons(pSuccessAmtCur, pSuccessAmtPrev, true, !lbl.isDaily).html,
+        dailyAvg: formatCurrency(pSuccessAmtCur / numDays)
+      },
+      {
+        kpi: "Success Rate (%)",
+        current: formatPercentage(pSuccessRateCur),
+        previous: formatPercentage(pSuccessRatePrev),
+        change: calculateComparisons(pSuccessRateCur, pSuccessRatePrev, true, !lbl.isDaily).html,
+        dailyAvg: formatPercentage(pSuccessRateCur)
+      },
+      {
+        kpi: '<div class="kpi-interactive-wrapper"><span>Failure Count</span><span class="kpi-details-chip">Reasons &rarr;</span></div>',
+        current: formatNumber(pFailCur),
+        previous: formatNumber(pFailPrev),
+        change: calculateComparisons(pFailCur, pFailPrev, false, !lbl.isDaily).html,
+        dailyAvg: formatNumber(pFailCur / numDays),
+        rowClass: "clickable-failure-row",
+        title: "Click to view POS Failure Reasons details",
+        onClick: function() { navigateToPage("failure-reasons", "pos-failure-reasons"); }
+      },
+      {
+        kpi: "Complaints Count",
+        current: formatNumber(pCompCur),
+        previous: formatNumber(pCompPrev),
+        change: calculateComparisons(pCompCur, pCompPrev, false, !lbl.isDaily).html,
+        dailyAvg: formatNumber(pCompCur / numDays)
+      }
+    ];
+
+    posTableContainer.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, posRows));
+  }
+
+  btnPosDebit.addEventListener("click", function () {
+    appState.posActiveTab = "debit";
+    btnPosDebit.classList.add("active");
+    btnPosCredit.classList.remove("active");
+    renderPosOperationsTable();
+  });
+
+  btnPosCredit.addEventListener("click", function () {
+    appState.posActiveTab = "credit";
+    btnPosCredit.classList.add("active");
+    btnPosDebit.classList.remove("active");
+    renderPosOperationsTable();
+  });
+
+  renderPosOperationsTable();
 
   /* 6. Ecommerce Operations Table */
   const ecomTitle = sectionTitle("Ecommerce Operations");
   ecomTitle.id = "ecommerce-operations";
   root.appendChild(ecomTitle);
-  const ec = data.ecom || illustrativeFallback.ecom;
-  const ecomRows = [
-    {
-      kpi: "Successful Transaction Count",
-      current: formatNumber(ec.successCountToday || ec.countToday),
-      previous: formatNumber(ec.successCountYesterday || ec.countYesterday),
-      change: calculateComparisons(ec.successCountToday || ec.countToday, ec.successCountYesterday || ec.countYesterday, true, !lbl.isDaily).html,
-      dailyAvg: formatNumber((ec.successCountToday || ec.countToday) / numDays)
-    },
-    {
-      kpi: "Successful Transaction Amount",
-      current: formatCurrency(ec.successAmountToday || ec.amountToday),
-      previous: formatCurrency(ec.successAmountYesterday || ec.amountYesterday),
-      change: calculateComparisons(ec.successAmountToday || ec.amountToday, ec.successAmountYesterday || ec.amountYesterday, true, !lbl.isDaily).html,
-      dailyAvg: formatCurrency((ec.successAmountToday || ec.amountToday) / numDays)
-    },
-    {
-      kpi: "Success Rate (%)",
-      current: formatPercentage(ec.successRateToday || 97.45),
-      previous: formatPercentage(ec.successRateYesterday || 97.20),
-      change: calculateComparisons(ec.successRateToday || 97.45, ec.successRateYesterday || 97.20, true, !lbl.isDaily).html,
-      dailyAvg: formatPercentage(ec.successRateToday || 97.45)
-    },
-    {
-      kpi: '<div class="kpi-interactive-wrapper"><span>Failure Count</span><span class="kpi-details-chip">Reasons &rarr;</span></div>',
-      current: formatNumber(ec.failureCountToday || 1360),
-      previous: formatNumber(ec.failureCountYesterday || 1430),
-      change: calculateComparisons(ec.failureCountToday || 1360, ec.failureCountYesterday || 1430, false, !lbl.isDaily).html,
-      dailyAvg: formatNumber((ec.failureCountToday || 1360) / numDays),
-      rowClass: "clickable-failure-row",
-      title: "Click to view Ecommerce Failure Reasons details",
-      onClick: function() { navigateToPage("failure-reasons", "ecommerce-failure-reasons"); }
-    },
-    {
-      kpi: "Complaints Count",
-      current: formatNumber(ec.complaintsToday || 15),
-      previous: formatNumber(ec.complaintsYesterday || 19),
-      change: calculateComparisons(ec.complaintsToday || 15, ec.complaintsYesterday || 19, false, !lbl.isDaily).html,
-      dailyAvg: formatNumber((ec.complaintsToday || 15) / numDays)
-    }
-  ];
-  root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, ecomRows));
+
+  appState.ecomActiveTab = appState.ecomActiveTab || "debit";
+
+  const ecomToggleWrap = el("div", { class: "card-fin-toggle-bar" });
+  const btnEcomDebit = el("button", { class: "fin-toggle-btn" + (appState.ecomActiveTab === "debit" ? " active" : ""), type: "button", text: "Debit Card" });
+  const btnEcomCredit = el("button", { class: "fin-toggle-btn" + (appState.ecomActiveTab === "credit" ? " active" : ""), type: "button", text: "Credit Card" });
+
+  ecomToggleWrap.appendChild(btnEcomDebit);
+  ecomToggleWrap.appendChild(btnEcomCredit);
+  root.appendChild(ecomToggleWrap);
+
+  const ecomTableContainer = el("div", { id: "ecommerceOperationsTableContainer" });
+  root.appendChild(ecomTableContainer);
+
+  function renderEcomOperationsTable() {
+    ecomTableContainer.innerHTML = "";
+    const ec = data.ecom || illustrativeFallback.ecom;
+    const isCredit = appState.ecomActiveTab === "credit";
+
+    const ecSuccessCntCur = isCredit
+      ? ((ec.credit && ec.credit.countToday) || Math.round((ec.successCountToday || ec.countToday || 52300) * 0.38))
+      : ((ec.debit && ec.debit.countToday) || Math.round((ec.successCountToday || ec.countToday || 52300) * 0.62));
+    const ecSuccessCntPrev = isCredit
+      ? ((ec.credit && ec.credit.countYesterday) || Math.round((ec.successCountYesterday || ec.countYesterday || 49800) * 0.38))
+      : ((ec.debit && ec.debit.countYesterday) || Math.round((ec.successCountYesterday || ec.countYesterday || 49800) * 0.62));
+
+    const ecSuccessAmtCur = isCredit
+      ? ((ec.credit && ec.credit.amountToday) || Math.round((ec.successAmountToday || ec.amountToday || 3600000000) * 0.38))
+      : ((ec.debit && ec.debit.amountToday) || Math.round((ec.successAmountToday || ec.amountToday || 3600000000) * 0.62));
+    const ecSuccessAmtPrev = isCredit
+      ? ((ec.credit && ec.credit.amountYesterday) || Math.round((ec.successAmountYesterday || ec.amountYesterday || 3400000000) * 0.38))
+      : ((ec.debit && ec.debit.amountYesterday) || Math.round((ec.successAmountYesterday || ec.amountYesterday || 3400000000) * 0.62));
+
+    const ecSuccessRateCur = isCredit ? (ec.creditSuccessRateToday || 96.90) : (ec.debitSuccessRateToday || 97.80);
+    const ecSuccessRatePrev = isCredit ? (ec.creditSuccessRateYesterday || 96.65) : (ec.debitSuccessRateYesterday || 97.50);
+
+    const ecFailCur = isCredit
+      ? ((ec.credit && ec.credit.failureCountToday) || Math.round((ec.failureCountToday || 1360) * 0.38))
+      : ((ec.debit && ec.debit.failureCountToday) || Math.round((ec.failureCountToday || 1360) * 0.62));
+    const ecFailPrev = isCredit
+      ? ((ec.credit && ec.credit.failureCountYesterday) || Math.round((ec.failureCountYesterday || 1430) * 0.38))
+      : ((ec.debit && ec.debit.failureCountYesterday) || Math.round((ec.failureCountYesterday || 1430) * 0.62));
+
+    const ecCompCur = isCredit
+      ? ((ec.credit && ec.credit.complaintsToday) || Math.round((ec.complaintsToday || 15) * 0.38))
+      : ((ec.debit && ec.debit.complaintsToday) || Math.round((ec.complaintsToday || 15) * 0.62));
+    const ecCompPrev = isCredit
+      ? ((ec.credit && ec.credit.complaintsYesterday) || Math.round((ec.complaintsYesterday || 19) * 0.38))
+      : ((ec.debit && ec.debit.complaintsYesterday) || Math.round((ec.complaintsYesterday || 19) * 0.62));
+
+    const ecomRows = [
+      {
+        kpi: "Successful Transaction Count",
+        current: formatNumber(ecSuccessCntCur),
+        previous: formatNumber(ecSuccessCntPrev),
+        change: calculateComparisons(ecSuccessCntCur, ecSuccessCntPrev, true, !lbl.isDaily).html,
+        dailyAvg: formatNumber(ecSuccessCntCur / numDays)
+      },
+      {
+        kpi: "Successful Transaction Amount",
+        current: formatCurrency(ecSuccessAmtCur),
+        previous: formatCurrency(ecSuccessAmtPrev),
+        change: calculateComparisons(ecSuccessAmtCur, ecSuccessAmtPrev, true, !lbl.isDaily).html,
+        dailyAvg: formatCurrency(ecSuccessAmtCur / numDays)
+      },
+      {
+        kpi: "Success Rate (%)",
+        current: formatPercentage(ecSuccessRateCur),
+        previous: formatPercentage(ecSuccessRatePrev),
+        change: calculateComparisons(ecSuccessRateCur, ecSuccessRatePrev, true, !lbl.isDaily).html,
+        dailyAvg: formatPercentage(ecSuccessRateCur)
+      },
+      {
+        kpi: '<div class="kpi-interactive-wrapper"><span>Failure Count</span><span class="kpi-details-chip">Reasons &rarr;</span></div>',
+        current: formatNumber(ecFailCur),
+        previous: formatNumber(ecFailPrev),
+        change: calculateComparisons(ecFailCur, ecFailPrev, false, !lbl.isDaily).html,
+        dailyAvg: formatNumber(ecFailCur / numDays),
+        rowClass: "clickable-failure-row",
+        title: "Click to view Ecommerce Failure Reasons details",
+        onClick: function() { navigateToPage("failure-reasons", "ecommerce-failure-reasons"); }
+      },
+      {
+        kpi: "Complaints Count",
+        current: formatNumber(ecCompCur),
+        previous: formatNumber(ecCompPrev),
+        change: calculateComparisons(ecCompCur, ecCompPrev, false, !lbl.isDaily).html,
+        dailyAvg: formatNumber(ecCompCur / numDays)
+      }
+    ];
+
+    ecomTableContainer.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, ecomRows));
+  }
+
+  btnEcomDebit.addEventListener("click", function () {
+    appState.ecomActiveTab = "debit";
+    btnEcomDebit.classList.add("active");
+    btnEcomCredit.classList.remove("active");
+    renderEcomOperationsTable();
+  });
+
+  btnEcomCredit.addEventListener("click", function () {
+    appState.ecomActiveTab = "credit";
+    btnEcomCredit.classList.add("active");
+    btnEcomDebit.classList.remove("active");
+    renderEcomOperationsTable();
+  });
+
+  renderEcomOperationsTable();
 }
 
 /* ---------------------------------------------------------------------
@@ -4666,21 +4988,20 @@ function renderReconciliation(data) {
     // LEVEL 2: Unit-specific Reconciliation Details
     const unit = activeReconciliationUnit;
 
-    // --- Top bar: small circular arrow back button ---
-    const topBar = el("div", { class: "recon-detail-topbar" });
-    const backBtn = el("button", { class: "recon-back-circle", type: "button", "aria-label": "Back to Reconciliation" });
-    backBtn.innerHTML = "&#8592;";
+    // --- Centered unit heading with inline back chevron ---
+    const headerWrapper = el("div", { style: "display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-3);" });
+    const backBtn = el("button", { class: "inline-back-chevron", type: "button", title: "Back to Reconciliation", "aria-label": "Back to Reconciliation" });
+    backBtn.innerHTML = "&#8249;";
     backBtn.addEventListener("click", function () {
       activeReconciliationUnit = null;
       renderReconciliation(currentData());
     });
-    topBar.appendChild(backBtn);
-    root.appendChild(topBar);
-
-    // --- Centered unit heading ---
-    const heading = el("h3", { class: "recon-centered-heading" });
+    const heading = el("h3", { class: "recon-centered-heading", style: "margin: 0;" });
     heading.textContent = "Reconciliation OF " + (unit.titleName || unit.fullName);
-    root.appendChild(heading);
+
+    headerWrapper.appendChild(backBtn);
+    headerWrapper.appendChild(heading);
+    root.appendChild(headerWrapper);
 
     // --- Table 1: Reconciliation Summary ---
     root.appendChild(sectionTitle("Reconciliation Summary"));
