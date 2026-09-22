@@ -1235,6 +1235,7 @@ table.data-table th {
 #page-adc-operations table.data-table thead tr,
 #adc-operations-body table.data-table thead tr {
   background: #D0E5F3 !important;
+  color: #0D5F92 !important;
 }
 
 #page-adc-operations table.data-table th,
