@@ -2504,6 +2504,449 @@ function evaluateAndShowToastAlerts(data) {
 }
 
 /* ---------------------------------------------------------------------
+   10.1 PAGE 0 — HOME (EXECUTIVE MANAGEMENT DASHBOARD)
+   --------------------------------------------------------------------- */
+
+function buildHomeSpendTrendSVG(data) {
+  var W = 580, H = 210, padL = 45, padR = 25, padT = 20, padB = 35;
+  var graphW = W - padL - padR;
+  var graphH = H - padT - padB;
+
+  var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
+  var creditVals = [18.5, 20.2, 21.8, 23.0, 24.1, 24.6];
+  var debitVals =  [31.2, 33.5, 36.0, 38.2, 39.8, 41.2];
+  var maxVal = 50;
+
+  var gridLines = "";
+  [0, 12.5, 25, 37.5, 50].forEach(function(v) {
+    var y = padT + graphH - (v / maxVal) * graphH;
+    gridLines += '<line x1="' + padL + '" y1="' + y + '" x2="' + (W - padR) + '" y2="' + y + '" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="3 3"/>';
+    gridLines += '<text x="' + (padL - 8) + '" y="' + (y + 3) + '" font-size="10" fill="#64748B" text-anchor="end">' + v + 'B</text>';
+  });
+
+  var pointsCredit = [], pointsDebit = [];
+  months.forEach(function(m, i) {
+    var x = padL + (i / (months.length - 1)) * graphW;
+    var yC = padT + graphH - (creditVals[i] / maxVal) * graphH;
+    var yD = padT + graphH - (debitVals[i] / maxVal) * graphH;
+    pointsCredit.push({ x: x, y: yC, val: creditVals[i], month: m });
+    pointsDebit.push({ x: x, y: yD, val: debitVals[i], month: m });
+    gridLines += '<text x="' + x + '" y="' + (H - 12) + '" font-size="10" font-weight="600" fill="#64748B" text-anchor="middle">' + m + '</text>';
+  });
+
+  var pathC = "M " + pointsCredit.map(function(p){ return p.x.toFixed(1) + " " + p.y.toFixed(1); }).join(" L ");
+  var pathD = "M " + pointsDebit.map(function(p){ return p.x.toFixed(1) + " " + p.y.toFixed(1); }).join(" L ");
+
+  var areaC = pathC + " L " + pointsCredit[pointsCredit.length-1].x.toFixed(1) + " " + (padT + graphH) + " L " + pointsCredit[0].x.toFixed(1) + " " + (padT + graphH) + " Z";
+  var areaD = pathD + " L " + pointsDebit[pointsDebit.length-1].x.toFixed(1) + " " + (padT + graphH) + " L " + pointsDebit[0].x.toFixed(1) + " " + (padT + graphH) + " Z";
+
+  var circlesC = "", circlesD = "";
+  pointsCredit.forEach(function(p) {
+    circlesC += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4" fill="#117ABF" stroke="#ffffff" stroke-width="2" class="chart-point-node"><title>Credit Cards (' + p.month + '): PKR ' + p.val + ' Bn</title></circle>';
+  });
+  pointsDebit.forEach(function(p) {
+    circlesD += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4" fill="#059669" stroke="#ffffff" stroke-width="2" class="chart-point-node"><title>Debit Cards (' + p.month + '): PKR ' + p.val + ' Bn</title></circle>';
+  });
+
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" style="width:100%;height:auto;display:block;">'
+    + '<defs>'
+    + '<linearGradient id="gradCredit" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#117ABF" stop-opacity="0.25"/><stop offset="100%" stop-color="#117ABF" stop-opacity="0.0"/></linearGradient>'
+    + '<linearGradient id="gradDebit" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#059669" stop-opacity="0.20"/><stop offset="100%" stop-color="#059669" stop-opacity="0.0"/></linearGradient>'
+    + '</defs>'
+    + gridLines
+    + '<path d="' + areaD + '" fill="url(#gradDebit)"/>'
+    + '<path d="' + pathD + '" fill="none" stroke="#059669" stroke-width="2.5"/>'
+    + '<path d="' + areaC + '" fill="url(#gradCredit)"/>'
+    + '<path d="' + pathC + '" fill="none" stroke="#117ABF" stroke-width="2.5"/>'
+    + circlesD + circlesC
+    + '<rect x="' + (W - 220) + '" y="8" width="10" height="10" fill="#117ABF" rx="2"/><text x="' + (W - 205) + '" y="16" font-size="10.5" font-weight="600" fill="#334155">Credit Spend</text>'
+    + '<rect x="' + (W - 120) + '" y="8" width="10" height="10" fill="#059669" rx="2"/><text x="' + (W - 105) + '" y="16" font-size="10.5" font-weight="600" fill="#334155">Debit Spend</text>'
+    + '</svg>';
+}
+
+function buildHomeAdcChannelSVG(data) {
+  var W = 580, H = 210, padL = 45, padR = 25, padT = 20, padB = 35;
+  var graphW = W - padL - padR;
+  var graphH = H - padT - padB;
+
+  var channels = [
+    { name: "ATM", amt: 17.65, color: "#117ABF" },
+    { name: "RAAST", amt: 41.20, color: "#0D5F92" },
+    { name: "IBFT", amt: 66.80, color: "#2563EB" },
+    { name: "POS", amt: 105.00, color: "#059669" },
+    { name: "ECOM", amt: 78.00, color: "#D97706" }
+  ];
+
+  var maxVal = 120;
+
+  var gridLines = "";
+  [0, 30, 60, 90, 120].forEach(function(v) {
+    var y = padT + graphH - (v / maxVal) * graphH;
+    gridLines += '<line x1="' + padL + '" y1="' + y + '" x2="' + (W - padR) + '" y2="' + y + '" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="3 3"/>';
+    gridLines += '<text x="' + (padL - 8) + '" y="' + (y + 3) + '" font-size="10" fill="#64748B" text-anchor="end">' + v + 'B</text>';
+  });
+
+  var barWidth = 42;
+  var slotW = graphW / channels.length;
+  var bars = "";
+
+  channels.forEach(function(c, i) {
+    var x = padL + i * slotW + (slotW - barWidth) / 2;
+    var h = (c.amt / maxVal) * graphH;
+    var y = padT + graphH - h;
+
+    bars += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barWidth + '" height="' + h.toFixed(1) + '" fill="' + c.color + '" rx="4" class="chart-bar-seg">'
+      + '<title>' + c.name + ' Volume: PKR ' + c.amt + ' Bn</title></rect>';
+    bars += '<text x="' + (x + barWidth/2).toFixed(1) + '" y="' + (y - 5).toFixed(1) + '" font-size="10" font-weight="700" fill="#1F2937" text-anchor="middle">' + c.amt + 'B</text>';
+    bars += '<text x="' + (x + barWidth/2).toFixed(1) + '" y="' + (H - 12) + '" font-size="10.5" font-weight="600" fill="#64748B" text-anchor="middle">' + c.name + '</text>';
+  });
+
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" style="width:100%;height:auto;display:block;">'
+    + gridLines + bars + '</svg>';
+}
+
+function buildHomeDisputesDonutSVG(data) {
+  var W = 580, H = 210;
+  var cx = 130, cy = 105, r = 70, innerR = 45;
+
+  var items = [
+    { label: "Retrieval Requests", count: 185, color: "#117ABF" },
+    { label: "Chargeback Claims", count: 142, color: "#DC2626" },
+    { label: "Pre-Arbitration", count: 75, color: "#D97706" },
+    { label: "Fraud Complaints", count: 50, color: "#7C3AED" }
+  ];
+
+  var total = items.reduce(function(s, i){ return s + i.count; }, 0) || 1;
+  var startAngle = 0;
+  var paths = "";
+
+  items.forEach(function(item) {
+    var angle = (item.count / total) * 2 * Math.PI;
+    var endAngle = startAngle + angle;
+
+    var x1 = cx + r * Math.sin(startAngle);
+    var y1 = cy - r * Math.cos(startAngle);
+    var x2 = cx + r * Math.sin(endAngle);
+    var y2 = cy - r * Math.cos(endAngle);
+
+    var ix1 = cx + innerR * Math.sin(startAngle);
+    var iy1 = cy - innerR * Math.cos(startAngle);
+    var ix2 = cx + innerR * Math.sin(endAngle);
+    var iy2 = cy - innerR * Math.cos(endAngle);
+
+    var largeArc = angle > Math.PI ? 1 : 0;
+
+    var d = "M " + x1.toFixed(1) + " " + y1.toFixed(1) +
+            " A " + r + " " + r + " 0 " + largeArc + " 1 " + x2.toFixed(1) + " " + y2.toFixed(1) +
+            " L " + ix2.toFixed(1) + " " + iy2.toFixed(1) +
+            " A " + innerR + " " + innerR + " 0 " + largeArc + " 0 " + ix1.toFixed(1) + " " + iy1.toFixed(1) +
+            " Z";
+
+    paths += '<path d="' + d + '" fill="' + item.color + '" class="chart-bar-seg"><title>' + item.label + ': ' + item.count + ' cases (' + ((item.count/total)*100).toFixed(1) + '%)</title></path>';
+    startAngle = endAngle;
+  });
+
+  var centerText = '<text x="' + cx + '" y="' + (cy - 4) + '" font-size="16" font-weight="700" fill="#0D5F92" text-anchor="middle">' + total + '</text>'
+    + '<text x="' + cx + '" y="' + (cy + 12) + '" font-size="10" font-weight="600" fill="#64748B" text-anchor="middle">Total Cases</text>';
+
+  var legends = "";
+  var lx = 260, ly = 35;
+  items.forEach(function(item, idx) {
+    var y = ly + idx * 38;
+    var pct = ((item.count / total) * 100).toFixed(1) + "%";
+    legends += '<rect x="' + lx + '" y="' + y + '" width="12" height="12" fill="' + item.color + '" rx="3"/>'
+      + '<text x="' + (lx + 20) + '" y="' + (y + 10) + '" font-size="11.5" font-weight="600" fill="#1F2937">' + item.label + '</text>'
+      + '<text x="' + (lx + 220) + '" y="' + (y + 10) + '" font-size="11.5" font-weight="700" fill="#0D5F92" text-anchor="end">' + item.count + ' (' + pct + ')</text>';
+  });
+
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" style="width:100%;height:auto;display:block;">'
+    + paths + centerText + legends + '</svg>';
+}
+
+function buildHomeReconGaugeSVG(data) {
+  var W = 580, H = 210;
+
+  var metrics = [
+    { title: "Reconciliation GL Matched Rate", pct: 96.4, color: "#059669", subtitle: "164 / 170 GLs Balanced" },
+    { title: "ATM Fleet Uptime SLA", pct: 97.8, color: "#117ABF", subtitle: "Target: >= 98.0%" },
+    { title: "3DS Auth Success Rate", pct: 98.5, color: "#2563EB", subtitle: "Target: >= 97.0%" },
+    { title: "Nostro Account Liquidity", pct: 99.2, color: "#D97706", subtitle: "USD 18.6M / AED 6.2M" }
+  ];
+
+  var bars = "";
+  var ly = 22;
+
+  metrics.forEach(function(m, idx) {
+    var y = ly + idx * 45;
+    var barW = 310;
+    var filledW = (m.pct / 100) * barW;
+
+    bars += '<text x="20" y="' + y + '" font-size="11.5" font-weight="700" fill="#1F2937">' + m.title + '</text>'
+      + '<text x="340" y="' + y + '" font-size="11.5" font-weight="700" fill="' + m.color + '" text-anchor="end">' + m.pct.toFixed(1) + '%</text>'
+      + '<text x="360" y="' + y + '" font-size="10.5" font-weight="500" fill="#64748B">' + m.subtitle + '</text>'
+      + '<rect x="20" y="' + (y + 8) + '" width="' + barW + '" height="12" fill="#E2E8F0" rx="6"/>'
+      + '<rect x="20" y="' + (y + 8) + '" width="' + filledW.toFixed(1) + '" height="12" fill="' + m.color + '" rx="6" class="chart-bar-seg"><title>' + m.title + ': ' + m.pct + '%</title></rect>';
+  });
+
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" style="width:100%;height:auto;display:block;">'
+    + bars + '</svg>';
+}
+
+function buildHomeCardPerformanceSVG(data) {
+  var W = 580, H = 210, padL = 140, padR = 40, padT = 20;
+  var items = [
+    { label: "Debit Classic", count: 612000, color: "#117ABF" },
+    { label: "Debit Gold", count: 188000, color: "#0D5F92" },
+    { label: "Credit Classic", count: 94000, color: "#2563EB" },
+    { label: "Debit Platinum", count: 63500, color: "#059669" },
+    { label: "Credit Gold", count: 41200, color: "#D97706" }
+  ];
+  var maxVal = 700000;
+  var barH = 22, gap = 14;
+  var bars = "";
+
+  items.forEach(function(item, idx) {
+    var y = padT + idx * (barH + gap);
+    var w = (item.count / maxVal) * (W - padL - padR);
+
+    bars += '<text x="' + (padL - 10) + '" y="' + (y + 15) + '" font-size="11.5" font-weight="600" fill="#1F2937" text-anchor="end">' + item.label + '</text>'
+      + '<rect x="' + padL + '" y="' + y + '" width="' + (W - padL - padR) + '" height="' + barH + '" fill="#E2E8F0" rx="4"/>'
+      + '<rect x="' + padL + '" y="' + y + '" width="' + w.toFixed(1) + '" height="' + barH + '" fill="' + item.color + '" rx="4" class="chart-bar-seg"><title>' + item.label + ': ' + formatNumber(item.count) + ' cards</title></rect>'
+      + '<text x="' + (padL + w + 8).toFixed(1) + '" y="' + (y + 15) + '" font-size="11" font-weight="700" fill="#0D5F92">' + formatNumber(item.count) + '</text>';
+  });
+
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" style="width:100%;height:auto;display:block;">'
+    + bars + '</svg>';
+}
+
+function buildHomeYearlyTrendSVG(data) {
+  var W = 1180, H = 280;
+  var padL = 70, padR = 40, padT = 45, padB = 40;
+  var chartW = W - padL - padR;
+  var chartH = H - padT - padB;
+
+  var years = ["2021", "2022", "2023", "2024", "2025 YTD"];
+  var creditSpendData = [180, 240, 350, 485, 580]; // in PKR Billions
+  var debitSpendData = [240, 340, 460, 665, 795]; // in PKR Billions
+  var volumeData = [180, 240, 320, 410, 480]; // in Million Txns
+
+  var maxVal = 900;
+
+  var ptsCredit = [];
+  var ptsDebit = [];
+  var ptsVol = [];
+
+  years.forEach(function(yr, idx) {
+    var x = padL + (idx / (years.length - 1)) * chartW;
+    var yC = padT + chartH - (creditSpendData[idx] / maxVal) * chartH;
+    var yD = padT + chartH - (debitSpendData[idx] / maxVal) * chartH;
+    var yV = padT + chartH - (volumeData[idx] / maxVal) * chartH;
+    ptsCredit.push({ x: x, y: yC, val: creditSpendData[idx], label: yr });
+    ptsDebit.push({ x: x, y: yD, val: debitSpendData[idx], label: yr });
+    ptsVol.push({ x: x, y: yV, val: volumeData[idx], label: yr });
+  });
+
+  // Background Grid Lines (Horizontal & Vertical)
+  var gridHTML = "";
+  for (var i = 0; i <= 5; i++) {
+    var gy = padT + (i / 5) * chartH;
+    var valS = Math.round(maxVal - (i / 5) * maxVal);
+    gridHTML += '<line x1="' + padL + '" y1="' + gy + '" x2="' + (W - padR) + '" y2="' + gy + '" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="3 3"/>'
+      + '<text x="' + (padL - 10) + '" y="' + (gy + 4) + '" font-size="10.5" font-weight="600" fill="#64748B" text-anchor="end">PKR ' + valS + 'B</text>';
+  }
+
+  years.forEach(function(yr, idx) {
+    var x = padL + (idx / (years.length - 1)) * chartW;
+    gridHTML += '<line x1="' + x + '" y1="' + padT + '" x2="' + x + '" y2="' + (padT + chartH) + '" stroke="#F1F5F9" stroke-width="1.5"/>'
+      + '<text x="' + x + '" y="' + (H - 12) + '" font-size="11.5" font-weight="700" fill="#1E293B" text-anchor="middle">' + yr + '</text>';
+  });
+
+  // Credit Spend Path
+  var dCredit = "M " + ptsCredit[0].x + " " + ptsCredit[0].y;
+  var areaCredit = "M " + ptsCredit[0].x + " " + (padT + chartH) + " L " + ptsCredit[0].x + " " + ptsCredit[0].y;
+  for (var k = 1; k < ptsCredit.length; k++) {
+    var cx1 = (ptsCredit[k - 1].x + ptsCredit[k].x) / 2;
+    dCredit += " C " + cx1 + " " + ptsCredit[k - 1].y + ", " + cx1 + " " + ptsCredit[k].y + ", " + ptsCredit[k].x + " " + ptsCredit[k].y;
+    areaCredit += " C " + cx1 + " " + ptsCredit[k - 1].y + ", " + cx1 + " " + ptsCredit[k].y + ", " + ptsCredit[k].x + " " + ptsCredit[k].y;
+  }
+  areaCredit += " L " + ptsCredit[ptsCredit.length - 1].x + " " + (padT + chartH) + " Z";
+
+  // Debit Spend Path
+  var dDebit = "M " + ptsDebit[0].x + " " + ptsDebit[0].y;
+  var areaDebit = "M " + ptsDebit[0].x + " " + (padT + chartH) + " L " + ptsDebit[0].x + " " + ptsDebit[0].y;
+  for (var d = 1; d < ptsDebit.length; d++) {
+    var cx2 = (ptsDebit[d - 1].x + ptsDebit[d].x) / 2;
+    dDebit += " C " + cx2 + " " + ptsDebit[d - 1].y + ", " + cx2 + " " + ptsDebit[d].y + ", " + ptsDebit[d].x + " " + ptsDebit[d].y;
+    areaDebit += " C " + cx2 + " " + ptsDebit[d - 1].y + ", " + cx2 + " " + ptsDebit[d].y + ", " + ptsDebit[d].x + " " + ptsDebit[d].y;
+  }
+  areaDebit += " L " + ptsDebit[ptsDebit.length - 1].x + " " + (padT + chartH) + " Z";
+
+  // Volume Path
+  var dVol = "M " + ptsVol[0].x + " " + ptsVol[0].y;
+  for (var m = 1; m < ptsVol.length; m++) {
+    var cx3 = (ptsVol[m - 1].x + ptsVol[m].x) / 2;
+    dVol += " C " + cx3 + " " + ptsVol[m - 1].y + ", " + cx3 + " " + ptsVol[m].y + ", " + ptsVol[m].x + " " + ptsVol[m].y;
+  }
+
+  // Dots & Nodes
+  var dotsHTML = "";
+  ptsDebit.forEach(function(pt) {
+    dotsHTML += '<circle cx="' + pt.x + '" cy="' + pt.y + '" r="5.5" fill="#059669" stroke="#FFFFFF" stroke-width="2.5" class="chart-bar-seg"><title>' + pt.label + ' Debit Card Spend: PKR ' + pt.val + ' Billion</title></circle>'
+      + '<text x="' + pt.x + '" y="' + (pt.y - 10) + '" font-size="10.5" font-weight="700" fill="#047857" text-anchor="middle">PKR ' + pt.val + 'B</text>';
+  });
+
+  ptsCredit.forEach(function(pt) {
+    dotsHTML += '<circle cx="' + pt.x + '" cy="' + pt.y + '" r="5.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="2.5" class="chart-bar-seg"><title>' + pt.label + ' Credit Card Spend: PKR ' + pt.val + ' Billion</title></circle>'
+      + '<text x="' + pt.x + '" y="' + (pt.y + 18) + '" font-size="10.5" font-weight="700" fill="#1D4ED8" text-anchor="middle">PKR ' + pt.val + 'B</text>';
+  });
+
+  ptsVol.forEach(function(pt) {
+    dotsHTML += '<circle cx="' + pt.x + '" cy="' + pt.y + '" r="5.5" fill="#D97706" stroke="#FFFFFF" stroke-width="2.5" class="chart-bar-seg"><title>' + pt.label + ' ADC Txn Volume: ' + pt.val + ' Million Txns</title></circle>'
+      + '<text x="' + pt.x + '" y="' + (pt.y - 10) + '" font-size="10.5" font-weight="700" fill="#B45309" text-anchor="middle">' + pt.val + 'M Txns</text>';
+  });
+
+  // Legend
+  var legendHTML = '<rect x="' + (W - 540) + '" y="12" width="12" height="12" fill="#2563EB" rx="3"/>'
+    + '<text x="' + (W - 522) + '" y="22" font-size="11" font-weight="600" fill="#1E293B">Credit Spend (PKR B)</text>'
+    + '<rect x="' + (W - 370) + '" y="12" width="12" height="12" fill="#059669" rx="3"/>'
+    + '<text x="' + (W - 352) + '" y="22" font-size="11" font-weight="600" fill="#1E293B">Debit Spend (PKR B)</text>'
+    + '<rect x="' + (W - 210) + '" y="12" width="12" height="12" fill="#D97706" rx="3"/>'
+    + '<text x="' + (W - 192) + '" y="22" font-size="11" font-weight="600" fill="#1E293B">ADC Volume (Million)</text>';
+
+  var svgCode = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" style="width:100%;height:auto;display:block;">'
+    + '<defs>'
+    + '<linearGradient id="creditGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2563EB" stop-opacity="0.2"/><stop offset="100%" stop-color="#2563EB" stop-opacity="0.01"/></linearGradient>'
+    + '<linearGradient id="debitGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#059669" stop-opacity="0.15"/><stop offset="100%" stop-color="#059669" stop-opacity="0.01"/></linearGradient>'
+    + '</defs>'
+    + gridHTML
+    + '<path d="' + areaDebit + '" fill="url(#debitGrad)"/>'
+    + '<path d="' + areaCredit + '" fill="url(#creditGrad)"/>'
+    + '<path d="' + dDebit + '" fill="none" stroke="#059669" stroke-width="3" stroke-linecap="round"/>'
+    + '<path d="' + dCredit + '" fill="none" stroke="#2563EB" stroke-width="3" stroke-linecap="round"/>'
+    + '<path d="' + dVol + '" fill="none" stroke="#D97706" stroke-width="3" stroke-dasharray="6 3" stroke-linecap="round"/>'
+    + dotsHTML
+    + legendHTML
+    + '</svg>';
+
+  // Embedded Data Table matching reference image layout!
+  var tableHTML = '<div class="yearly-matrix-table-wrap"><table class="yearly-matrix-table">'
+    + '<thead><tr><th>Performance Dimension / Metric</th><th>2021</th><th>2022</th><th>2023</th><th>2024</th><th>2025 YTD</th><th>YoY Growth</th></tr></thead>'
+    + '<tbody>'
+    + '<tr><td><strong>Credit Card Portfolio Spend</strong></td><td>PKR 180.0 Billion</td><td>PKR 240.0 Billion</td><td>PKR 350.0 Billion</td><td>PKR 485.0 Billion</td><td>PKR 580.0 Billion</td><td><span class="trend-up">▲ +19.6%</span></td></tr>'
+    + '<tr><td><strong>Debit Card Portfolio Spend</strong></td><td>PKR 240.0 Billion</td><td>PKR 340.0 Billion</td><td>PKR 460.0 Billion</td><td>PKR 665.0 Billion</td><td>PKR 795.0 Billion</td><td><span class="trend-up">▲ +19.5%</span></td></tr>'
+    + '<tr class="total-row"><td><strong>Combined Card Portfolio Spend</strong></td><td>PKR 420.0 Billion</td><td>PKR 580.0 Billion</td><td>PKR 810.0 Billion</td><td>PKR 1.145 Trillion</td><td>PKR 1.375 Trillion</td><td><span class="trend-up">▲ +20.1%</span></td></tr>'
+    + '<tr><td><strong>ADC Digital Channel Volume</strong></td><td>180.0 Million Txns</td><td>240.0 Million Txns</td><td>320.0 Million Txns</td><td>410.0 Million Txns</td><td>480.0 Million Txns</td><td><span class="trend-up">▲ +17.1%</span></td></tr>'
+    + '</tbody></table></div>';
+
+  return svgCode + tableHTML;
+}
+
+function renderHome(data) {
+  const root = document.getElementById("home-body");
+  if (!root) return;
+  root.innerHTML = "";
+
+  const lbl = getPeriodLabels();
+
+  const atm = data.atm || {};
+  const raast = data.raast || {};
+  const ibft = data.ibft || {};
+  const pos = data.pos || {};
+  const ecom = data.ecom || {};
+
+  // 1. Executive Operational KPI Summary Grid
+  root.appendChild(sectionTitle("Executive Operations Overview & Key Performance Indicators"));
+
+  const creditCardsCount = data.cardFinancials ? (data.cardFinancials.activeCreditCards || 342500) : 342500;
+  const debitCardsCount = data.cardFinancials ? (data.cardFinancials.activeDebitCards || 1285000) : 1285000;
+  const creditSpend = data.cardFinancials ? (data.cardFinancials.creditSpendToday || 485000000) : 485000000;
+  const debitSpend = data.cardFinancials ? (data.cardFinancials.debitSpendToday || 890000000) : 890000000;
+
+  const atmVol = atm.withdrawalAmountToday || 412000000;
+  const raastVol = raast.transactionAmountToday || 285000000;
+  const ibftVol = ibft.transactionAmountToday || 640000000;
+  const posVol = pos.transactionAmountToday || 195000000;
+  const ecomVol = ecom.transactionAmountToday || 145000000;
+  const totalAdcVol = atmVol + raastVol + ibftVol + posVol + ecomVol;
+
+  const atmTxns = atm.withdrawalCountToday || 28400;
+  const raastTxns = raast.transactionCountToday || 68200;
+  const ibftTxns = ibft.transactionCountToday || 145000;
+  const posTxns = pos.transactionCountToday || 42100;
+  const ecomTxns = ecom.transactionCountToday || 38900;
+  const totalAdcTxns = atmTxns + raastTxns + ibftTxns + posTxns + ecomTxns;
+
+  const kpiGrid = el("div", { class: "home-kpi-grid" });
+  kpiGrid.appendChild(kpiCard("Active Credit Cards", formatNumber(creditCardsCount), '<span class="trend-up">▲ 8.4% YoY</span> | Premium Tier'));
+  kpiGrid.appendChild(kpiCard("Active Debit Cards", formatNumber(debitCardsCount), '<span class="trend-up">▲ 12.1% YoY</span> | Core Base Tier'));
+  kpiGrid.appendChild(kpiCard("Total Card Spend Today", formatCurrency(creditSpend + debitSpend), 'Credit: ' + formatCurrency(creditSpend) + ' | Debit: ' + formatCurrency(debitSpend)));
+  kpiGrid.appendChild(kpiCard("ADC Total Volume", formatCurrency(totalAdcVol), 'Across ATM, RAAST, IBFT, POS & E-Com'));
+  kpiGrid.appendChild(kpiCard("ADC Transaction Count", formatNumber(totalAdcTxns), 'Total Executed Transactions Today'));
+  kpiGrid.appendChild(kpiCard("Operational SLA Health", "99.4%", '<span class="status-badge ok">Optimal</span> | 99.98% System Uptime'));
+  kpiGrid.appendChild(kpiCard("Disputes & Chargebacks", formatNumber(452), 'Credit: 142 | Debit: 310 cases'));
+  kpiGrid.appendChild(kpiCard("Nostro USD Position", formatCurrency(18600000, "USD"), 'AED Position: ' + formatCurrency(6200000, "AED")));
+
+  root.appendChild(kpiGrid);
+
+  // 2. Executive Visual Analytics & Operational Performance Matrix
+  root.appendChild(sectionTitle("Executive Visual Analytics & Operational Performance"));
+
+  const chartsGrid = el("div", { class: "home-charts-grid" });
+
+  // Chart 1: Card Spend Trajectory
+  const cCard1 = el("div", { class: "ov-chart-card" });
+  cCard1.appendChild(el("div", { class: "ov-chart-title", text: "Card Portfolio Spend Trajectory (Credit vs Debit)" }));
+  const cBody1 = el("div", { class: "ov-chart-body" });
+  cBody1.innerHTML = buildHomeSpendTrendSVG(data);
+  cCard1.appendChild(cBody1);
+  chartsGrid.appendChild(cCard1);
+
+  // Chart 2: ADC Channel Performance
+  const cCard2 = el("div", { class: "ov-chart-card" });
+  cCard2.appendChild(el("div", { class: "ov-chart-title", text: "ADC Channel Volume & Throughput Comparison" }));
+  const cBody2 = el("div", { class: "ov-chart-body" });
+  cBody2.innerHTML = buildHomeAdcChannelSVG(data);
+  cCard2.appendChild(cBody2);
+  chartsGrid.appendChild(cCard2);
+
+  // Chart 3: Card Product Active Base
+  const cCard3 = el("div", { class: "ov-chart-card" });
+  cCard3.appendChild(el("div", { class: "ov-chart-title", text: "Active Card Product Base & Tier Concentration" }));
+  const cBody3 = el("div", { class: "ov-chart-body" });
+  cBody3.innerHTML = buildHomeCardPerformanceSVG(data);
+  cCard3.appendChild(cBody3);
+  chartsGrid.appendChild(cCard3);
+
+  // Chart 4: Disputes Donut
+  const cCard4 = el("div", { class: "ov-chart-card" });
+  cCard4.appendChild(el("div", { class: "ov-chart-title", text: "Chargebacks & Dispute Distribution by Category" }));
+  const cBody4 = el("div", { class: "ov-chart-body" });
+  cBody4.innerHTML = buildHomeDisputesDonutSVG(data);
+  cCard4.appendChild(cBody4);
+  chartsGrid.appendChild(cCard4);
+
+  // Chart 5: Operational Health Gauge Matrix
+  const cCard5 = el("div", { class: "ov-chart-card" });
+  cCard5.appendChild(el("div", { class: "ov-chart-title", text: "Operational SLA Health & Settlement Matrix" }));
+  const cBody5 = el("div", { class: "ov-chart-body" });
+  cBody5.innerHTML = buildHomeReconGaugeSVG(data);
+  cCard5.appendChild(cBody5);
+  chartsGrid.appendChild(cCard5);
+
+  root.appendChild(chartsGrid);
+
+  // 3. Multi-Year Growth & Executive Visual Analytics Matrix (VERY LAST SECTION)
+  root.appendChild(sectionTitle("Multi-Year Growth & Executive Visual Analytics Matrix"));
+
+  const yearlyChartCard = el("div", { class: "ov-chart-card full-width" });
+  yearlyChartCard.appendChild(el("div", { class: "ov-chart-title", text: "Multi-Year Banking Operations & Portfolio Spend Growth Trajectory (2021 – 2025)" }));
+  const yearlyChartBody = el("div", { class: "ov-chart-body" });
+  yearlyChartBody.innerHTML = buildHomeYearlyTrendSVG(data);
+  yearlyChartCard.appendChild(yearlyChartBody);
+  root.appendChild(yearlyChartCard);
+}
+
+/* ---------------------------------------------------------------------
    11. PAGE 1 — OVERVIEW (EXECUTIVE COMMAND CENTER)
    --------------------------------------------------------------------- */
 
@@ -5560,9 +6003,33 @@ function bindEvents() {
   }
 }
 
+function syncHeaderHeight() {
+  const header = document.querySelector(".app-header");
+  if (!header) return;
+  const height = Math.round(header.getBoundingClientRect().height);
+  if (height > 0) {
+    document.documentElement.style.setProperty("--header-height", height + "px");
+  }
+}
+
+function initHeaderObserver() {
+  syncHeaderHeight();
+  const header = document.querySelector(".app-header");
+  if (!header) return;
+
+  if (typeof ResizeObserver !== "undefined") {
+    const observer = new ResizeObserver(function () {
+      syncHeaderHeight();
+    });
+    observer.observe(header);
+  }
+  window.addEventListener("resize", syncHeaderHeight);
+}
+
 function init() {
   cacheDom();
   bindEvents();
+  initHeaderObserver();
 
   const now = new Date();
   const yr = now.getFullYear();
@@ -5591,3 +6058,4 @@ function init() {
 }
 
 document.addEventListener("DOMContentLoaded", init);
+syncHeaderHeight();
