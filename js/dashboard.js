@@ -1825,13 +1825,29 @@ function getFilteredData(rawData, filters) {
   const f = filters || {};
   const mode = f.period || "today";
 
-  if (mode === "today") return rawData;
-
   let factor = 1.0;
-  if (mode === "custom") {
+  if (mode === "month") {
+    let monthFactor = 1.0;
+    if (f.reportingMonth) {
+      const parts = f.reportingMonth.split("-");
+      if (parts.length === 2) {
+        const yr = parseInt(parts[0], 10);
+        const mo = parseInt(parts[1], 10);
+        monthFactor = 0.86 + (((mo * 7 + (yr % 5) * 3) % 11) * 0.035);
+      }
+    }
+    factor = monthFactor;
+  } else if (mode === "custom") {
     const dCount = f.daysCount || 15;
     const mCount = f.daysInMonth || 31;
-    factor = Math.min(1.0, Math.max(0.01, dCount / mCount));
+    let seedVar = 1.0;
+    if (f.fromDate && f.toDate) {
+      const charSum = (f.fromDate + f.toDate).split("").reduce(function(s, c) { return s + c.charCodeAt(0); }, 0);
+      seedVar = 0.92 + (charSum % 17) * 0.01;
+    }
+    factor = Math.min(3.5, Math.max(0.02, (dCount / mCount) * seedVar));
+  } else {
+    factor = 1.0;
   }
 
   const data = JSON.parse(JSON.stringify(rawData));
@@ -1843,22 +1859,7 @@ function getFilteredData(rawData, filters) {
 
   // 1. ATM Operations
   if (data.atm) {
-    if (mode === "month") {
-      data.atm.withdrawalCountToday = data.atm.withdrawalCountMTD;
-      data.atm.withdrawalCountYesterday = data.atm.withdrawalCountPrevMTD;
-      data.atm.withdrawalAmountToday = data.atm.withdrawalAmountMTD;
-      data.atm.withdrawalAmountYesterday = data.atm.withdrawalAmountPrevMTD;
-      data.atm.failedTxnToday = data.atm.failedTxnMTD;
-      data.atm.failedTxnYesterday = data.atm.failedTxnPrevMTD || Math.round((data.atm.failedTxnMTD || 24600) * 0.95);
-      data.atm.disputesToday = data.atm.disputesMTD;
-      data.atm.disputesYesterday = data.atm.disputesPrevMTD || 580;
-      data.atm.capturedCardsToday = data.atm.capturedCardsMTD;
-      data.atm.capturedCardsYesterday = data.atm.capturedCardsPrevMTD || 245;
-      data.atm.retractTxnToday = data.atm.retractTxnMTD;
-      data.atm.retractTxnYesterday = data.atm.retractTxnPrevMTD || 910;
-      data.atm.uptimeToday = data.atm.uptimeMTD;
-      data.atm.uptimeYesterday = data.atm.uptimePrevMTD;
-    } else if (mode === "custom") {
+    if (mode === "month" || mode === "custom") {
       data.atm.withdrawalCountToday = scale(data.atm.withdrawalCountMTD, factor);
       data.atm.withdrawalCountYesterday = scale(data.atm.withdrawalCountPrevMTD, factor);
       data.atm.withdrawalAmountToday = scale(data.atm.withdrawalAmountMTD, factor);
@@ -1878,18 +1879,7 @@ function getFilteredData(rawData, filters) {
 
   // 2. RAAST Operations
   if (data.raast) {
-    if (mode === "month") {
-      data.raast.successCountToday = data.raast.successCountMTD;
-      data.raast.successCountYesterday = data.raast.successCountPrevMTD || Math.round(data.raast.successCountMTD * 0.95);
-      data.raast.successAmountToday = data.raast.successAmountMTD;
-      data.raast.successAmountYesterday = data.raast.successAmountPrevMTD || Math.round(data.raast.successAmountMTD * 0.94);
-      data.raast.failedCountToday = data.raast.failedCountMTD;
-      data.raast.failedCountYesterday = data.raast.failedCountPrevMTD || Math.round(data.raast.failedCountMTD * 0.96);
-      data.raast.complaintsToday = data.raast.complaintsMTD;
-      data.raast.complaintsYesterday = data.raast.complaintsPrevMTD || Math.round(data.raast.complaintsMTD * 0.95);
-      data.raast.successRateToday = data.raast.successRateMTD;
-      data.raast.successRateYesterday = data.raast.successRatePrevMTD || 98.40;
-    } else if (mode === "custom") {
+    if (mode === "month" || mode === "custom") {
       data.raast.successCountToday = scale(data.raast.successCountMTD, factor);
       data.raast.successCountYesterday = scale(data.raast.successCountPrevMTD || Math.round(data.raast.successCountMTD * 0.95), factor);
       data.raast.successAmountToday = scale(data.raast.successAmountMTD, factor);
@@ -1900,23 +1890,14 @@ function getFilteredData(rawData, filters) {
       data.raast.complaintsYesterday = scale(data.raast.complaintsPrevMTD || Math.round(data.raast.complaintsMTD * 0.95), factor);
       data.raast.successRateToday = calculateSuccessRate(data.raast.successCountToday, data.raast.failedCountToday);
       data.raast.successRateYesterday = calculateSuccessRate(data.raast.successCountYesterday, data.raast.failedCountYesterday);
+      data.raast.transactionAmountToday = data.raast.successAmountToday;
+      data.raast.transactionCountToday = data.raast.successCountToday;
     }
   }
 
   // 3. IBFT Operations
   if (data.ibft) {
-    if (mode === "month") {
-      data.ibft.successCountToday = data.ibft.successCountMTD;
-      data.ibft.successCountYesterday = data.ibft.successCountPrevMTD || Math.round(data.ibft.successCountMTD * 0.95);
-      data.ibft.successAmountToday = data.ibft.successAmountMTD;
-      data.ibft.successAmountYesterday = data.ibft.successAmountPrevMTD || Math.round(data.ibft.successAmountMTD * 0.95);
-      data.ibft.failureCountToday = data.ibft.failureCountMTD;
-      data.ibft.failureCountYesterday = data.ibft.failureCountPrevMTD || Math.round(data.ibft.failureCountMTD * 0.95);
-      data.ibft.complaintsToday = data.ibft.complaintsMTD;
-      data.ibft.complaintsYesterday = data.ibft.complaintsPrevMTD || Math.round(data.ibft.complaintsMTD * 0.95);
-      data.ibft.successRateToday = data.ibft.successRateMTD;
-      data.ibft.successRateYesterday = data.ibft.successRatePrevMTD || 97.50;
-    } else if (mode === "custom") {
+    if (mode === "month" || mode === "custom") {
       data.ibft.successCountToday = scale(data.ibft.successCountMTD, factor);
       data.ibft.successCountYesterday = scale(data.ibft.successCountPrevMTD || Math.round(data.ibft.successCountMTD * 0.95), factor);
       data.ibft.successAmountToday = scale(data.ibft.successAmountMTD, factor);
@@ -1927,27 +1908,14 @@ function getFilteredData(rawData, filters) {
       data.ibft.complaintsYesterday = scale(data.ibft.complaintsPrevMTD || Math.round(data.ibft.complaintsMTD * 0.95), factor);
       data.ibft.successRateToday = calculateSuccessRate(data.ibft.successCountToday, data.ibft.failureCountToday);
       data.ibft.successRateYesterday = calculateSuccessRate(data.ibft.successCountYesterday, data.ibft.failureCountYesterday);
+      data.ibft.transactionAmountToday = data.ibft.successAmountToday;
+      data.ibft.transactionCountToday = data.ibft.successCountToday;
     }
   }
 
   // 3b. POS Operations
   if (data.pos) {
-    if (mode === "month") {
-      data.pos.successCountToday = data.pos.successCountMTD || 1650000;
-      data.pos.successCountYesterday = data.pos.successCountPrevMTD || 1580000;
-      data.pos.successAmountToday = data.pos.successAmountMTD || 105000000000;
-      data.pos.successAmountYesterday = data.pos.successAmountPrevMTD || 99000000000;
-      data.pos.failureCountToday = data.pos.failureCountMTD || 30200;
-      data.pos.failureCountYesterday = data.pos.failureCountPrevMTD || 31800;
-      data.pos.complaintsToday = data.pos.complaintsMTD || 390;
-      data.pos.complaintsYesterday = data.pos.complaintsPrevMTD || 410;
-      data.pos.successRateToday = data.pos.successRateMTD || 98.20;
-      data.pos.successRateYesterday = data.pos.successRatePrevMTD || 97.85;
-      data.pos.countToday = data.pos.successCountToday;
-      data.pos.countYesterday = data.pos.successCountYesterday;
-      data.pos.amountToday = data.pos.successAmountToday;
-      data.pos.amountYesterday = data.pos.successAmountYesterday;
-    } else if (mode === "custom") {
+    if (mode === "month" || mode === "custom") {
       const posMtdCount = data.pos.successCountMTD || 1650000;
       const posPrevCount = data.pos.successCountPrevMTD || 1580000;
       const posMtdAmt = data.pos.successAmountMTD || 105000000000;
@@ -1971,27 +1939,14 @@ function getFilteredData(rawData, filters) {
       data.pos.countYesterday = data.pos.successCountYesterday;
       data.pos.amountToday = data.pos.successAmountToday;
       data.pos.amountYesterday = data.pos.successAmountYesterday;
+      data.pos.transactionAmountToday = data.pos.successAmountToday;
+      data.pos.transactionCountToday = data.pos.successCountToday;
     }
   }
 
   // 3c. Ecommerce Operations
   if (data.ecom) {
-    if (mode === "month") {
-      data.ecom.successCountToday = data.ecom.successCountMTD || 1140000;
-      data.ecom.successCountYesterday = data.ecom.successCountPrevMTD || 1090000;
-      data.ecom.successAmountToday = data.ecom.successAmountMTD || 78000000000;
-      data.ecom.successAmountYesterday = data.ecom.successAmountPrevMTD || 74000000000;
-      data.ecom.failureCountToday = data.ecom.failureCountMTD || 29200;
-      data.ecom.failureCountYesterday = data.ecom.failureCountPrevMTD || 30500;
-      data.ecom.complaintsToday = data.ecom.complaintsMTD || 310;
-      data.ecom.complaintsYesterday = data.ecom.complaintsPrevMTD || 330;
-      data.ecom.successRateToday = data.ecom.successRateMTD || 97.50;
-      data.ecom.successRateYesterday = data.ecom.successRatePrevMTD || 97.10;
-      data.ecom.countToday = data.ecom.successCountToday;
-      data.ecom.countYesterday = data.ecom.successCountYesterday;
-      data.ecom.amountToday = data.ecom.successAmountToday;
-      data.ecom.amountYesterday = data.ecom.successAmountYesterday;
-    } else if (mode === "custom") {
+    if (mode === "month" || mode === "custom") {
       const ecomMtdCount = data.ecom.successCountMTD || 1140000;
       const ecomPrevCount = data.ecom.successCountPrevMTD || 1090000;
       const ecomMtdAmt = data.ecom.successAmountMTD || 78000000000;
@@ -2015,6 +1970,8 @@ function getFilteredData(rawData, filters) {
       data.ecom.countYesterday = data.ecom.successCountYesterday;
       data.ecom.amountToday = data.ecom.successAmountToday;
       data.ecom.amountYesterday = data.ecom.successAmountYesterday;
+      data.ecom.transactionAmountToday = data.ecom.successAmountToday;
+      data.ecom.transactionCountToday = data.ecom.successCountToday;
     }
   }
 
@@ -2022,10 +1979,7 @@ function getFilteredData(rawData, filters) {
   ["atmFailures", "raastFailures", "ibftFailures", "posFailures", "ecomFailures"].forEach(function (key) {
     if (Array.isArray(data[key])) {
       data[key].forEach(function (row) {
-        if (mode === "month") {
-          row.today = row.mtd;
-          row.yesterday = row.prevMtd || Math.round(row.mtd * 0.95);
-        } else if (mode === "custom") {
+        if (mode === "month" || mode === "custom") {
           row.today = scale(row.mtd, factor);
           row.yesterday = scale(row.prevMtd || Math.round(row.mtd * 0.95), factor);
         }
@@ -2037,45 +1991,59 @@ function getFilteredData(rawData, filters) {
   if (data.cardFinancials) {
     ["credit", "debit"].forEach(function (t) {
       const obj = data.cardFinancials[t];
-      if (obj && mode === "custom") {
-        obj.spendCurrent = scale(obj.spendCurrent, factor);
-        obj.spendPrevious = scale(obj.spendPrevious, factor);
-        obj.domesticTxnCount = scale(obj.domesticTxnCount, factor);
-        obj.domesticTxnCountPrevious = scale(obj.domesticTxnCountPrevious, factor);
-        obj.domesticTxnAmount = scale(obj.domesticTxnAmount, factor);
-        obj.domesticTxnAmountPrevious = scale(obj.domesticTxnAmountPrevious, factor);
-        obj.intlTxnCount = scale(obj.intlTxnCount, factor);
-        obj.intlTxnCountPrevious = scale(obj.intlTxnCountPrevious, factor);
-        obj.intlTxnAmount = scale(obj.intlTxnAmount, factor);
-        obj.intlTxnAmountPrevious = scale(obj.intlTxnAmountPrevious, factor);
-        obj.annualFeeIncome = scale(obj.annualFeeIncome, factor);
-        obj.annualFeeIncomePrevious = scale(obj.annualFeeIncomePrevious, factor);
-        obj.oifIncome = scale(obj.oifIncome, factor);
-        obj.oifIncomePrevious = scale(obj.oifIncomePrevious, factor);
-        obj.domesticInterchange = scale(obj.domesticInterchange, factor);
-        obj.domesticInterchangePrevious = scale(obj.domesticInterchangePrevious, factor);
-        obj.intlInterchange = scale(obj.intlInterchange, factor);
-        obj.intlInterchangePrevious = scale(obj.intlInterchangePrevious, factor);
-        obj.mdrIncome = scale(obj.mdrIncome, factor);
-        obj.mdrIncomePrevious = scale(obj.mdrIncomePrevious, factor);
+      if (obj) {
+        if (mode === "today") {
+          obj.spendCurrent = Math.round((obj.spendCurrent || (t === "credit" ? 24600000000 : 41200000000)) / 30);
+          obj.spendPrevious = Math.round((obj.spendPrevious || (t === "credit" ? 23100000000 : 39500000000)) / 30);
+          obj.domesticTxnCount = Math.round((obj.domesticTxnCount || (t === "credit" ? 1850000 : 5250000)) / 30);
+          obj.domesticTxnAmount = Math.round((obj.domesticTxnAmount || (t === "credit" ? 19800000000 : 38100000000)) / 30);
+          obj.intlTxnCount = Math.round((obj.intlTxnCount || (t === "credit" ? 96000 : 61000)) / 30);
+          obj.intlTxnAmount = Math.round((obj.intlTxnAmount || (t === "credit" ? 4800000000 : 3100000000)) / 30);
+        } else {
+          obj.spendCurrent = scale(obj.spendCurrent || (t === "credit" ? 24600000000 : 41200000000), factor);
+          obj.spendPrevious = scale(obj.spendPrevious || (t === "credit" ? 23100000000 : 39500000000), factor);
+          obj.domesticTxnCount = scale(obj.domesticTxnCount || (t === "credit" ? 1850000 : 5250000), factor);
+          obj.domesticTxnAmount = scale(obj.domesticTxnAmount || (t === "credit" ? 19800000000 : 38100000000), factor);
+          obj.intlTxnCount = scale(obj.intlTxnCount || (t === "credit" ? 96000 : 61000), factor);
+          obj.intlTxnAmount = scale(obj.intlTxnAmount || (t === "credit" ? 4800000000 : 3100000000), factor);
+        }
+        obj.cif = scale(obj.cif || (t === "credit" ? 148600 : 1285000), mode === "today" ? 1.0 : (1 + (factor - 1) * 0.05));
+        obj.aif = scale(obj.aif || (t === "credit" ? 115200 : 1100000), mode === "today" ? 1.0 : (1 + (factor - 1) * 0.05));
       }
+    });
+
+    data.cardFinancials.activeCreditCards = data.cardFinancials.credit ? data.cardFinancials.credit.cif : 342500;
+    data.cardFinancials.activeDebitCards = data.cardFinancials.debit ? data.cardFinancials.debit.cif : 1285000;
+    data.cardFinancials.creditSpendToday = data.cardFinancials.credit ? data.cardFinancials.credit.spendCurrent : 485000000;
+    data.cardFinancials.debitSpendToday = data.cardFinancials.debit ? data.cardFinancials.debit.spendCurrent : 890000000;
+  }
+
+  // 6. Chargeback summary
+  data.chargebackSummary = {
+    retrievalCount: Math.round(185 * (mode === "today" ? 1.0 : factor)),
+    chargebackCount: Math.round(142 * (mode === "today" ? 1.0 : factor)),
+    preArbCount: Math.round(75 * (mode === "today" ? 1.0 : factor)),
+    fraudCount: Math.round(50 * (mode === "today" ? 1.0 : factor))
+  };
+
+  // 7. Active Cards
+  if (Array.isArray(data.activeCards)) {
+    data.activeCards.forEach(function (c) {
+      c.count = Math.round(c.count * (mode === "today" ? 1.0 : (1 + (factor - 1) * 0.03)));
     });
   }
 
-  // 6. Chargeback
-  if (data.chargeback) {
-    ["credit", "debit"].forEach(function (t) {
-      const obj = data.chargeback[t];
-      if (obj && mode === "custom") {
-        Object.keys(obj).forEach(function (k) {
-          if (obj[k] && typeof obj[k] === "object") {
-            obj[k].count = scale(obj[k].count, factor);
-            obj[k].amount = scale(obj[k].amount, factor);
-            obj[k].prevCount = scale(obj[k].prevCount, factor);
-            obj[k].prevAmount = scale(obj[k].prevAmount, factor);
-          }
-        });
-      }
+  // 8. Card Inventory
+  if (Array.isArray(data.cardInventory)) {
+    data.cardInventory.forEach(function (inv) {
+      inv.qty = Math.round(inv.qty * (mode === "today" ? 1.0 : (1 + (factor - 1) * 0.02)));
+    });
+  }
+
+  // 9. Nostro
+  if (Array.isArray(data.nostro)) {
+    data.nostro.forEach(function (n) {
+      n.balance = Math.round(n.balance * (mode === "today" ? 1.0 : (1 + (factor - 1) * 0.04)));
     });
   }
 
@@ -2513,15 +2481,27 @@ function buildHomeSpendTrendSVG(data) {
   var graphH = H - padT - padB;
 
   var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-  var creditVals = [18.5, 20.2, 21.8, 23.0, 24.1, 24.6];
-  var debitVals =  [31.2, 33.5, 36.0, 38.2, 39.8, 41.2];
-  var maxVal = 50;
+  
+  var fin = data && data.cardFinancials ? data.cardFinancials : {};
+  var credBn = (fin.credit ? fin.credit.spendCurrent : 24600000000) / 1e9;
+  var debBn = (fin.debit ? fin.debit.spendCurrent : 41200000000) / 1e9;
+
+  var creditVals = [credBn * 0.75, credBn * 0.82, credBn * 0.88, credBn * 0.93, credBn * 0.98, credBn];
+  var debitVals =  [debBn * 0.75, debBn * 0.81, debBn * 0.87, debBn * 0.92, debBn * 0.96, debBn];
+  
+  var maxVal = Math.max(1, Math.ceil(Math.max.apply(null, debitVals.concat(creditVals)) * 1.15));
+
+  function fmtValLabel(v) {
+    if (v >= 1) return (v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)) + "B";
+    return (v * 1000).toFixed(0) + "M";
+  }
 
   var gridLines = "";
-  [0, 12.5, 25, 37.5, 50].forEach(function(v) {
-    var y = padT + graphH - (v / maxVal) * graphH;
-    gridLines += '<line x1="' + padL + '" y1="' + y + '" x2="' + (W - padR) + '" y2="' + y + '" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="3 3"/>';
-    gridLines += '<text x="' + (padL - 8) + '" y="' + (y + 3) + '" font-size="10" fill="#64748B" text-anchor="end">' + v + 'B</text>';
+  [0, 0.25, 0.5, 0.75, 1.0].forEach(function(frac) {
+    var v = maxVal * frac;
+    var y = padT + graphH - frac * graphH;
+    gridLines += '<line x1="' + padL + '" y1="' + y.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + y.toFixed(1) + '" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="3 3"/>';
+    gridLines += '<text x="' + (padL - 8) + '" y="' + (y + 3).toFixed(1) + '" font-size="10" fill="#64748B" text-anchor="end">' + fmtValLabel(v) + '</text>';
   });
 
   var pointsCredit = [], pointsDebit = [];
@@ -2531,7 +2511,7 @@ function buildHomeSpendTrendSVG(data) {
     var yD = padT + graphH - (debitVals[i] / maxVal) * graphH;
     pointsCredit.push({ x: x, y: yC, val: creditVals[i], month: m });
     pointsDebit.push({ x: x, y: yD, val: debitVals[i], month: m });
-    gridLines += '<text x="' + x + '" y="' + (H - 12) + '" font-size="10" font-weight="600" fill="#64748B" text-anchor="middle">' + m + '</text>';
+    gridLines += '<text x="' + x.toFixed(1) + '" y="' + (H - 12) + '" font-size="10" font-weight="600" fill="#64748B" text-anchor="middle">' + m + '</text>';
   });
 
   var pathC = "M " + pointsCredit.map(function(p){ return p.x.toFixed(1) + " " + p.y.toFixed(1); }).join(" L ");
@@ -2542,10 +2522,10 @@ function buildHomeSpendTrendSVG(data) {
 
   var circlesC = "", circlesD = "";
   pointsCredit.forEach(function(p) {
-    circlesC += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4" fill="#117ABF" stroke="#ffffff" stroke-width="2" class="chart-point-node"><title>Credit Cards (' + p.month + '): PKR ' + p.val + ' Bn</title></circle>';
+    circlesC += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4" fill="#117ABF" stroke="#ffffff" stroke-width="2" class="chart-point-node"><title>Credit Cards (' + p.month + '): PKR ' + fmtValLabel(p.val) + '</title></circle>';
   });
   pointsDebit.forEach(function(p) {
-    circlesD += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4" fill="#059669" stroke="#ffffff" stroke-width="2" class="chart-point-node"><title>Debit Cards (' + p.month + '): PKR ' + p.val + ' Bn</title></circle>';
+    circlesD += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4" fill="#059669" stroke="#ffffff" stroke-width="2" class="chart-point-node"><title>Debit Cards (' + p.month + '): PKR ' + fmtValLabel(p.val) + '</title></circle>';
   });
 
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" style="width:100%;height:auto;display:block;">'
@@ -2569,21 +2549,39 @@ function buildHomeAdcChannelSVG(data) {
   var graphW = W - padL - padR;
   var graphH = H - padT - padB;
 
+  var atm = data && data.atm ? data.atm : {};
+  var raast = data && data.raast ? data.raast : {};
+  var ibft = data && data.ibft ? data.ibft : {};
+  var pos = data && data.pos ? data.pos : {};
+  var ecom = data && data.ecom ? data.ecom : {};
+
+  var atmAmt = (atm.withdrawalAmountToday || 17650000000) / 1e9;
+  var raastAmt = (raast.transactionAmountToday || raast.successAmountToday || 41200000000) / 1e9;
+  var ibftAmt = (ibft.transactionAmountToday || ibft.successAmountToday || 66800000000) / 1e9;
+  var posAmt = (pos.transactionAmountToday || pos.successAmountToday || 105000000000) / 1e9;
+  var ecomAmt = (ecom.transactionAmountToday || ecom.successAmountToday || 78000000000) / 1e9;
+
   var channels = [
-    { name: "ATM", amt: 17.65, color: "#117ABF" },
-    { name: "RAAST", amt: 41.20, color: "#0D5F92" },
-    { name: "IBFT", amt: 66.80, color: "#2563EB" },
-    { name: "POS", amt: 105.00, color: "#059669" },
-    { name: "ECOM", amt: 78.00, color: "#D97706" }
+    { name: "ATM", amt: atmAmt, color: "#117ABF" },
+    { name: "RAAST", amt: raastAmt, color: "#0D5F92" },
+    { name: "IBFT", amt: ibftAmt, color: "#2563EB" },
+    { name: "POS", amt: posAmt, color: "#059669" },
+    { name: "ECOM", amt: ecomAmt, color: "#D97706" }
   ];
 
-  var maxVal = 120;
+  var maxVal = Math.max(0.1, Math.max(atmAmt, raastAmt, ibftAmt, posAmt, ecomAmt) * 1.2);
+
+  function fmtChannelVal(v) {
+    if (v >= 1) return (v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)) + "B";
+    return (v * 1000).toFixed(0) + "M";
+  }
 
   var gridLines = "";
-  [0, 30, 60, 90, 120].forEach(function(v) {
-    var y = padT + graphH - (v / maxVal) * graphH;
-    gridLines += '<line x1="' + padL + '" y1="' + y + '" x2="' + (W - padR) + '" y2="' + y + '" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="3 3"/>';
-    gridLines += '<text x="' + (padL - 8) + '" y="' + (y + 3) + '" font-size="10" fill="#64748B" text-anchor="end">' + v + 'B</text>';
+  [0, 0.25, 0.5, 0.75, 1.0].forEach(function(frac) {
+    var v = maxVal * frac;
+    var y = padT + graphH - frac * graphH;
+    gridLines += '<line x1="' + padL + '" y1="' + y.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + y.toFixed(1) + '" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="3 3"/>';
+    gridLines += '<text x="' + (padL - 8) + '" y="' + (y + 3).toFixed(1) + '" font-size="10" fill="#64748B" text-anchor="end">' + fmtChannelVal(v) + '</text>';
   });
 
   var barWidth = 42;
@@ -2596,8 +2594,8 @@ function buildHomeAdcChannelSVG(data) {
     var y = padT + graphH - h;
 
     bars += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barWidth + '" height="' + h.toFixed(1) + '" fill="' + c.color + '" rx="4" class="chart-bar-seg">'
-      + '<title>' + c.name + ' Volume: PKR ' + c.amt + ' Bn</title></rect>';
-    bars += '<text x="' + (x + barWidth/2).toFixed(1) + '" y="' + (y - 5).toFixed(1) + '" font-size="10" font-weight="700" fill="#1F2937" text-anchor="middle">' + c.amt + 'B</text>';
+      + '<title>' + c.name + ' Volume: PKR ' + fmtChannelVal(c.amt) + '</title></rect>';
+    bars += '<text x="' + (x + barWidth/2).toFixed(1) + '" y="' + (y - 5).toFixed(1) + '" font-size="10" font-weight="700" fill="#1F2937" text-anchor="middle">' + fmtChannelVal(c.amt) + '</text>';
     bars += '<text x="' + (x + barWidth/2).toFixed(1) + '" y="' + (H - 12) + '" font-size="10.5" font-weight="600" fill="#64748B" text-anchor="middle">' + c.name + '</text>';
   });
 
@@ -2609,11 +2607,12 @@ function buildHomeDisputesDonutSVG(data) {
   var W = 580, H = 210;
   var cx = 130, cy = 105, r = 70, innerR = 45;
 
+  var cb = data && data.chargebackSummary ? data.chargebackSummary : {};
   var items = [
-    { label: "Retrieval Requests", count: 185, color: "#117ABF" },
-    { label: "Chargeback Claims", count: 142, color: "#DC2626" },
-    { label: "Pre-Arbitration", count: 75, color: "#D97706" },
-    { label: "Fraud Complaints", count: 50, color: "#7C3AED" }
+    { label: "Retrieval Requests", count: cb.retrievalCount || 185, color: "#117ABF" },
+    { label: "Chargeback Claims", count: cb.chargebackCount || 142, color: "#DC2626" },
+    { label: "Pre-Arbitration", count: cb.preArbCount || 75, color: "#D97706" },
+    { label: "Fraud Complaints", count: cb.fraudCount || 50, color: "#7C3AED" }
   ];
 
   var total = items.reduce(function(s, i){ return s + i.count; }, 0) || 1;
@@ -2642,11 +2641,11 @@ function buildHomeDisputesDonutSVG(data) {
             " A " + innerR + " " + innerR + " 0 " + largeArc + " 0 " + ix1.toFixed(1) + " " + iy1.toFixed(1) +
             " Z";
 
-    paths += '<path d="' + d + '" fill="' + item.color + '" class="chart-bar-seg"><title>' + item.label + ': ' + item.count + ' cases (' + ((item.count/total)*100).toFixed(1) + '%)</title></path>';
+    paths += '<path d="' + d + '" fill="' + item.color + '" class="chart-bar-seg"><title>' + item.label + ': ' + formatNumber(item.count) + ' cases (' + ((item.count/total)*100).toFixed(1) + '%)</title></path>';
     startAngle = endAngle;
   });
 
-  var centerText = '<text x="' + cx + '" y="' + (cy - 4) + '" font-size="16" font-weight="700" fill="#0D5F92" text-anchor="middle">' + total + '</text>'
+  var centerText = '<text x="' + cx + '" y="' + (cy - 4) + '" font-size="16" font-weight="700" fill="#0D5F92" text-anchor="middle">' + formatNumber(total) + '</text>'
     + '<text x="' + cx + '" y="' + (cy + 12) + '" font-size="10" font-weight="600" fill="#64748B" text-anchor="middle">Total Cases</text>';
 
   var legends = "";
@@ -2656,7 +2655,7 @@ function buildHomeDisputesDonutSVG(data) {
     var pct = ((item.count / total) * 100).toFixed(1) + "%";
     legends += '<rect x="' + lx + '" y="' + y + '" width="12" height="12" fill="' + item.color + '" rx="3"/>'
       + '<text x="' + (lx + 20) + '" y="' + (y + 10) + '" font-size="11.5" font-weight="600" fill="#1F2937">' + item.label + '</text>'
-      + '<text x="' + (lx + 220) + '" y="' + (y + 10) + '" font-size="11.5" font-weight="700" fill="#0D5F92" text-anchor="end">' + item.count + ' (' + pct + ')</text>';
+      + '<text x="' + (lx + 220) + '" y="' + (y + 10) + '" font-size="11.5" font-weight="700" fill="#0D5F92" text-anchor="end">' + formatNumber(item.count) + ' (' + pct + ')</text>';
   });
 
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" style="width:100%;height:auto;display:block;">'
@@ -2666,11 +2665,17 @@ function buildHomeDisputesDonutSVG(data) {
 function buildHomeReconGaugeSVG(data) {
   var W = 580, H = 210;
 
+  var atmUptime = data && data.atm && data.atm.uptimeToday !== undefined ? data.atm.uptimeToday : 97.8;
+  var secAuth = data && data.secureOperations && data.secureOperations.successRateToday !== undefined ? data.secureOperations.successRateToday : 98.5;
+  
+  var usdBal = data && data.nostro && data.nostro[0] ? data.nostro[0].balance : 18600000;
+  var aedBal = data && data.nostro && data.nostro[1] ? data.nostro[1].balance : 6200000;
+
   var metrics = [
     { title: "Reconciliation GL Matched Rate", pct: 96.4, color: "#059669", subtitle: "164 / 170 GLs Balanced" },
-    { title: "ATM Fleet Uptime SLA", pct: 97.8, color: "#117ABF", subtitle: "Target: >= 98.0%" },
-    { title: "3DS Auth Success Rate", pct: 98.5, color: "#2563EB", subtitle: "Target: >= 97.0%" },
-    { title: "Nostro Account Liquidity", pct: 99.2, color: "#D97706", subtitle: "USD 18.6M / AED 6.2M" }
+    { title: "ATM Fleet Uptime SLA", pct: atmUptime, color: "#117ABF", subtitle: "Target: >= 98.0%" },
+    { title: "3DS Auth Success Rate", pct: secAuth, color: "#2563EB", subtitle: "Target: >= 97.0%" },
+    { title: "Nostro Account Liquidity", pct: 99.2, color: "#D97706", subtitle: "USD " + formatNumber(usdBal / 1e6) + "M / AED " + formatNumber(aedBal / 1e6) + "M" }
   ];
 
   var bars = "";
@@ -2685,7 +2690,7 @@ function buildHomeReconGaugeSVG(data) {
       + '<text x="340" y="' + y + '" font-size="11.5" font-weight="700" fill="' + m.color + '" text-anchor="end">' + m.pct.toFixed(1) + '%</text>'
       + '<text x="360" y="' + y + '" font-size="10.5" font-weight="500" fill="#64748B">' + m.subtitle + '</text>'
       + '<rect x="20" y="' + (y + 8) + '" width="' + barW + '" height="12" fill="#E2E8F0" rx="6"/>'
-      + '<rect x="20" y="' + (y + 8) + '" width="' + filledW.toFixed(1) + '" height="12" fill="' + m.color + '" rx="6" class="chart-bar-seg"><title>' + m.title + ': ' + m.pct + '%</title></rect>';
+      + '<rect x="20" y="' + (y + 8) + '" width="' + filledW.toFixed(1) + '" height="12" fill="' + m.color + '" rx="6" class="chart-bar-seg"><title>' + m.title + ': ' + m.pct.toFixed(1) + '%</title></rect>';
   });
 
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" style="width:100%;height:auto;display:block;">'
@@ -2694,14 +2699,27 @@ function buildHomeReconGaugeSVG(data) {
 
 function buildHomeCardPerformanceSVG(data) {
   var W = 580, H = 210, padL = 140, padR = 40, padT = 20;
+
+  var activeCards = data && data.activeCards ? data.activeCards : [];
+  
+  function getCountFor(productName, fallback) {
+    var match = activeCards.find(function(c) {
+      return c.product && c.product.toLowerCase().indexOf(productName.toLowerCase()) !== -1;
+    });
+    return match ? match.count : fallback;
+  }
+
   var items = [
-    { label: "Debit Classic", count: 612000, color: "#117ABF" },
-    { label: "Debit Gold", count: 188000, color: "#0D5F92" },
-    { label: "Credit Classic", count: 94000, color: "#2563EB" },
-    { label: "Debit Platinum", count: 63500, color: "#059669" },
-    { label: "Credit Gold", count: 41200, color: "#D97706" }
+    { label: "Debit Classic", count: getCountFor("Debit Classic", 612000), color: "#117ABF" },
+    { label: "Debit Gold", count: getCountFor("Debit Gold", 188000), color: "#0D5F92" },
+    { label: "Credit Classic", count: getCountFor("Credit Classic", 94000), color: "#2563EB" },
+    { label: "Debit Platinum", count: getCountFor("Debit Platinum", 63500), color: "#059669" },
+    { label: "Credit Gold", count: getCountFor("Credit Gold", 41200), color: "#D97706" }
   ];
-  var maxVal = 700000;
+
+  var maxVal = Math.max.apply(null, items.map(function(i){ return i.count; })) * 1.15;
+  if (maxVal <= 0) maxVal = 700000;
+
   var barH = 22, gap = 14;
   var bars = "";
 
@@ -2823,59 +2841,135 @@ function buildHomeInventoryOverviewSVG(data) {
     + donutPaths + centerText + bars + '</svg>';
 }
 
-function buildHomeYearlyTrendSVG(data) {
+function getYearMetrics(yr, data) {
+  var currentCalendarYear = new Date().getFullYear(); // 2026
+  if (yr === currentCalendarYear) {
+    var fin = data && data.cardFinancials ? data.cardFinancials : {};
+    var curCredBn = (fin.credit ? fin.credit.spendCurrent : 24600000000) / 1e9;
+    var curDebBn = (fin.debit ? fin.debit.spendCurrent : 41200000000) / 1e9;
+    var atmUptime = data && data.atm && data.atm.uptimeToday !== undefined ? data.atm.uptimeToday : 99.4;
+
+    var credVal = Math.round((curCredBn >= 10 ? curCredBn * 23.5 : 580) * 10) / 10;
+    var debVal = Math.round((curDebBn >= 10 ? curDebBn * 19.3 : 795) * 10) / 10;
+    var volVal = Math.round((credVal + debVal) * 0.35);
+
+    return {
+      yearLabel: yr + " YTD",
+      isYTD: true,
+      creditSpend: credVal,
+      debitSpend: debVal,
+      volume: volVal,
+      sla: Number(Number(atmUptime).toFixed(1))
+    };
+  }
+
+  var historicalTable = {
+    2025: { credit: 485.0, debit: 665.0, vol: 410.0, sla: 99.1 },
+    2024: { credit: 380.0, debit: 550.0, vol: 350.0, sla: 98.8 },
+    2023: { credit: 300.0, debit: 450.0, vol: 290.0, sla: 98.5 },
+    2022: { credit: 240.0, debit: 360.0, vol: 240.0, sla: 97.8 },
+    2021: { credit: 180.0, debit: 280.0, vol: 190.0, sla: 97.2 },
+    2020: { credit: 140.0, debit: 220.0, vol: 150.0, sla: 96.5 },
+    2019: { credit: 115.0, debit: 180.0, vol: 120.0, sla: 95.8 },
+    2018: { credit: 95.0,  debit: 145.0, vol: 95.0,  sla: 95.2 },
+    2017: { credit: 78.0,  debit: 118.0, vol: 76.0,  sla: 94.6 },
+    2016: { credit: 64.0,  debit: 95.0,  vol: 60.0,  sla: 94.0 },
+    2015: { credit: 52.0,  debit: 76.0,  vol: 48.0,  sla: 93.4 },
+    2014: { credit: 42.0,  debit: 61.0,  vol: 38.0,  sla: 92.8 },
+    2013: { credit: 34.0,  debit: 49.0,  vol: 30.0,  sla: 92.1 },
+    2012: { credit: 27.0,  debit: 39.0,  vol: 24.0,  sla: 91.5 },
+    2011: { credit: 22.0,  debit: 31.0,  vol: 19.0,  sla: 90.8 },
+    2010: { credit: 17.0,  debit: 24.0,  vol: 15.0,  sla: 90.1 },
+    2009: { credit: 14.0,  debit: 19.0,  vol: 12.0,  sla: 89.4 },
+    2008: { credit: 11.0,  debit: 15.0,  vol: 9.5,   sla: 88.7 },
+    2007: { credit: 8.5,   debit: 11.5,  vol: 7.2,   sla: 88.0 }
+  };
+
+  if (historicalTable[yr]) {
+    return {
+      yearLabel: String(yr),
+      isYTD: false,
+      creditSpend: historicalTable[yr].credit,
+      debitSpend: historicalTable[yr].debit,
+      volume: historicalTable[yr].vol,
+      sla: historicalTable[yr].sla
+    };
+  }
+
+  var diff = currentCalendarYear - yr;
+  var factor = Math.pow(0.82, diff);
+  return {
+    yearLabel: String(yr),
+    isYTD: false,
+    creditSpend: Math.max(1, Math.round(580 * factor * 10) / 10),
+    debitSpend: Math.max(1, Math.round(795 * factor * 10) / 10),
+    volume: Math.max(1, Math.round(480 * factor * 10) / 10),
+    sla: Math.max(80, Math.round((99.4 - diff * 0.7) * 10) / 10)
+  };
+}
+
+function buildHomeYearlyTrendSVG(data, targetEndYear) {
   var W = 1180, H = 400;
   var padL = 60, padR = 20, padT = 55, padB = 40;
   var chartW = W - padL - padR;
   var chartH = H - padT - padB;
 
-  var years = ["2021", "2022", "2023", "2024", "2025 YTD"];
+  var currentCalendarYear = new Date().getFullYear(); // 2026
+  var endYear = targetEndYear || appState.multiYearEndYear || currentCalendarYear;
+  if (endYear > currentCalendarYear) endYear = currentCalendarYear;
   
-  var creditSpendData = [180.0, 240.0, 350.0, 485.0, 580.0]; // PKR Billions
-  var debitSpendData =  [240.0, 340.0, 460.0, 665.0, 795.0]; // PKR Billions
-  var volumeData =      [180.0, 240.0, 320.0, 410.0, 480.0]; // Million Txns
-  var slaData =         [97.2,  97.8,  98.5,  99.1,  99.4];  // SLA %
+  var yearList = [endYear - 5, endYear - 4, endYear - 3, endYear - 2, endYear - 1, endYear];
+  var yearMetrics = yearList.map(function(y) { return getYearMetrics(y, data); });
 
-  var maxVal = 1000;
+  var years = yearMetrics.map(function(m) { return m.yearLabel; });
+  var creditSpendData = yearMetrics.map(function(m) { return m.creditSpend; });
+  var debitSpendData = yearMetrics.map(function(m) { return m.debitSpend; });
+  var volumeData = yearMetrics.map(function(m) { return m.volume; });
+  var slaData = yearMetrics.map(function(m) { return m.sla; });
+
+  var maxValInWindow = Math.max.apply(null, debitSpendData.concat(creditSpendData, volumeData));
+  var maxVal = Math.max(200, Math.ceil((maxValInWindow * 1.25) / 100) * 100);
 
   var ptsCredit = [], ptsDebit = [], ptsVol = [], ptsSLA = [];
 
-  years.forEach(function(yr, idx) {
+  years.forEach(function(yrLabel, idx) {
     var x = padL + (idx / (years.length - 1)) * chartW;
     var yC = padT + chartH - (creditSpendData[idx] / maxVal) * chartH;
     var yD = padT + chartH - (debitSpendData[idx] / maxVal) * chartH;
     var yV = padT + chartH - (volumeData[idx] / maxVal) * chartH;
     
-    // Scale SLA % (95% -> 200, 100% -> 800) for visual harmony
-    var slaValScaled = ((slaData[idx] - 95) / 5) * 600 + 200;
+    // Scale SLA % (85% -> 0.1 * maxVal, 100% -> 0.8 * maxVal) for visual harmony
+    var slaValScaled = ((slaData[idx] - 85) / 15) * (maxVal * 0.7) + (maxVal * 0.1);
     var yS = padT + chartH - (slaValScaled / maxVal) * chartH;
 
-    ptsCredit.push({ x: x, y: yC, val: creditSpendData[idx], label: yr });
-    ptsDebit.push({ x: x, y: yD, val: debitSpendData[idx], label: yr });
-    ptsVol.push({ x: x, y: yV, val: volumeData[idx], label: yr });
-    ptsSLA.push({ x: x, y: yS, val: slaData[idx], label: yr });
+    ptsCredit.push({ x: x, y: yC, val: creditSpendData[idx], label: yrLabel });
+    ptsDebit.push({ x: x, y: yD, val: debitSpendData[idx], label: yrLabel });
+    ptsVol.push({ x: x, y: yV, val: volumeData[idx], label: yrLabel });
+    ptsSLA.push({ x: x, y: yS, val: slaData[idx], label: yrLabel });
   });
 
   // DENSE EXECUTIVE ANALYTICAL GRID (Graph-paper visual effect)
   var gridHTML = "";
 
-  // 1. Horizontal Grid Lines (11 steps: 0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000)
-  for (var v = 0; v <= 1000; v += 100) {
-    var gy = padT + chartH - (v / maxVal) * chartH;
-    var isMajor = (v % 200 === 0);
+  // 1. Horizontal Grid Lines (11 steps: 0% to 100%)
+  for (var i = 0; i <= 10; i++) {
+    var frac = i / 10;
+    var v = maxVal * frac;
+    var gy = padT + chartH - frac * chartH;
+    var isMajor = (i % 2 === 0);
     var strokeColor = isMajor ? "#E2E8F0" : "#F1F5F9";
     var dashStyle = isMajor ? "3 3" : "2 2";
     
     gridHTML += '<line x1="' + padL + '" y1="' + gy.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + gy.toFixed(1) + '" stroke="' + strokeColor + '" stroke-width="1" stroke-dasharray="' + dashStyle + '"/>';
     
     if (isMajor) {
-      var lblText = v === 1000 ? '1.0 T' : v + ' B';
+      var lblText = v >= 1000 ? (v / 1000).toFixed(1) + ' T' : v.toFixed(0) + ' B';
       gridHTML += '<text x="' + (padL - 8) + '" y="' + (gy + 4).toFixed(1) + '" font-size="10.5" font-weight="600" fill="#64748B" text-anchor="end">' + lblText + '</text>';
     }
   }
 
-  // 2. Vertical Grid Lines (Dense vertical grid columns including mid-quarter columns)
-  var numSubDivisions = 16;
+  // 2. Vertical Grid Lines (20 sub-divisions for 6 points / 5 intervals)
+  var numSubDivisions = 20;
   for (var k = 0; k <= numSubDivisions; k++) {
     var gx = padL + (k / numSubDivisions) * chartW;
     var isYearMarker = (k % 4 === 0);
@@ -2887,9 +2981,9 @@ function buildHomeYearlyTrendSVG(data) {
   }
 
   // Vertical Year Labels on X-Axis
-  years.forEach(function(yr, idx) {
+  years.forEach(function(yrLabel, idx) {
     var x = padL + (idx / (years.length - 1)) * chartW;
-    gridHTML += '<text x="' + x.toFixed(1) + '" y="' + (H - 10) + '" font-size="12" font-weight="700" fill="#1E293B" text-anchor="middle">' + yr + '</text>';
+    gridHTML += '<text id="home-yt-xlabel-' + idx + '" x="' + x.toFixed(1) + '" y="' + (H - 10) + '" font-size="12" font-weight="700" fill="#1E293B" text-anchor="middle" style="transition: all 0.4s ease-in-out;">' + yrLabel + '</text>';
   });
 
   // Helper for smooth Bezier curves
@@ -2918,24 +3012,24 @@ function buildHomeYearlyTrendSVG(data) {
   // Dots and Data Nodes with hover tooltips
   var dotsHTML = "";
 
-  ptsDebit.forEach(function(pt) {
-    dotsHTML += '<circle cx="' + pt.x.toFixed(1) + '" cy="' + pt.y.toFixed(1) + '" r="6.5" fill="#059669" stroke="#FFFFFF" stroke-width="2.5" class="chart-point-node"><title>' + pt.label + ' Debit Card Spend: PKR ' + pt.val + ' Billion</title></circle>'
-      + '<text x="' + pt.x.toFixed(1) + '" y="' + (pt.y - 14).toFixed(1) + '" font-size="11" font-weight="700" fill="#047857" text-anchor="middle">PKR ' + pt.val + 'B</text>';
+  ptsDebit.forEach(function(pt, idx) {
+    dotsHTML += '<circle id="home-yt-circle-debit-' + idx + '" cx="' + pt.x.toFixed(1) + '" cy="' + pt.y.toFixed(1) + '" r="6.5" fill="#059669" stroke="#FFFFFF" stroke-width="2.5" class="chart-point-node" style="transition: all 0.4s ease-in-out;"><title>' + pt.label + ' Debit Card Spend: PKR ' + pt.val + ' Billion</title></circle>'
+      + '<text id="home-yt-text-debit-' + idx + '" x="' + pt.x.toFixed(1) + '" y="' + (pt.y - 14).toFixed(1) + '" font-size="11" font-weight="700" fill="#047857" text-anchor="middle" style="transition: all 0.4s ease-in-out;">PKR ' + pt.val + 'B</text>';
   });
 
-  ptsCredit.forEach(function(pt) {
-    dotsHTML += '<circle cx="' + pt.x.toFixed(1) + '" cy="' + pt.y.toFixed(1) + '" r="6.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="2.5" class="chart-point-node"><title>' + pt.label + ' Credit Card Spend: PKR ' + pt.val + ' Billion</title></circle>'
-      + '<text x="' + pt.x.toFixed(1) + '" y="' + (pt.y + 22).toFixed(1) + '" font-size="11" font-weight="700" fill="#1D4ED8" text-anchor="middle">PKR ' + pt.val + 'B</text>';
+  ptsCredit.forEach(function(pt, idx) {
+    dotsHTML += '<circle id="home-yt-circle-credit-' + idx + '" cx="' + pt.x.toFixed(1) + '" cy="' + pt.y.toFixed(1) + '" r="6.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="2.5" class="chart-point-node" style="transition: all 0.4s ease-in-out;"><title>' + pt.label + ' Credit Card Spend: PKR ' + pt.val + ' Billion</title></circle>'
+      + '<text id="home-yt-text-credit-' + idx + '" x="' + pt.x.toFixed(1) + '" y="' + (pt.y + 22).toFixed(1) + '" font-size="11" font-weight="700" fill="#1D4ED8" text-anchor="middle" style="transition: all 0.4s ease-in-out;">PKR ' + pt.val + 'B</text>';
   });
 
-  ptsVol.forEach(function(pt) {
-    dotsHTML += '<circle cx="' + pt.x.toFixed(1) + '" cy="' + pt.y.toFixed(1) + '" r="6" fill="#D97706" stroke="#FFFFFF" stroke-width="2.5" class="chart-point-node"><title>' + pt.label + ' ADC Txn Volume: ' + pt.val + ' Million Txns</title></circle>'
-      + '<text x="' + pt.x.toFixed(1) + '" y="' + (pt.y - 14).toFixed(1) + '" font-size="11" font-weight="700" fill="#B45309" text-anchor="middle">' + pt.val + 'M Txns</text>';
+  ptsVol.forEach(function(pt, idx) {
+    dotsHTML += '<circle id="home-yt-circle-vol-' + idx + '" cx="' + pt.x.toFixed(1) + '" cy="' + pt.y.toFixed(1) + '" r="6" fill="#D97706" stroke="#FFFFFF" stroke-width="2.5" class="chart-point-node" style="transition: all 0.4s ease-in-out;"><title>' + pt.label + ' ADC Txn Volume: ' + pt.val + ' Million Txns</title></circle>'
+      + '<text id="home-yt-text-vol-' + idx + '" x="' + pt.x.toFixed(1) + '" y="' + (pt.y - 14).toFixed(1) + '" font-size="11" font-weight="700" fill="#B45309" text-anchor="middle" style="transition: all 0.4s ease-in-out;">' + pt.val + 'M Txns</text>';
   });
 
-  ptsSLA.forEach(function(pt) {
-    dotsHTML += '<circle cx="' + pt.x.toFixed(1) + '" cy="' + pt.y.toFixed(1) + '" r="5.5" fill="#7C3AED" stroke="#FFFFFF" stroke-width="2" class="chart-point-node"><title>' + pt.label + ' System SLA Health: ' + pt.val + '%</title></circle>'
-      + '<text x="' + pt.x.toFixed(1) + '" y="' + (pt.y + 20).toFixed(1) + '" font-size="10.5" font-weight="700" fill="#6D28D9" text-anchor="middle">' + pt.val + '% SLA</text>';
+  ptsSLA.forEach(function(pt, idx) {
+    dotsHTML += '<circle id="home-yt-circle-sla-' + idx + '" cx="' + pt.x.toFixed(1) + '" cy="' + pt.y.toFixed(1) + '" r="5.5" fill="#7C3AED" stroke="#FFFFFF" stroke-width="2" class="chart-point-node" style="transition: all 0.4s ease-in-out;"><title>' + pt.label + ' System SLA Health: ' + pt.val + '%</title></circle>'
+      + '<text id="home-yt-text-sla-' + idx + '" x="' + pt.x.toFixed(1) + '" y="' + (pt.y + 20).toFixed(1) + '" font-size="10.5" font-weight="700" fill="#6D28D9" text-anchor="middle" style="transition: all 0.4s ease-in-out;">' + pt.val + '% SLA</text>';
   });
 
   // Legend Bar Top Right
@@ -2946,23 +3040,192 @@ function buildHomeYearlyTrendSVG(data) {
     + '<rect x="500" y="0" width="12" height="12" fill="#7C3AED" rx="3"/><text x="518" y="10" font-size="11.5" font-weight="600" fill="#1E293B">SLA Rate (%)</text>'
     + '</g>';
 
-  var svgCode = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" style="width:100%;height:auto;display:block;">'
+  var svgCode = '<svg id="home-yearly-trend-svg" viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" style="width:100%;height:auto;display:block;">'
     + '<defs>'
     + '<linearGradient id="creditGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2563EB" stop-opacity="0.22"/><stop offset="100%" stop-color="#2563EB" stop-opacity="0.01"/></linearGradient>'
     + '<linearGradient id="debitGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#059669" stop-opacity="0.18"/><stop offset="100%" stop-color="#059669" stop-opacity="0.01"/></linearGradient>'
     + '</defs>'
     + gridHTML
-    + '<path d="' + areaDebit + '" fill="url(#debitGrad)"/>'
-    + '<path d="' + areaCredit + '" fill="url(#creditGrad)"/>'
-    + '<path d="' + dDebit + '" fill="none" stroke="#059669" stroke-width="3.5" stroke-linecap="round"/>'
-    + '<path d="' + dCredit + '" fill="none" stroke="#2563EB" stroke-width="3.5" stroke-linecap="round"/>'
-    + '<path d="' + dVol + '" fill="none" stroke="#D97706" stroke-width="3" stroke-dasharray="6 4" stroke-linecap="round"/>'
-    + '<path d="' + dSLA + '" fill="none" stroke="#7C3AED" stroke-width="2.5" stroke-linecap="round"/>'
+    + '<path id="home-yt-area-debit" d="' + areaDebit + '" fill="url(#debitGrad)" style="transition: d 0.4s ease-in-out;"/>'
+    + '<path id="home-yt-area-credit" d="' + areaCredit + '" fill="url(#creditGrad)" style="transition: d 0.4s ease-in-out;"/>'
+    + '<path id="home-yt-path-debit" d="' + dDebit + '" fill="none" stroke="#059669" stroke-width="3.5" stroke-linecap="round" style="transition: d 0.4s ease-in-out;"/>'
+    + '<path id="home-yt-path-credit" d="' + dCredit + '" fill="none" stroke="#2563EB" stroke-width="3.5" stroke-linecap="round" style="transition: d 0.4s ease-in-out;"/>'
+    + '<path id="home-yt-path-vol" d="' + dVol + '" fill="none" stroke="#D97706" stroke-width="3" stroke-dasharray="6 4" stroke-linecap="round" style="transition: d 0.4s ease-in-out;"/>'
+    + '<path id="home-yt-path-sla" d="' + dSLA + '" fill="none" stroke="#7C3AED" stroke-width="2.5" stroke-linecap="round" style="transition: d 0.4s ease-in-out;"/>'
     + dotsHTML
     + legendHTML
     + '</svg>';
 
   return svgCode;
+}
+
+function animateHomeYearlyTrendSVG(targetEndYear, data) {
+  var currentCalendarYear = new Date().getFullYear(); // 2026
+  var endYear = targetEndYear || appState.multiYearEndYear || currentCalendarYear;
+  if (endYear > currentCalendarYear) endYear = currentCalendarYear;
+
+  var startYr = endYear - 5;
+  var endYrLabel = endYear === currentCalendarYear ? endYear + " YT" : String(endYear);
+
+  // 1. Update Title Bar text
+  var titleEl = document.querySelector("#home-multi-year-card .ov-chart-title");
+  if (titleEl) {
+    titleEl.textContent = "Multi-Year Banking Operations & Portfolio Spend Growth Trajectory (" + startYr + " \u2013 " + endYrLabel + ")";
+  }
+
+  // 2. Update button disabled states
+  var isRightDisabled = endYear >= currentCalendarYear;
+  var isLeftDisabled = startYr <= 2007;
+
+  document.querySelectorAll(".year-nav-btn.prev").forEach(function(b) {
+    if (isLeftDisabled) b.setAttribute("disabled", "true");
+    else b.removeAttribute("disabled");
+  });
+
+  document.querySelectorAll(".year-nav-btn.next").forEach(function(b) {
+    if (isRightDisabled) b.setAttribute("disabled", "true");
+    else b.removeAttribute("disabled");
+  });
+
+  // 3. Compute new metrics & coordinates
+  var yearList = [endYear - 5, endYear - 4, endYear - 3, endYear - 2, endYear - 1, endYear];
+  var yearMetrics = yearList.map(function(y) { return getYearMetrics(y, data); });
+
+  var years = yearMetrics.map(function(m) { return m.yearLabel; });
+  var creditSpendData = yearMetrics.map(function(m) { return m.creditSpend; });
+  var debitSpendData = yearMetrics.map(function(m) { return m.debitSpend; });
+  var volumeData = yearMetrics.map(function(m) { return m.volume; });
+  var slaData = yearMetrics.map(function(m) { return m.sla; });
+
+  var maxValInWindow = Math.max.apply(null, debitSpendData.concat(creditSpendData, volumeData));
+  var maxVal = Math.max(200, Math.ceil((maxValInWindow * 1.25) / 100) * 100);
+
+  var W = 1180, H = 400;
+  var padL = 60, padR = 20, padT = 55, padB = 40;
+  var chartW = W - padL - padR;
+  var chartH = H - padT - padB;
+
+  var ptsCredit = [], ptsDebit = [], ptsVol = [], ptsSLA = [];
+
+  years.forEach(function(yrLabel, idx) {
+    var x = padL + (idx / (years.length - 1)) * chartW;
+    var yC = padT + chartH - (creditSpendData[idx] / maxVal) * chartH;
+    var yD = padT + chartH - (debitSpendData[idx] / maxVal) * chartH;
+    var yV = padT + chartH - (volumeData[idx] / maxVal) * chartH;
+    
+    var slaValScaled = ((slaData[idx] - 85) / 15) * (maxVal * 0.7) + (maxVal * 0.1);
+    var yS = padT + chartH - (slaValScaled / maxVal) * chartH;
+
+    ptsCredit.push({ x: x, y: yC, val: creditSpendData[idx], label: yrLabel });
+    ptsDebit.push({ x: x, y: yD, val: debitSpendData[idx], label: yrLabel });
+    ptsVol.push({ x: x, y: yV, val: volumeData[idx], label: yrLabel });
+    ptsSLA.push({ x: x, y: yS, val: slaData[idx], label: yrLabel });
+  });
+
+  function makeSmoothPath(pts) {
+    var d = "M " + pts[0].x.toFixed(1) + " " + pts[0].y.toFixed(1);
+    for (var i = 1; i < pts.length; i++) {
+      var cx = (pts[i - 1].x + pts[i].x) / 2;
+      d += " C " + cx.toFixed(1) + " " + pts[i - 1].y.toFixed(1) + ", " + cx.toFixed(1) + " " + pts[i].y.toFixed(1) + ", " + pts[i].x.toFixed(1) + " " + pts[i].y.toFixed(1);
+    }
+    return d;
+  }
+
+  function makeAreaPath(pts, pathD) {
+    return pathD + " L " + pts[pts.length - 1].x.toFixed(1) + " " + (padT + chartH) + " L " + pts[0].x.toFixed(1) + " " + (padT + chartH) + " Z";
+  }
+
+  var dCredit = makeSmoothPath(ptsCredit);
+  var areaCredit = makeAreaPath(ptsCredit, dCredit);
+  var dDebit = makeSmoothPath(ptsDebit);
+  var areaDebit = makeAreaPath(ptsDebit, dDebit);
+  var dVol = makeSmoothPath(ptsVol);
+  var dSLA = makeSmoothPath(ptsSLA);
+
+  // 4. Update SVG Path `d` attributes
+  var pathDebit = document.getElementById("home-yt-path-debit");
+  if (pathDebit) pathDebit.setAttribute("d", dDebit);
+
+  var areaDebitEl = document.getElementById("home-yt-area-debit");
+  if (areaDebitEl) areaDebitEl.setAttribute("d", areaDebit);
+
+  var pathCredit = document.getElementById("home-yt-path-credit");
+  if (pathCredit) pathCredit.setAttribute("d", dCredit);
+
+  var areaCreditEl = document.getElementById("home-yt-area-credit");
+  if (areaCreditEl) areaCreditEl.setAttribute("d", areaCredit);
+
+  var pathVol = document.getElementById("home-yt-path-vol");
+  if (pathVol) pathVol.setAttribute("d", dVol);
+
+  var pathSLA = document.getElementById("home-yt-path-sla");
+  if (pathSLA) pathSLA.setAttribute("d", dSLA);
+
+  // 5. Update Dots, Labels & X-Axis Year Labels
+  years.forEach(function(yrLabel, idx) {
+    var xLabel = document.getElementById("home-yt-xlabel-" + idx);
+    if (xLabel) xLabel.textContent = yrLabel;
+
+    // Debit
+    var cDeb = document.getElementById("home-yt-circle-debit-" + idx);
+    var tDeb = document.getElementById("home-yt-text-debit-" + idx);
+    if (cDeb) {
+      cDeb.setAttribute("cx", ptsDebit[idx].x.toFixed(1));
+      cDeb.setAttribute("cy", ptsDebit[idx].y.toFixed(1));
+      var titleDeb = cDeb.querySelector("title");
+      if (titleDeb) titleDeb.textContent = ptsDebit[idx].label + " Debit Card Spend: PKR " + ptsDebit[idx].val + " Billion";
+    }
+    if (tDeb) {
+      tDeb.setAttribute("x", ptsDebit[idx].x.toFixed(1));
+      tDeb.setAttribute("y", (ptsDebit[idx].y - 14).toFixed(1));
+      tDeb.textContent = "PKR " + ptsDebit[idx].val + "B";
+    }
+
+    // Credit
+    var cCred = document.getElementById("home-yt-circle-credit-" + idx);
+    var tCred = document.getElementById("home-yt-text-credit-" + idx);
+    if (cCred) {
+      cCred.setAttribute("cx", ptsCredit[idx].x.toFixed(1));
+      cCred.setAttribute("cy", ptsCredit[idx].y.toFixed(1));
+      var titleCred = cCred.querySelector("title");
+      if (titleCred) titleCred.textContent = ptsCredit[idx].label + " Credit Card Spend: PKR " + ptsCredit[idx].val + " Billion";
+    }
+    if (tCred) {
+      tCred.setAttribute("x", ptsCredit[idx].x.toFixed(1));
+      tCred.setAttribute("y", (ptsCredit[idx].y + 22).toFixed(1));
+      tCred.textContent = "PKR " + ptsCredit[idx].val + "B";
+    }
+
+    // Volume
+    var cVol = document.getElementById("home-yt-circle-vol-" + idx);
+    var tVol = document.getElementById("home-yt-text-vol-" + idx);
+    if (cVol) {
+      cVol.setAttribute("cx", ptsVol[idx].x.toFixed(1));
+      cVol.setAttribute("cy", ptsVol[idx].y.toFixed(1));
+      var titleVol = cVol.querySelector("title");
+      if (titleVol) titleVol.textContent = ptsVol[idx].label + " ADC Txn Volume: " + ptsVol[idx].val + " Million Txns";
+    }
+    if (tVol) {
+      tVol.setAttribute("x", ptsVol[idx].x.toFixed(1));
+      tVol.setAttribute("y", (ptsVol[idx].y - 14).toFixed(1));
+      tVol.textContent = ptsVol[idx].val + "M Txns";
+    }
+
+    // SLA
+    var cSla = document.getElementById("home-yt-circle-sla-" + idx);
+    var tSla = document.getElementById("home-yt-text-sla-" + idx);
+    if (cSla) {
+      cSla.setAttribute("cx", ptsSLA[idx].x.toFixed(1));
+      cSla.setAttribute("cy", ptsSLA[idx].y.toFixed(1));
+      var titleSla = cSla.querySelector("title");
+      if (titleSla) titleSla.textContent = ptsSLA[idx].label + " System SLA Health: " + ptsSLA[idx].val + "%";
+    }
+    if (tSla) {
+      tSla.setAttribute("x", ptsSLA[idx].x.toFixed(1));
+      tSla.setAttribute("y", (ptsSLA[idx].y + 20).toFixed(1));
+      tSla.textContent = ptsSLA[idx].val + "% SLA";
+    }
+  });
 }
 
 function createHomeKpiCard(label, valText, accentClass, iconSVG, subHTML) {
@@ -3012,18 +3275,26 @@ function renderHome(data) {
   const debitSpend = data.cardFinancials ? (data.cardFinancials.debitSpendToday || 890000000) : 890000000;
 
   const atmVol = atm.withdrawalAmountToday || 412000000;
-  const raastVol = raast.transactionAmountToday || 285000000;
-  const ibftVol = ibft.transactionAmountToday || 640000000;
-  const posVol = pos.transactionAmountToday || 195000000;
-  const ecomVol = ecom.transactionAmountToday || 145000000;
+  const raastVol = raast.transactionAmountToday || raast.successAmountToday || 285000000;
+  const ibftVol = ibft.transactionAmountToday || ibft.successAmountToday || 640000000;
+  const posVol = pos.transactionAmountToday || pos.successAmountToday || 195000000;
+  const ecomVol = ecom.transactionAmountToday || ecom.successAmountToday || 145000000;
   const totalAdcVol = atmVol + raastVol + ibftVol + posVol + ecomVol;
 
   const atmTxns = atm.withdrawalCountToday || 28400;
-  const raastTxns = raast.transactionCountToday || 68200;
-  const ibftTxns = ibft.transactionCountToday || 145000;
-  const posTxns = pos.transactionCountToday || 42100;
-  const ecomTxns = ecom.transactionCountToday || 38900;
+  const raastTxns = raast.transactionCountToday || raast.successCountToday || 68200;
+  const ibftTxns = ibft.transactionCountToday || ibft.successCountToday || 145000;
+  const posTxns = pos.transactionCountToday || pos.successCountToday || 42100;
+  const ecomTxns = ecom.transactionCountToday || ecom.successCountToday || 38900;
   const totalAdcTxns = atmTxns + raastTxns + ibftTxns + posTxns + ecomTxns;
+
+  const cb = data.chargebackSummary || {};
+  const totalDisputes = (cb.retrievalCount || 185) + (cb.chargebackCount || 142) + (cb.preArbCount || 75) + (cb.fraudCount || 50);
+
+  const usdBal = data.nostro && data.nostro[0] ? data.nostro[0].balance : 18600000;
+  const aedBal = data.nostro && data.nostro[1] ? data.nostro[1].balance : 6200000;
+
+  const atmUptime = atm.uptimeToday !== undefined ? atm.uptimeToday : 97.8;
 
   const kpiGrid = el("div", { class: "home-kpi-grid" });
 
@@ -3032,7 +3303,7 @@ function renderHome(data) {
     formatNumber(creditCardsCount),
     "accent-blue",
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>',
-    '<span class="kpi-badge up">▲ 8.4% YoY</span> <span>Premium Tier</span>'
+    '<span class="kpi-badge up">▲ 8.4% YoY</span> <span>Premium Tier Base</span>'
   ));
 
   kpiGrid.appendChild(createHomeKpiCard(
@@ -3044,11 +3315,11 @@ function renderHome(data) {
   ));
 
   kpiGrid.appendChild(createHomeKpiCard(
-    "Total Card Spend Today",
+    "Total Card Spend (" + lbl.shortPrimary + ")",
     formatCurrency(creditSpend + debitSpend),
     "accent-green",
-    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
-    '<span class="kpi-badge up">▲ +6.2%</span> <span>Credit: ' + formatCurrency(creditSpend) + ' | Debit: ' + formatCurrency(debitSpend) + '</span>'
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><path d="M7 15h3"/></svg>',
+    '<span class="kpi-badge up">' + lbl.vsTag + '</span> <span>Credit: ' + formatCurrency(creditSpend) + ' | Debit: ' + formatCurrency(debitSpend) + '</span>'
   ));
 
   kpiGrid.appendChild(createHomeKpiCard(
@@ -3056,7 +3327,7 @@ function renderHome(data) {
     formatCurrency(totalAdcVol),
     "accent-indigo",
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>',
-    '<span class="kpi-badge up">▲ +5.8%</span> <span>Across ATM, RAAST, IBFT, POS & E-Com</span>'
+    '<span class="kpi-badge up">' + lbl.vsTag + '</span> <span>Across ATM, RAAST, IBFT, POS & E-Com</span>'
   ));
 
   kpiGrid.appendChild(createHomeKpiCard(
@@ -3064,31 +3335,31 @@ function renderHome(data) {
     formatNumber(totalAdcTxns),
     "accent-purple",
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
-    '<span class="kpi-badge up">▲ +4.9%</span> <span>Executed Transactions Today</span>'
+    '<span class="kpi-badge up">' + lbl.vsTag + '</span> <span>Executed Transactions (' + lbl.shortPrimary + ')</span>'
   ));
 
   kpiGrid.appendChild(createHomeKpiCard(
     "Operational SLA Health",
-    "99.4%",
+    formatPercentage(atmUptime, 1),
     "accent-emerald",
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 11 12 14 22 4"/></svg>',
-    '<span class="kpi-badge ok">✓ Optimal</span> <span>99.98% System Uptime</span>'
+    '<span class="kpi-badge ok">✓ Optimal</span> <span>Target SLA >= 98.0%</span>'
   ));
 
   kpiGrid.appendChild(createHomeKpiCard(
     "Disputes & Chargebacks",
-    formatNumber(452),
+    formatNumber(totalDisputes),
     "accent-rose",
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
-    '<span class="kpi-badge neutral">● 0.14% Rate</span> <span>Credit: 142 | Debit: 310</span>'
+    '<span class="kpi-badge neutral">● Active Cases</span> <span>Retrievals: ' + formatNumber(cb.retrievalCount || 185) + ' | Claims: ' + formatNumber(cb.chargebackCount || 142) + '</span>'
   ));
 
   kpiGrid.appendChild(createHomeKpiCard(
     "Nostro USD Position",
-    formatCurrency(18600000, "USD"),
+    formatCurrency(usdBal, "USD"),
     "accent-amber",
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
-    '<span class="kpi-badge up">▲ Stable</span> <span>AED: ' + formatCurrency(6200000, "AED") + '</span>'
+    '<span class="kpi-badge up">▲ Stable</span> <span>AED: ' + formatCurrency(aedBal, "AED") + '</span>'
   ));
 
   root.appendChild(kpiGrid);
@@ -3151,11 +3422,96 @@ function renderHome(data) {
   // 3. Multi-Year Growth & Executive Visual Analytics Matrix (VERY LAST SECTION)
   root.appendChild(sectionTitle("Multi-Year Growth & Executive Visual Analytics Matrix"));
 
-  const yearlyChartCard = el("div", { class: "ov-chart-card full-width" });
-  yearlyChartCard.appendChild(el("div", { class: "ov-chart-title", text: "Multi-Year Banking Operations & Portfolio Spend Growth Trajectory (2021 – 2025)" }));
+  const currentCalendarYear = new Date().getFullYear(); // 2026
+  if (!appState.multiYearEndYear) {
+    appState.multiYearEndYear = currentCalendarYear; // Default window 2021-2026 YT
+  }
+  const endYr = appState.multiYearEndYear;
+  const startYr = endYr - 5; // 6-year sliding window: endYr - 5
+  const endYrLabel = endYr === currentCalendarYear ? endYr + " YT" : String(endYr);
+
+  const isRightDisabled = endYr >= currentCalendarYear;
+  const isLeftDisabled = startYr <= 2007;
+
+  const yearlyChartCard = el("div", { id: "home-multi-year-card", class: "ov-chart-card full-width" });
+
+  function handlePrevYear(e) {
+    if (e) e.stopPropagation();
+    if (appState.multiYearEndYear - 5 > 2007) {
+      appState.multiYearEndYear--;
+      animateHomeYearlyTrendSVG(appState.multiYearEndYear, data);
+    }
+  }
+
+  function handleNextYear(e) {
+    if (e) e.stopPropagation();
+    if (appState.multiYearEndYear < currentCalendarYear) {
+      appState.multiYearEndYear++;
+      animateHomeYearlyTrendSVG(appState.multiYearEndYear, data);
+    }
+  }
+
+  // Header Title Bar with Navigation Controls
+  const titleBar = el("div", { class: "ov-chart-title-bar", style: "display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 8px;" });
+  titleBar.appendChild(el("div", { class: "ov-chart-title", text: "Multi-Year Banking Operations & Portfolio Spend Growth Trajectory (" + startYr + " \u2013 " + endYrLabel + ")" }));
+
+  const navWrap = el("div", { class: "year-nav-controls", style: "display: flex; align-items: center; gap: 8px;" });
+
+  const btnPrevHeader = el("button", {
+    type: "button",
+    class: "year-nav-btn prev",
+    html: "&lt;",
+    title: "Move graph 1 year backward"
+  });
+  if (isLeftDisabled) btnPrevHeader.setAttribute("disabled", "true");
+  btnPrevHeader.addEventListener("click", handlePrevYear);
+
+  const btnNextHeader = el("button", {
+    type: "button",
+    class: "year-nav-btn next",
+    html: "&gt;",
+    title: "Move graph 1 year forward"
+  });
+  if (isRightDisabled) btnNextHeader.setAttribute("disabled", "true");
+  btnNextHeader.addEventListener("click", handleNextYear);
+
+  navWrap.appendChild(btnPrevHeader);
+  navWrap.appendChild(btnNextHeader);
+  titleBar.appendChild(navWrap);
+
+  yearlyChartCard.appendChild(titleBar);
+
   const yearlyChartBody = el("div", { class: "ov-chart-body" });
-  yearlyChartBody.innerHTML = buildHomeYearlyTrendSVG(data);
+  yearlyChartBody.innerHTML = buildHomeYearlyTrendSVG(data, endYr);
   yearlyChartCard.appendChild(yearlyChartBody);
+
+  // Bottom Navigation Overlay Row (< at bottom-left, > at bottom-right)
+  const btmNavRow = el("div", { class: "ov-chart-btm-nav", style: "display: flex; justify-content: space-between; align-items: center; padding: 10px 16px 6px 16px; border-top: 1px solid #F1F5F9; margin-top: 4px;" });
+
+  const btmLeftBtn = el("button", {
+    type: "button",
+    class: "year-nav-btn prev",
+    html: "&lt;",
+    style: "width: auto; padding: 0 12px; font-size: 13px; font-weight: 700;",
+    title: "Move graph 1 year backward"
+  });
+  if (isLeftDisabled) btmLeftBtn.setAttribute("disabled", "true");
+  btmLeftBtn.addEventListener("click", handlePrevYear);
+
+  const btmRightBtn = el("button", {
+    type: "button",
+    class: "year-nav-btn next",
+    html: "&gt;",
+    style: "width: auto; padding: 0 12px; font-size: 13px; font-weight: 700;",
+    title: "Move graph 1 year forward"
+  });
+  if (isRightDisabled) btmRightBtn.setAttribute("disabled", "true");
+  btmRightBtn.addEventListener("click", handleNextYear);
+
+  btmNavRow.appendChild(btmLeftBtn);
+  btmNavRow.appendChild(btmRightBtn);
+  yearlyChartCard.appendChild(btmNavRow);
+
   root.appendChild(yearlyChartCard);
 }
 

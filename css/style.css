@@ -136,6 +136,43 @@ button, input, select {
   border-bottom: 1px solid rgba(255, 255, 255, 0.25);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Digital Network Vector Texture Overlay */
+.header-texture-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.35;
+  overflow: hidden;
+  transition: opacity 0.3s ease;
+}
+
+.header-texture-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Ensure text & inputs remain floating crystal-clear over texture */
+.header-top,
+.header-filters,
+.global-message {
+  position: relative;
+  z-index: 2;
+}
+
+/* Completely Static Vector Background Texture (No Movement / No Animations) */
+.header-wave-group-1,
+.header-wave-group-2,
+.header-particles .particle {
+  animation: none !important;
+  transform: none !important;
 }
 
 .header-top {
@@ -4079,6 +4116,229 @@ tr.clickable-failure-row:hover .kpi-details-chip {
     grid-template-columns: 1fr;
   }
 }
+
+/* Multi-Year Graph Year Navigation Controls */
+.year-nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.year-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  min-width: 28px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid var(--border, #CBD5E1);
+  background: #FFFFFF;
+  color: var(--text-main, #1E293B);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  line-height: 1;
+}
+
+.year-nav-btn:hover:not(:disabled) {
+  background: #F1F5F9;
+  border-color: #0D5F92;
+  color: #0D5F92;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.year-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  border-color: #E2E8F0;
+  background: #F8FAFC;
+  color: #94A3B8;
+  box-shadow: none;
+}
+
+/* =====================================================================
+   HOME PAGE ENHANCEMENTS — EXECUTIVE BANKING DASHBOARD STYLING
+   ===================================================================== */
+
+.home-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 1200px) {
+  .home-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .home-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.home-kpi-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 2px 5px rgba(15, 23, 42, 0.03);
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.22s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.home-kpi-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3.5px;
+  background: #0D5F92;
+  transition: height 0.2s ease;
+}
+
+.home-kpi-card.accent-blue::before { background: linear-gradient(90deg, #2563EB, #3B82F6); }
+.home-kpi-card.accent-teal::before { background: linear-gradient(90deg, #0D9488, #14B8A6); }
+.home-kpi-card.accent-green::before { background: linear-gradient(90deg, #059669, #10B981); }
+.home-kpi-card.accent-indigo::before { background: linear-gradient(90deg, #4F46E5, #6366F1); }
+.home-kpi-card.accent-purple::before { background: linear-gradient(90deg, #7C3AED, #8B5CF6); }
+.home-kpi-card.accent-emerald::before { background: linear-gradient(90deg, #10B981, #34D399); }
+.home-kpi-card.accent-rose::before { background: linear-gradient(90deg, #E11D48, #F43F5E); }
+.home-kpi-card.accent-amber::before { background: linear-gradient(90deg, #D97706, #F59E0B); }
+
+.home-kpi-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 22px -4px rgba(15, 23, 42, 0.08);
+  border-color: #CBD5E1;
+}
+
+.home-kpi-card:hover::before {
+  height: 4.5px;
+}
+
+.home-kpi-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.home-kpi-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748B;
+}
+
+.home-kpi-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #F1F5F9;
+  color: #0D5F92;
+  transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.home-kpi-card.accent-blue .home-kpi-icon { background: rgba(37, 99, 235, 0.08); color: #2563EB; }
+.home-kpi-card.accent-teal .home-kpi-icon { background: rgba(13, 148, 136, 0.08); color: #0D9488; }
+.home-kpi-card.accent-green .home-kpi-icon { background: rgba(5, 150, 105, 0.08); color: #059669; }
+.home-kpi-card.accent-indigo .home-kpi-icon { background: rgba(79, 70, 229, 0.08); color: #4F46E5; }
+.home-kpi-card.accent-purple .home-kpi-icon { background: rgba(124, 58, 237, 0.08); color: #7C3AED; }
+.home-kpi-card.accent-emerald .home-kpi-icon { background: rgba(16, 185, 129, 0.08); color: #10B981; }
+.home-kpi-card.accent-rose .home-kpi-icon { background: rgba(225, 29, 72, 0.08); color: #E11D48; }
+.home-kpi-card.accent-amber .home-kpi-icon { background: rgba(217, 119, 6, 0.08); color: #D97706; }
+
+.home-kpi-card:hover .home-kpi-icon {
+  transform: scale(1.08);
+}
+
+.home-kpi-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+  line-height: 1.2;
+}
+
+.home-kpi-sub {
+  font-size: 11.5px;
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.home-kpi-sub .kpi-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.home-kpi-sub .kpi-badge.up {
+  background: #ECFDF5;
+  color: #047857;
+}
+
+.home-kpi-sub .kpi-badge.ok {
+  background: #F0FDF4;
+  color: #15803D;
+}
+
+.home-kpi-sub .kpi-badge.neutral {
+  background: #F1F5F9;
+  color: #475569;
+}
+
+/* Section Title Hierarchy */
+.section-title {
+  border-left: 4px solid #117ABF;
+  padding-left: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 24px 0 14px 0;
+  letter-spacing: -0.01em;
+}
+
+/* Polished Chart Cards Hover and Transitions */
+.ov-chart-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+}
+
+.ov-chart-card:hover {
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+}
+
+.chart-point-node {
+  cursor: pointer;
+  transition: r 0.2s ease, fill 0.2s ease, stroke-width 0.2s ease;
+}
+
+.chart-point-node:hover {
+  r: 8.5;
+  stroke-width: 3.5;
+}
+
+
 
 
 
