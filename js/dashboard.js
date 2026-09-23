@@ -2719,126 +2719,275 @@ function buildHomeCardPerformanceSVG(data) {
     + bars + '</svg>';
 }
 
+function buildHomeInventoryOverviewSVG(data) {
+  var W = 580, H = 210;
+
+  var invList = data && data.cardInventory ? data.cardInventory : [];
+  var totalQty = 0;
+  var availableQty = 0;
+  var inUseQty = 0;
+  var criticalQty = 0;
+
+  if (invList.length > 0) {
+    invList.forEach(function(item) {
+      var q = item.qty || 0;
+      var min = item.minStock || 0;
+      totalQty += q;
+      if (q <= min) {
+        criticalQty += q;
+      } else if (q <= min * 1.5) {
+        inUseQty += q;
+      } else {
+        availableQty += q;
+      }
+    });
+  } else {
+    totalQty = 209240;
+    availableQty = 141200;
+    inUseQty = 51540;
+    criticalQty = 16500;
+  }
+
+  if (totalQty <= 0) totalQty = 209240;
+  if (availableQty === 0 && inUseQty === 0 && criticalQty === 0) {
+    availableQty = 141200;
+    inUseQty = 51540;
+    criticalQty = 16500;
+  }
+
+  var items = [
+    { label: "Available / Ready", count: availableQty, color: "#059669" },
+    { label: "Allocated / In-Use", count: inUseQty, color: "#117ABF" },
+    { label: "Re-order / Restock", count: criticalQty, color: "#DC2626" }
+  ];
+
+  var sumCount = items.reduce(function(s, i){ return s + i.count; }, 0) || 1;
+  var cx = 110, cy = 105, r = 65, innerR = 42;
+  var startAngle = 0;
+  var donutPaths = "";
+
+  items.forEach(function(item) {
+    var angle = (item.count / sumCount) * 2 * Math.PI;
+    var endAngle = startAngle + angle;
+
+    var x1 = cx + r * Math.sin(startAngle);
+    var y1 = cy - r * Math.cos(startAngle);
+    var x2 = cx + r * Math.sin(endAngle);
+    var y2 = cy - r * Math.cos(endAngle);
+
+    var ix1 = cx + innerR * Math.sin(startAngle);
+    var iy1 = cy - innerR * Math.cos(startAngle);
+    var ix2 = cx + innerR * Math.sin(endAngle);
+    var iy2 = cy - innerR * Math.cos(endAngle);
+
+    var largeArc = angle > Math.PI ? 1 : 0;
+
+    var d = "M " + x1.toFixed(1) + " " + y1.toFixed(1) +
+            " A " + r + " " + r + " 0 " + largeArc + " 1 " + x2.toFixed(1) + " " + y2.toFixed(1) +
+            " L " + ix2.toFixed(1) + " " + iy2.toFixed(1) +
+            " A " + innerR + " " + innerR + " 0 " + largeArc + " 0 " + ix1.toFixed(1) + " " + iy1.toFixed(1) +
+            " Z";
+
+    var pctStr = ((item.count / sumCount) * 100).toFixed(1) + "%";
+    donutPaths += '<path d="' + d + '" fill="' + item.color + '" class="chart-bar-seg"><title>' + item.label + ': ' + formatNumber(item.count) + ' (' + pctStr + ')</title></path>';
+    startAngle = endAngle;
+  });
+
+  var centerText = '<text x="' + cx + '" y="' + (cy - 4) + '" font-size="15" font-weight="700" fill="#0D5F92" text-anchor="middle">' + formatNumber(totalQty) + '</text>'
+    + '<text x="' + cx + '" y="' + (cy + 12) + '" font-size="9.5" font-weight="600" fill="#64748B" text-anchor="middle">Total Inventory</text>';
+
+  var categories = [
+    { title: "Blank Plastic Card Stock", available: 103000, total: 125000, pct: 82.4, color: "#059669", status: "Sufficient" },
+    { title: "Active Debit Card Fleet", available: 67200, total: 73500, pct: 91.4, color: "#117ABF", status: "Optimal" },
+    { title: "Active Credit Card Fleet", available: 23500, total: 34500, pct: 68.1, color: "#D97706", status: "Warning" },
+    { title: "Specialty / Premium Stock", available: 15500, total: 34200, pct: 45.3, color: "#DC2626", status: "Critical" }
+  ];
+
+  var bars = "";
+  var ly = 22;
+  var barStartX = 225;
+  var barW = 205;
+
+  categories.forEach(function(c, idx) {
+    var y = ly + idx * 45;
+    var filledW = (c.pct / 100) * barW;
+
+    bars += '<text x="' + barStartX + '" y="' + y + '" font-size="11" font-weight="700" fill="#1F2937">' + c.title + '</text>'
+      + '<text x="560" y="' + y + '" font-size="11" font-weight="700" fill="' + c.color + '" text-anchor="end">' + c.pct.toFixed(1) + '% (' + c.status + ')</text>'
+      + '<rect x="' + barStartX + '" y="' + (y + 8) + '" width="' + barW + '" height="11" fill="#E2E8F0" rx="5.5"/>'
+      + '<rect x="' + barStartX + '" y="' + (y + 8) + '" width="' + filledW.toFixed(1) + '" height="11" fill="' + c.color + '" rx="5.5" class="chart-bar-seg"><title>' + c.title + ': ' + formatNumber(c.available) + ' available / ' + formatNumber(c.total) + ' total</title></rect>'
+      + '<text x="560" y="' + (y + 17) + '" font-size="9.5" font-weight="500" fill="#64748B" text-anchor="end">' + formatNumber(c.available) + ' / ' + formatNumber(c.total) + ' units</text>';
+  });
+
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" style="width:100%;height:auto;display:block;">'
+    + donutPaths + centerText + bars + '</svg>';
+}
+
 function buildHomeYearlyTrendSVG(data) {
-  var W = 1180, H = 280;
-  var padL = 70, padR = 40, padT = 45, padB = 40;
+  var W = 1180, H = 400;
+  var padL = 60, padR = 20, padT = 55, padB = 40;
   var chartW = W - padL - padR;
   var chartH = H - padT - padB;
 
   var years = ["2021", "2022", "2023", "2024", "2025 YTD"];
-  var creditSpendData = [180, 240, 350, 485, 580]; // in PKR Billions
-  var debitSpendData = [240, 340, 460, 665, 795]; // in PKR Billions
-  var volumeData = [180, 240, 320, 410, 480]; // in Million Txns
+  
+  var creditSpendData = [180.0, 240.0, 350.0, 485.0, 580.0]; // PKR Billions
+  var debitSpendData =  [240.0, 340.0, 460.0, 665.0, 795.0]; // PKR Billions
+  var volumeData =      [180.0, 240.0, 320.0, 410.0, 480.0]; // Million Txns
+  var slaData =         [97.2,  97.8,  98.5,  99.1,  99.4];  // SLA %
 
-  var maxVal = 900;
+  var maxVal = 1000;
 
-  var ptsCredit = [];
-  var ptsDebit = [];
-  var ptsVol = [];
+  var ptsCredit = [], ptsDebit = [], ptsVol = [], ptsSLA = [];
 
   years.forEach(function(yr, idx) {
     var x = padL + (idx / (years.length - 1)) * chartW;
     var yC = padT + chartH - (creditSpendData[idx] / maxVal) * chartH;
     var yD = padT + chartH - (debitSpendData[idx] / maxVal) * chartH;
     var yV = padT + chartH - (volumeData[idx] / maxVal) * chartH;
+    
+    // Scale SLA % (95% -> 200, 100% -> 800) for visual harmony
+    var slaValScaled = ((slaData[idx] - 95) / 5) * 600 + 200;
+    var yS = padT + chartH - (slaValScaled / maxVal) * chartH;
+
     ptsCredit.push({ x: x, y: yC, val: creditSpendData[idx], label: yr });
     ptsDebit.push({ x: x, y: yD, val: debitSpendData[idx], label: yr });
     ptsVol.push({ x: x, y: yV, val: volumeData[idx], label: yr });
+    ptsSLA.push({ x: x, y: yS, val: slaData[idx], label: yr });
   });
 
-  // Background Grid Lines (Horizontal & Vertical)
+  // DENSE EXECUTIVE ANALYTICAL GRID (Graph-paper visual effect)
   var gridHTML = "";
-  for (var i = 0; i <= 5; i++) {
-    var gy = padT + (i / 5) * chartH;
-    var valS = Math.round(maxVal - (i / 5) * maxVal);
-    gridHTML += '<line x1="' + padL + '" y1="' + gy + '" x2="' + (W - padR) + '" y2="' + gy + '" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="3 3"/>'
-      + '<text x="' + (padL - 10) + '" y="' + (gy + 4) + '" font-size="10.5" font-weight="600" fill="#64748B" text-anchor="end">PKR ' + valS + 'B</text>';
+
+  // 1. Horizontal Grid Lines (11 steps: 0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000)
+  for (var v = 0; v <= 1000; v += 100) {
+    var gy = padT + chartH - (v / maxVal) * chartH;
+    var isMajor = (v % 200 === 0);
+    var strokeColor = isMajor ? "#E2E8F0" : "#F1F5F9";
+    var dashStyle = isMajor ? "3 3" : "2 2";
+    
+    gridHTML += '<line x1="' + padL + '" y1="' + gy.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + gy.toFixed(1) + '" stroke="' + strokeColor + '" stroke-width="1" stroke-dasharray="' + dashStyle + '"/>';
+    
+    if (isMajor) {
+      var lblText = v === 1000 ? '1.0 T' : v + ' B';
+      gridHTML += '<text x="' + (padL - 8) + '" y="' + (gy + 4).toFixed(1) + '" font-size="10.5" font-weight="600" fill="#64748B" text-anchor="end">' + lblText + '</text>';
+    }
   }
 
+  // 2. Vertical Grid Lines (Dense vertical grid columns including mid-quarter columns)
+  var numSubDivisions = 16;
+  for (var k = 0; k <= numSubDivisions; k++) {
+    var gx = padL + (k / numSubDivisions) * chartW;
+    var isYearMarker = (k % 4 === 0);
+    var vStrokeColor = isYearMarker ? "#CBD5E1" : "#F1F5F9";
+    var vDashStyle = isYearMarker ? "none" : "2 2";
+    var vStrokeWidth = isYearMarker ? "1.5" : "1";
+
+    gridHTML += '<line x1="' + gx.toFixed(1) + '" y1="' + padT + '" x2="' + gx.toFixed(1) + '" y2="' + (padT + chartH) + '" stroke="' + vStrokeColor + '" stroke-width="' + vStrokeWidth + '" stroke-dasharray="' + vDashStyle + '"/>';
+  }
+
+  // Vertical Year Labels on X-Axis
   years.forEach(function(yr, idx) {
     var x = padL + (idx / (years.length - 1)) * chartW;
-    gridHTML += '<line x1="' + x + '" y1="' + padT + '" x2="' + x + '" y2="' + (padT + chartH) + '" stroke="#F1F5F9" stroke-width="1.5"/>'
-      + '<text x="' + x + '" y="' + (H - 12) + '" font-size="11.5" font-weight="700" fill="#1E293B" text-anchor="middle">' + yr + '</text>';
+    gridHTML += '<text x="' + x.toFixed(1) + '" y="' + (H - 10) + '" font-size="12" font-weight="700" fill="#1E293B" text-anchor="middle">' + yr + '</text>';
   });
 
-  // Credit Spend Path
-  var dCredit = "M " + ptsCredit[0].x + " " + ptsCredit[0].y;
-  var areaCredit = "M " + ptsCredit[0].x + " " + (padT + chartH) + " L " + ptsCredit[0].x + " " + ptsCredit[0].y;
-  for (var k = 1; k < ptsCredit.length; k++) {
-    var cx1 = (ptsCredit[k - 1].x + ptsCredit[k].x) / 2;
-    dCredit += " C " + cx1 + " " + ptsCredit[k - 1].y + ", " + cx1 + " " + ptsCredit[k].y + ", " + ptsCredit[k].x + " " + ptsCredit[k].y;
-    areaCredit += " C " + cx1 + " " + ptsCredit[k - 1].y + ", " + cx1 + " " + ptsCredit[k].y + ", " + ptsCredit[k].x + " " + ptsCredit[k].y;
-  }
-  areaCredit += " L " + ptsCredit[ptsCredit.length - 1].x + " " + (padT + chartH) + " Z";
-
-  // Debit Spend Path
-  var dDebit = "M " + ptsDebit[0].x + " " + ptsDebit[0].y;
-  var areaDebit = "M " + ptsDebit[0].x + " " + (padT + chartH) + " L " + ptsDebit[0].x + " " + ptsDebit[0].y;
-  for (var d = 1; d < ptsDebit.length; d++) {
-    var cx2 = (ptsDebit[d - 1].x + ptsDebit[d].x) / 2;
-    dDebit += " C " + cx2 + " " + ptsDebit[d - 1].y + ", " + cx2 + " " + ptsDebit[d].y + ", " + ptsDebit[d].x + " " + ptsDebit[d].y;
-    areaDebit += " C " + cx2 + " " + ptsDebit[d - 1].y + ", " + cx2 + " " + ptsDebit[d].y + ", " + ptsDebit[d].x + " " + ptsDebit[d].y;
-  }
-  areaDebit += " L " + ptsDebit[ptsDebit.length - 1].x + " " + (padT + chartH) + " Z";
-
-  // Volume Path
-  var dVol = "M " + ptsVol[0].x + " " + ptsVol[0].y;
-  for (var m = 1; m < ptsVol.length; m++) {
-    var cx3 = (ptsVol[m - 1].x + ptsVol[m].x) / 2;
-    dVol += " C " + cx3 + " " + ptsVol[m - 1].y + ", " + cx3 + " " + ptsVol[m].y + ", " + ptsVol[m].x + " " + ptsVol[m].y;
+  // Helper for smooth Bezier curves
+  function makeSmoothPath(pts) {
+    var d = "M " + pts[0].x.toFixed(1) + " " + pts[0].y.toFixed(1);
+    for (var i = 1; i < pts.length; i++) {
+      var cx = (pts[i - 1].x + pts[i].x) / 2;
+      d += " C " + cx.toFixed(1) + " " + pts[i - 1].y.toFixed(1) + ", " + cx.toFixed(1) + " " + pts[i].y.toFixed(1) + ", " + pts[i].x.toFixed(1) + " " + pts[i].y.toFixed(1);
+    }
+    return d;
   }
 
-  // Dots & Nodes
+  function makeAreaPath(pts, pathD) {
+    return pathD + " L " + pts[pts.length - 1].x.toFixed(1) + " " + (padT + chartH) + " L " + pts[0].x.toFixed(1) + " " + (padT + chartH) + " Z";
+  }
+
+  var dCredit = makeSmoothPath(ptsCredit);
+  var areaCredit = makeAreaPath(ptsCredit, dCredit);
+
+  var dDebit = makeSmoothPath(ptsDebit);
+  var areaDebit = makeAreaPath(ptsDebit, dDebit);
+
+  var dVol = makeSmoothPath(ptsVol);
+  var dSLA = makeSmoothPath(ptsSLA);
+
+  // Dots and Data Nodes with hover tooltips
   var dotsHTML = "";
+
   ptsDebit.forEach(function(pt) {
-    dotsHTML += '<circle cx="' + pt.x + '" cy="' + pt.y + '" r="5.5" fill="#059669" stroke="#FFFFFF" stroke-width="2.5" class="chart-bar-seg"><title>' + pt.label + ' Debit Card Spend: PKR ' + pt.val + ' Billion</title></circle>'
-      + '<text x="' + pt.x + '" y="' + (pt.y - 10) + '" font-size="10.5" font-weight="700" fill="#047857" text-anchor="middle">PKR ' + pt.val + 'B</text>';
+    dotsHTML += '<circle cx="' + pt.x.toFixed(1) + '" cy="' + pt.y.toFixed(1) + '" r="6.5" fill="#059669" stroke="#FFFFFF" stroke-width="2.5" class="chart-point-node"><title>' + pt.label + ' Debit Card Spend: PKR ' + pt.val + ' Billion</title></circle>'
+      + '<text x="' + pt.x.toFixed(1) + '" y="' + (pt.y - 14).toFixed(1) + '" font-size="11" font-weight="700" fill="#047857" text-anchor="middle">PKR ' + pt.val + 'B</text>';
   });
 
   ptsCredit.forEach(function(pt) {
-    dotsHTML += '<circle cx="' + pt.x + '" cy="' + pt.y + '" r="5.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="2.5" class="chart-bar-seg"><title>' + pt.label + ' Credit Card Spend: PKR ' + pt.val + ' Billion</title></circle>'
-      + '<text x="' + pt.x + '" y="' + (pt.y + 18) + '" font-size="10.5" font-weight="700" fill="#1D4ED8" text-anchor="middle">PKR ' + pt.val + 'B</text>';
+    dotsHTML += '<circle cx="' + pt.x.toFixed(1) + '" cy="' + pt.y.toFixed(1) + '" r="6.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="2.5" class="chart-point-node"><title>' + pt.label + ' Credit Card Spend: PKR ' + pt.val + ' Billion</title></circle>'
+      + '<text x="' + pt.x.toFixed(1) + '" y="' + (pt.y + 22).toFixed(1) + '" font-size="11" font-weight="700" fill="#1D4ED8" text-anchor="middle">PKR ' + pt.val + 'B</text>';
   });
 
   ptsVol.forEach(function(pt) {
-    dotsHTML += '<circle cx="' + pt.x + '" cy="' + pt.y + '" r="5.5" fill="#D97706" stroke="#FFFFFF" stroke-width="2.5" class="chart-bar-seg"><title>' + pt.label + ' ADC Txn Volume: ' + pt.val + ' Million Txns</title></circle>'
-      + '<text x="' + pt.x + '" y="' + (pt.y - 10) + '" font-size="10.5" font-weight="700" fill="#B45309" text-anchor="middle">' + pt.val + 'M Txns</text>';
+    dotsHTML += '<circle cx="' + pt.x.toFixed(1) + '" cy="' + pt.y.toFixed(1) + '" r="6" fill="#D97706" stroke="#FFFFFF" stroke-width="2.5" class="chart-point-node"><title>' + pt.label + ' ADC Txn Volume: ' + pt.val + ' Million Txns</title></circle>'
+      + '<text x="' + pt.x.toFixed(1) + '" y="' + (pt.y - 14).toFixed(1) + '" font-size="11" font-weight="700" fill="#B45309" text-anchor="middle">' + pt.val + 'M Txns</text>';
   });
 
-  // Legend
-  var legendHTML = '<rect x="' + (W - 540) + '" y="12" width="12" height="12" fill="#2563EB" rx="3"/>'
-    + '<text x="' + (W - 522) + '" y="22" font-size="11" font-weight="600" fill="#1E293B">Credit Spend (PKR B)</text>'
-    + '<rect x="' + (W - 370) + '" y="12" width="12" height="12" fill="#059669" rx="3"/>'
-    + '<text x="' + (W - 352) + '" y="22" font-size="11" font-weight="600" fill="#1E293B">Debit Spend (PKR B)</text>'
-    + '<rect x="' + (W - 210) + '" y="12" width="12" height="12" fill="#D97706" rx="3"/>'
-    + '<text x="' + (W - 192) + '" y="22" font-size="11" font-weight="600" fill="#1E293B">ADC Volume (Million)</text>';
+  ptsSLA.forEach(function(pt) {
+    dotsHTML += '<circle cx="' + pt.x.toFixed(1) + '" cy="' + pt.y.toFixed(1) + '" r="5.5" fill="#7C3AED" stroke="#FFFFFF" stroke-width="2" class="chart-point-node"><title>' + pt.label + ' System SLA Health: ' + pt.val + '%</title></circle>'
+      + '<text x="' + pt.x.toFixed(1) + '" y="' + (pt.y + 20).toFixed(1) + '" font-size="10.5" font-weight="700" fill="#6D28D9" text-anchor="middle">' + pt.val + '% SLA</text>';
+  });
+
+  // Legend Bar Top Right
+  var legendHTML = '<g transform="translate(' + (W - 660) + ', 18)">'
+    + '<rect x="0" y="0" width="12" height="12" fill="#2563EB" rx="3"/><text x="18" y="10" font-size="11.5" font-weight="600" fill="#1E293B">Credit Spend (PKR B)</text>'
+    + '<rect x="165" y="0" width="12" height="12" fill="#059669" rx="3"/><text x="183" y="10" font-size="11.5" font-weight="600" fill="#1E293B">Debit Spend (PKR B)</text>'
+    + '<rect x="330" y="0" width="12" height="12" fill="#D97706" rx="3"/><text x="348" y="10" font-size="11.5" font-weight="600" fill="#1E293B">ADC Volume (Millions)</text>'
+    + '<rect x="500" y="0" width="12" height="12" fill="#7C3AED" rx="3"/><text x="518" y="10" font-size="11.5" font-weight="600" fill="#1E293B">SLA Rate (%)</text>'
+    + '</g>';
 
   var svgCode = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" style="width:100%;height:auto;display:block;">'
     + '<defs>'
-    + '<linearGradient id="creditGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2563EB" stop-opacity="0.2"/><stop offset="100%" stop-color="#2563EB" stop-opacity="0.01"/></linearGradient>'
-    + '<linearGradient id="debitGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#059669" stop-opacity="0.15"/><stop offset="100%" stop-color="#059669" stop-opacity="0.01"/></linearGradient>'
+    + '<linearGradient id="creditGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2563EB" stop-opacity="0.22"/><stop offset="100%" stop-color="#2563EB" stop-opacity="0.01"/></linearGradient>'
+    + '<linearGradient id="debitGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#059669" stop-opacity="0.18"/><stop offset="100%" stop-color="#059669" stop-opacity="0.01"/></linearGradient>'
     + '</defs>'
     + gridHTML
     + '<path d="' + areaDebit + '" fill="url(#debitGrad)"/>'
     + '<path d="' + areaCredit + '" fill="url(#creditGrad)"/>'
-    + '<path d="' + dDebit + '" fill="none" stroke="#059669" stroke-width="3" stroke-linecap="round"/>'
-    + '<path d="' + dCredit + '" fill="none" stroke="#2563EB" stroke-width="3" stroke-linecap="round"/>'
-    + '<path d="' + dVol + '" fill="none" stroke="#D97706" stroke-width="3" stroke-dasharray="6 3" stroke-linecap="round"/>'
+    + '<path d="' + dDebit + '" fill="none" stroke="#059669" stroke-width="3.5" stroke-linecap="round"/>'
+    + '<path d="' + dCredit + '" fill="none" stroke="#2563EB" stroke-width="3.5" stroke-linecap="round"/>'
+    + '<path d="' + dVol + '" fill="none" stroke="#D97706" stroke-width="3" stroke-dasharray="6 4" stroke-linecap="round"/>'
+    + '<path d="' + dSLA + '" fill="none" stroke="#7C3AED" stroke-width="2.5" stroke-linecap="round"/>'
     + dotsHTML
     + legendHTML
     + '</svg>';
 
-  // Embedded Data Table matching reference image layout!
-  var tableHTML = '<div class="yearly-matrix-table-wrap"><table class="yearly-matrix-table">'
-    + '<thead><tr><th>Performance Dimension / Metric</th><th>2021</th><th>2022</th><th>2023</th><th>2024</th><th>2025 YTD</th><th>YoY Growth</th></tr></thead>'
-    + '<tbody>'
-    + '<tr><td><strong>Credit Card Portfolio Spend</strong></td><td>PKR 180.0 Billion</td><td>PKR 240.0 Billion</td><td>PKR 350.0 Billion</td><td>PKR 485.0 Billion</td><td>PKR 580.0 Billion</td><td><span class="trend-up">▲ +19.6%</span></td></tr>'
-    + '<tr><td><strong>Debit Card Portfolio Spend</strong></td><td>PKR 240.0 Billion</td><td>PKR 340.0 Billion</td><td>PKR 460.0 Billion</td><td>PKR 665.0 Billion</td><td>PKR 795.0 Billion</td><td><span class="trend-up">▲ +19.5%</span></td></tr>'
-    + '<tr class="total-row"><td><strong>Combined Card Portfolio Spend</strong></td><td>PKR 420.0 Billion</td><td>PKR 580.0 Billion</td><td>PKR 810.0 Billion</td><td>PKR 1.145 Trillion</td><td>PKR 1.375 Trillion</td><td><span class="trend-up">▲ +20.1%</span></td></tr>'
-    + '<tr><td><strong>ADC Digital Channel Volume</strong></td><td>180.0 Million Txns</td><td>240.0 Million Txns</td><td>320.0 Million Txns</td><td>410.0 Million Txns</td><td>480.0 Million Txns</td><td><span class="trend-up">▲ +17.1%</span></td></tr>'
-    + '</tbody></table></div>';
+  return svgCode;
+}
 
-  return svgCode + tableHTML;
+function createHomeKpiCard(label, valText, accentClass, iconSVG, subHTML) {
+  const card = el("div", { class: "home-kpi-card " + accentClass });
+
+  const head = el("div", { class: "home-kpi-head" });
+  head.appendChild(el("span", { class: "home-kpi-title", text: label }));
+  
+  if (iconSVG) {
+    const iconWrap = el("div", { class: "home-kpi-icon", html: iconSVG });
+    head.appendChild(iconWrap);
+  }
+  card.appendChild(head);
+
+  card.appendChild(el("div", { class: "home-kpi-val", text: valText }));
+
+  if (subHTML) {
+    if (typeof subHTML === "string") {
+      card.appendChild(el("div", { class: "home-kpi-sub", html: subHTML }));
+    } else if (subHTML instanceof HTMLElement) {
+      card.appendChild(subHTML);
+    }
+  }
+
+  return card;
 }
 
 function renderHome(data) {
@@ -2877,14 +3026,70 @@ function renderHome(data) {
   const totalAdcTxns = atmTxns + raastTxns + ibftTxns + posTxns + ecomTxns;
 
   const kpiGrid = el("div", { class: "home-kpi-grid" });
-  kpiGrid.appendChild(kpiCard("Active Credit Cards", formatNumber(creditCardsCount), '<span class="trend-up">▲ 8.4% YoY</span> | Premium Tier'));
-  kpiGrid.appendChild(kpiCard("Active Debit Cards", formatNumber(debitCardsCount), '<span class="trend-up">▲ 12.1% YoY</span> | Core Base Tier'));
-  kpiGrid.appendChild(kpiCard("Total Card Spend Today", formatCurrency(creditSpend + debitSpend), 'Credit: ' + formatCurrency(creditSpend) + ' | Debit: ' + formatCurrency(debitSpend)));
-  kpiGrid.appendChild(kpiCard("ADC Total Volume", formatCurrency(totalAdcVol), 'Across ATM, RAAST, IBFT, POS & E-Com'));
-  kpiGrid.appendChild(kpiCard("ADC Transaction Count", formatNumber(totalAdcTxns), 'Total Executed Transactions Today'));
-  kpiGrid.appendChild(kpiCard("Operational SLA Health", "99.4%", '<span class="status-badge ok">Optimal</span> | 99.98% System Uptime'));
-  kpiGrid.appendChild(kpiCard("Disputes & Chargebacks", formatNumber(452), 'Credit: 142 | Debit: 310 cases'));
-  kpiGrid.appendChild(kpiCard("Nostro USD Position", formatCurrency(18600000, "USD"), 'AED Position: ' + formatCurrency(6200000, "AED")));
+
+  kpiGrid.appendChild(createHomeKpiCard(
+    "Active Credit Cards",
+    formatNumber(creditCardsCount),
+    "accent-blue",
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>',
+    '<span class="kpi-badge up">▲ 8.4% YoY</span> <span>Premium Tier</span>'
+  ));
+
+  kpiGrid.appendChild(createHomeKpiCard(
+    "Active Debit Cards",
+    formatNumber(debitCardsCount),
+    "accent-teal",
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>',
+    '<span class="kpi-badge up">▲ 12.1% YoY</span> <span>Core Base Tier</span>'
+  ));
+
+  kpiGrid.appendChild(createHomeKpiCard(
+    "Total Card Spend Today",
+    formatCurrency(creditSpend + debitSpend),
+    "accent-green",
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+    '<span class="kpi-badge up">▲ +6.2%</span> <span>Credit: ' + formatCurrency(creditSpend) + ' | Debit: ' + formatCurrency(debitSpend) + '</span>'
+  ));
+
+  kpiGrid.appendChild(createHomeKpiCard(
+    "ADC Total Volume",
+    formatCurrency(totalAdcVol),
+    "accent-indigo",
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>',
+    '<span class="kpi-badge up">▲ +5.8%</span> <span>Across ATM, RAAST, IBFT, POS & E-Com</span>'
+  ));
+
+  kpiGrid.appendChild(createHomeKpiCard(
+    "ADC Transaction Count",
+    formatNumber(totalAdcTxns),
+    "accent-purple",
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+    '<span class="kpi-badge up">▲ +4.9%</span> <span>Executed Transactions Today</span>'
+  ));
+
+  kpiGrid.appendChild(createHomeKpiCard(
+    "Operational SLA Health",
+    "99.4%",
+    "accent-emerald",
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 11 12 14 22 4"/></svg>',
+    '<span class="kpi-badge ok">✓ Optimal</span> <span>99.98% System Uptime</span>'
+  ));
+
+  kpiGrid.appendChild(createHomeKpiCard(
+    "Disputes & Chargebacks",
+    formatNumber(452),
+    "accent-rose",
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+    '<span class="kpi-badge neutral">● 0.14% Rate</span> <span>Credit: 142 | Debit: 310</span>'
+  ));
+
+  kpiGrid.appendChild(createHomeKpiCard(
+    "Nostro USD Position",
+    formatCurrency(18600000, "USD"),
+    "accent-amber",
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+    '<span class="kpi-badge up">▲ Stable</span> <span>AED: ' + formatCurrency(6200000, "AED") + '</span>'
+  ));
 
   root.appendChild(kpiGrid);
 
@@ -2932,6 +3137,14 @@ function renderHome(data) {
   cBody5.innerHTML = buildHomeReconGaugeSVG(data);
   cCard5.appendChild(cBody5);
   chartsGrid.appendChild(cCard5);
+
+  // Chart 6: Inventory Overview & Availability
+  const cCard6 = el("div", { class: "ov-chart-card" });
+  cCard6.appendChild(el("div", { class: "ov-chart-title", text: "Inventory Overview & Availability" }));
+  const cBody6 = el("div", { class: "ov-chart-body" });
+  cBody6.innerHTML = buildHomeInventoryOverviewSVG(data);
+  cCard6.appendChild(cBody6);
+  chartsGrid.appendChild(cCard6);
 
   root.appendChild(chartsGrid);
 
