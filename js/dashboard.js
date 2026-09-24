@@ -3240,7 +3240,11 @@ function createHomeKpiCard(label, valText, accentClass, iconSVG, subHTML) {
   }
   card.appendChild(head);
 
-  card.appendChild(el("div", { class: "home-kpi-val", text: valText }));
+  if (typeof valText === "string" && valText.indexOf("<") !== -1) {
+    card.appendChild(el("div", { class: "home-kpi-val", html: valText }));
+  } else {
+    card.appendChild(el("div", { class: "home-kpi-val", text: valText }));
+  }
 
   if (subHTML) {
     if (typeof subHTML === "string") {
@@ -3291,8 +3295,24 @@ function renderHome(data) {
   const cb = data.chargebackSummary || {};
   const totalDisputes = (cb.retrievalCount || 185) + (cb.chargebackCount || 142) + (cb.preArbCount || 75) + (cb.fraudCount || 50);
 
+  const cardData = getCardKpiData(data);
+  const creditCifCur = cardData.credit.cif.cur;
+  const creditCifPrev = cardData.credit.cif.prev;
+  const debitCifCur = cardData.debit.cif.cur;
+  const debitCifPrev = cardData.debit.cif.prev;
+
+  const ccMomPct = calculatePercentageChange(creditCifCur, creditCifPrev);
+  const dcMomPct = calculatePercentageChange(debitCifCur, debitCifPrev);
+  const ccMomStr = ccMomPct !== null ? (ccMomPct >= 0 ? "+" : "") + ccMomPct.toFixed(1) + "%" : "+4.6%";
+  const dcMomStr = dcMomPct !== null ? (dcMomPct >= 0 ? "+" : "") + dcMomPct.toFixed(1) + "%" : "+1.9%";
+
   const usdBal = data.nostro && data.nostro[0] ? data.nostro[0].balance : 18600000;
   const aedBal = data.nostro && data.nostro[1] ? data.nostro[1].balance : 6200000;
+  const usdPrevBal = data.nostro && data.nostro[0] && data.nostro[0].prevBalance ? data.nostro[0].prevBalance : 17800000;
+  const aedPrevBal = data.nostro && data.nostro[1] && data.nostro[1].prevBalance ? data.nostro[1].prevBalance : 5900000;
+
+  const usdMomPct = calculatePercentageChange(usdBal, usdPrevBal);
+  const aedMomPct = calculatePercentageChange(aedBal, aedPrevBal);
 
   const atmUptime = atm.uptimeToday !== undefined ? atm.uptimeToday : 97.8;
 
@@ -3303,7 +3323,7 @@ function renderHome(data) {
     formatNumber(creditCardsCount),
     "accent-blue",
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>',
-    '<span class="kpi-badge up">▲ 8.4% YoY</span> <span>Premium Tier Base</span>'
+    '<span class="kpi-badge up">▲ ' + ccMomStr + ' MoM</span> <span>Premium Tier Base</span>'
   ));
 
   kpiGrid.appendChild(createHomeKpiCard(
@@ -3311,7 +3331,7 @@ function renderHome(data) {
     formatNumber(debitCardsCount),
     "accent-teal",
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>',
-    '<span class="kpi-badge up">▲ 12.1% YoY</span> <span>Core Base Tier</span>'
+    '<span class="kpi-badge up">▲ ' + dcMomStr + ' MoM</span> <span>Core Base Tier</span>'
   ));
 
   kpiGrid.appendChild(createHomeKpiCard(
@@ -3354,12 +3374,21 @@ function renderHome(data) {
     '<span class="kpi-badge neutral">● Active Cases</span> <span>Retrievals: ' + formatNumber(cb.retrievalCount || 185) + ' | Claims: ' + formatNumber(cb.chargebackCount || 142) + '</span>'
   ));
 
+  const nostroValHTML = '<div class="home-nostro-dual-val">' +
+    '<div class="nostro-dual-item"><span class="nostro-dual-lbl">USD Position</span><span class="nostro-dual-num">USD ' + formatNumber(usdBal / 1e6, 2) + ' Mn</span></div>' +
+    '<div class="nostro-dual-divider"></div>' +
+    '<div class="nostro-dual-item"><span class="nostro-dual-lbl">AED Position</span><span class="nostro-dual-num">AED ' + formatNumber(aedBal / 1e6, 2) + ' Mn</span></div>' +
+    '</div>';
+
+  const usdMomStr = usdMomPct !== null ? (usdMomPct >= 0 ? "+" : "") + usdMomPct.toFixed(1) + "%" : "Stable";
+  const aedMomStr = aedMomPct !== null ? (aedMomPct >= 0 ? "+" : "") + aedMomPct.toFixed(1) + "%" : "Stable";
+
   kpiGrid.appendChild(createHomeKpiCard(
-    "Nostro USD Position",
-    formatCurrency(usdBal, "USD"),
+    "Nostro Position (USD & AED)",
+    nostroValHTML,
     "accent-amber",
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
-    '<span class="kpi-badge up">▲ Stable</span> <span>AED: ' + formatCurrency(aedBal, "AED") + '</span>'
+    '<span class="kpi-badge up">▲ MoM</span> <span>USD MoM: ' + usdMomStr + ' | AED MoM: ' + aedMomStr + '</span>'
   ));
 
   root.appendChild(kpiGrid);
@@ -3751,7 +3780,7 @@ function renderOvCardKpiTableCard(title, rows) {
 
   const thead = el("thead");
   const trHead = el("tr");
-  trHead.appendChild(el("th", { text: "METRIC", class: "col-metric" }));
+  trHead.appendChild(el("th", { text: "METRIC", class: "col-metric", style: "text-align:left;" }));
   trHead.appendChild(el("th", { html: "CURRENT<br>MONTH", class: "col-val", style: "text-align:center;" }));
   trHead.appendChild(el("th", { html: "PREVIOUS<br>MONTH", class: "col-val", style: "text-align:center;" }));
   trHead.appendChild(el("th", { html: "CHANGE<br>RATE", class: "col-change", style: "text-align:center;" }));
@@ -3761,11 +3790,11 @@ function renderOvCardKpiTableCard(title, rows) {
   const tbody = el("tbody");
   rows.forEach(function (r) {
     const tr = el("tr");
-    tr.appendChild(el("td", { text: r.label, class: "col-metric" }));
-    tr.appendChild(el("td", { text: formatKpiMnVal(r.cur, r.isCurrency), class: "col-val" }));
-    tr.appendChild(el("td", { text: formatKpiMnVal(r.prev, r.isCurrency), class: "col-val" }));
+    tr.appendChild(el("td", { text: r.label, class: "col-metric", style: "text-align:left;" }));
+    tr.appendChild(el("td", { text: formatKpiMnVal(r.cur, r.isCurrency), class: "col-val", style: "text-align:center;" }));
+    tr.appendChild(el("td", { text: formatKpiMnVal(r.prev, r.isCurrency), class: "col-val", style: "text-align:center;" }));
 
-    const tdChange = el("td", { class: "col-change" });
+    const tdChange = el("td", { class: "col-change", style: "text-align:center;" });
     const higherIsBetter = r.higherIsBetter !== undefined ? r.higherIsBetter : (r.label.indexOf("Inactive Cards") !== -1 ? false : true);
     tdChange.innerHTML = indicatorHTML(r.cur, r.prev, higherIsBetter, true);
     tr.appendChild(tdChange);
@@ -3967,7 +3996,9 @@ function renderOvAdcSummary(root, data) {
       kpi: "ATM Success Rate",
       cur: uptComp.todayStr,
       prev: uptComp.yesterdayStr,
-      change: uptComp.html
+      change: uptComp.html,
+      target: "atm-performance",
+      title: "Click to view ATM Performance in ADC Operations"
     });
   }
   if (data.raast) {
@@ -3976,13 +4007,17 @@ function renderOvAdcSummary(root, data) {
       kpi: "RAAST Success Rate",
       cur: formatPercentage(r.successRateToday),
       prev: formatPercentage(r.successRateYesterday),
-      change: calculateComparisons(r.successRateToday, r.successRateYesterday, true, true).html
+      change: calculateComparisons(r.successRateToday, r.successRateYesterday, true, true).html,
+      target: "raast-operations",
+      title: "Click to view RAAST Operations in ADC Operations"
     });
     rows.push({
       kpi: "RAAST Transaction Count",
       cur: formatNumber(r.successCountToday, 0),
       prev: formatNumber(r.successCountYesterday, 0),
-      change: calculateComparisons(r.successCountToday, r.successCountYesterday, true, true).html
+      change: calculateComparisons(r.successCountToday, r.successCountYesterday, true, true).html,
+      target: "raast-operations",
+      title: "Click to view RAAST Operations in ADC Operations"
     });
   }
   if (data.ibft) {
@@ -3991,13 +4026,17 @@ function renderOvAdcSummary(root, data) {
       kpi: "IBFT Success Rate",
       cur: formatPercentage(i.successRateToday),
       prev: formatPercentage(i.successRateYesterday),
-      change: calculateComparisons(i.successRateToday, i.successRateYesterday, true, true).html
+      change: calculateComparisons(i.successRateToday, i.successRateYesterday, true, true).html,
+      target: "ibft-operations",
+      title: "Click to view IBFT Operations in ADC Operations"
     });
     rows.push({
       kpi: "IBFT Transaction Count",
       cur: formatNumber(i.successCountToday, 0),
       prev: formatNumber(i.successCountYesterday, 0),
-      change: calculateComparisons(i.successCountToday, i.successCountYesterday, true, true).html
+      change: calculateComparisons(i.successCountToday, i.successCountYesterday, true, true).html,
+      target: "ibft-operations",
+      title: "Click to view IBFT Operations in ADC Operations"
     });
   }
 
@@ -4013,6 +4052,14 @@ function renderOvAdcSummary(root, data) {
   const tbody = el("tbody");
   rows.forEach(function (row) {
     const tr = el("tr");
+    if (row.target) {
+      tr.classList.add("clickable-row");
+      tr.style.cursor = "pointer";
+      tr.setAttribute("title", row.title);
+      tr.addEventListener("click", function () {
+        navigateToPage("adc-operations", row.target);
+      });
+    }
     tr.appendChild(el("td", { text: row.kpi }));
     tr.appendChild(el("td", { class: "num", text: row.cur }));
     tr.appendChild(el("td", { class: "num", text: row.prev }));
@@ -4275,6 +4322,7 @@ function buildOvAdcTable(data) {
     { name: "Total RAAST Transactions", target: "raast-operations", title: "Click to view RAAST Operations in ADC Operations", tCnt: raastTdyCnt, tAmt: raastTdyAmt, yCnt: raastYestCnt, yAmt: raastYestAmt, comp: raastComp },
     {
       name: "Total POS Transactions",
+      target: "pos-operations",
       expandable: true,
       tCnt: posTdyCnt,
       tAmt: posTdyAmt,
@@ -4300,6 +4348,7 @@ function buildOvAdcTable(data) {
     },
     {
       name: "Total Ecommerce Transactions",
+      target: "ecommerce-operations",
       expandable: true,
       tCnt: ecomTdyCnt,
       tAmt: ecomTdyAmt,
@@ -4331,7 +4380,7 @@ function buildOvAdcTable(data) {
     if (r.expandable) {
       tr.classList.add("ov-expandable-parent");
       tr.style.cursor = "pointer";
-      tr.setAttribute("title", "Click to expand/collapse " + r.name + " Debit and Credit Card breakdown");
+      tr.setAttribute("title", "Click to expand/collapse " + r.name + " breakdown or view in ADC Operations");
 
       const tdName = el("td", { style: "text-align:left; font-weight:600;" });
       const chevronSpan = el("span", { class: "row-expand-chevron", html: "&#8250;" });
@@ -4353,10 +4402,10 @@ function buildOvAdcTable(data) {
 
       const childElements = [];
       r.children.forEach(function (c) {
-        const childTr = el("tr", { class: "ov-expandable-child", style: "display: none;" });
+        const childTr = el("tr", { class: "ov-expandable-child clickable-row", style: "display: none; cursor: pointer;" });
         const cComp = calculateComparisons(c.tAmt, c.yAmt, true, isMoM);
 
-        const tdChildName = el("td", { style: "text-align:left;" });
+        const tdChildName = el("td", { style: "text-align:left; padding-left: 20px;" });
         const nameSpan = el("span", { text: c.name });
         tdChildName.appendChild(nameSpan);
         childTr.appendChild(tdChildName);
@@ -4369,6 +4418,18 @@ function buildOvAdcTable(data) {
         const tdChildChg = el("td", { style: "text-align:center;" });
         tdChildChg.innerHTML = cComp.html;
         childTr.appendChild(tdChildChg);
+
+        childTr.setAttribute("title", "Click to view " + c.name + " " + r.name + " in ADC Operations");
+        childTr.addEventListener("click", function (e) {
+          e.stopPropagation();
+          if (r.name.indexOf("POS") !== -1) {
+            appState.posActiveTab = c.name.toLowerCase().indexOf("credit") !== -1 ? "credit" : "debit";
+            navigateToPage("adc-operations", "pos-operations");
+          } else if (r.name.indexOf("Ecommerce") !== -1) {
+            appState.ecomActiveTab = c.name.toLowerCase().indexOf("credit") !== -1 ? "credit" : "debit";
+            navigateToPage("adc-operations", "ecommerce-operations");
+          }
+        });
 
         tbody.appendChild(childTr);
         childElements.push(childTr);
@@ -6509,7 +6570,32 @@ function bindEvents() {
   if (dom.sideNav) {
     dom.sideNav.addEventListener("click", function (e) {
       const btn = e.target.closest(".nav-item");
-      if (btn) navigateToPage(btn.getAttribute("data-page"));
+      if (btn) {
+        navigateToPage(btn.getAttribute("data-page"));
+        dom.sideNav.classList.remove("mobile-drawer-open");
+        const backdrop = document.getElementById("mobileNavBackdrop");
+        if (backdrop) backdrop.classList.remove("active");
+      }
+    });
+  }
+
+  const btnMobileToggle = document.getElementById("btnMobileNavToggle");
+  if (btnMobileToggle && dom.sideNav) {
+    btnMobileToggle.addEventListener("click", function (e) {
+      e.stopPropagation();
+      dom.sideNav.classList.toggle("mobile-drawer-open");
+      let backdrop = document.getElementById("mobileNavBackdrop");
+      if (!backdrop) {
+        backdrop = document.createElement("div");
+        backdrop.id = "mobileNavBackdrop";
+        backdrop.className = "mobile-nav-backdrop";
+        document.body.appendChild(backdrop);
+        backdrop.addEventListener("click", function () {
+          dom.sideNav.classList.remove("mobile-drawer-open");
+          backdrop.classList.remove("active");
+        });
+      }
+      backdrop.classList.toggle("active", dom.sideNav.classList.contains("mobile-drawer-open"));
     });
   }
 
