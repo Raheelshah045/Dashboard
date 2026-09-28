@@ -3591,7 +3591,7 @@ table.recon-detail-table td.recon-diff-cell {
     max-width: 320px;
     width: calc(100vw - 24px);
   }
-}
+
 
 /* ── Mobile (480px and under) ───────────────────────────────────── */
 @media (max-width: 480px) {

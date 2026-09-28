@@ -649,6 +649,65 @@ function generateIllustrativeData() {
       { product: "Health & Takaful Plan Ops", txnCount: 2470, amount: 280000000, successRate: 97.1, pendingItems: 6 },
       { product: "Auto & Credit Shield Ops", txnCount: 1290, amount: 150000000, successRate: 96.8, pendingItems: 3 },
       { product: "Investment Assurance Ops", txnCount: 808, amount: 90000000, successRate: 97.7, pendingItems: 2 }
+    ],
+
+    bcp: {
+      overallReadiness: 98.6,
+      criticalProcesses: 14,
+      bcpPlansApproved: 14,
+      overduePlanReviews: 0,
+      criticalOpenGaps: 1,
+      drReadiness: 99.1,
+      upcomingBcpTests: 2,
+      lastBcpTest: "2026-09-15"
+    },
+    bcpProcessReadiness: [
+      { process: "Core Banking System", criticality: "Tier 1 - Critical", rto: "1 Hour", rpo: "15 Mins", bcpStatus: '<span class="status-badge ok">Approved</span>', lastTest: "2026-08-10", openGap: "None" },
+      { process: "ATM Operations", criticality: "Tier 1 - Critical", rto: "1 Hour", rpo: "15 Mins", bcpStatus: '<span class="status-badge ok">Approved</span>', lastTest: "2026-09-15", openGap: "None" },
+      { process: "Card Processing", criticality: "Tier 1 - Critical", rto: "2 Hours", rpo: "15 Mins", bcpStatus: '<span class="status-badge ok">Approved</span>', lastTest: "2026-07-20", openGap: "Network Latency" },
+      { process: "Internet Banking", criticality: "Tier 1 - Critical", rto: "2 Hours", rpo: "30 Mins", bcpStatus: '<span class="status-badge critical">Review Pending</span>', lastTest: "2026-06-12", openGap: "None" },
+      { process: "Branch Operations", criticality: "Tier 2 - High", rto: "4 Hours", rpo: "2 Hours", bcpStatus: '<span class="status-badge ok">Approved</span>', lastTest: "2026-05-30", openGap: "Staff Relocation" },
+      { process: "Payments (Raast/IBFT)", criticality: "Tier 1 - Critical", rto: "1 Hour", rpo: "15 Mins", bcpStatus: '<span class="status-badge ok">Approved</span>', lastTest: "2026-09-20", openGap: "None" }
+    ],
+    bcpTesting: {
+      completed: 12,
+      upcoming: 2,
+      overdue: 0,
+      successful: 10,
+      partial: 2,
+      failed: 0,
+      criticalFindings: 1
+    },
+    bcpIssuesGaps: [
+      { issue: "High latency on alternate network link", area: "DR Network", severity: '<span class="status-badge critical">Critical</span>', owner: "NetOps Team", dueDate: "2026-10-15", status: "<span class=\"status-badge warning\">In Progress</span>", aging: "14 Days" },
+      { issue: "Staff relocation capacity limit", area: "Alternate Workspace", severity: "<span class=\"status-badge warning\">Medium</span>", owner: "HR & Facilities", dueDate: "2026-11-01", status: "<span class=\"status-badge critical\">Open</span>", aging: "5 Days" },
+      { issue: "Incomplete log shipping for subsidiary DB", area: "Database Sync", severity: '<span class="status-badge critical">High</span>', owner: "DBA Team", dueDate: "2026-10-20", status: "<span class=\"status-badge warning\">In Progress</span>", aging: "9 Days" }
+    ],
+    bcpRecoveryReadiness: [
+      { metric: "DR Site", status: '<span class="status-badge ok">Available</span>', detail: "Lahore Node Active" },
+      { metric: "Critical Applications", status: '<span class="status-badge ok">Ready</span>', detail: "14/14 Available in DR" },
+      { metric: "Database Replication", status: '<span class="status-badge critical">Lagging</span>', detail: "1 DB out of sync" },
+      { metric: "Network Connectivity", status: '<span class="status-badge ok">Connected</span>', detail: "Dual ISPs Active" },
+      { metric: "Backup Readiness", status: '<span class="status-badge ok">Verified</span>', detail: "Last snapshot 2h ago" },
+      { metric: "Alternate Workspace", status: '<span class="status-badge ok">Ready</span>', detail: "300 Seats Available" },
+      { metric: "Emergency Communication", status: '<span class="status-badge ok">Tested</span>', detail: "SMS Gateway OK" }
+    ],
+    bcpSystemsDependencies: [
+      { sys: "FlexCube (Core Banking)", dep: "Oracle RAC, LDAP, Network", status: '<span class="status-badge ok">DR Sync OK</span>' },
+      { sys: "Postilion (Switch)", dep: "HSM, MS SQL, Payment Gateways", status: '<span class="status-badge ok">DR Sync OK</span>' },
+      { sys: "VisionPLUS (Cards)", dep: "IBM DB2, Connect:Direct", status: '<span class="status-badge critical">Async Lag</span>' },
+      { sys: "Raast Gateway", dep: "PostgreSQL, SBP VPN", status: '<span class="status-badge ok">DR Sync OK</span>' }
+    ],
+    bcpVendors: [
+      { vendor: "1Link (Payment Switch)", area: "Interbank Routing", bcpStatus: '<span class="status-badge ok">Compliant</span>', lastAssessment: "2026-03-15", gaps: "None" },
+      { vendor: "AWS (Cloud Hosting)", area: "Digital App Servers", bcpStatus: '<span class="status-badge ok">Compliant</span>', lastAssessment: "2026-02-10", gaps: "None" },
+      { vendor: "PTCL / Nayatel", area: "Primary ISP", bcpStatus: '<span class="status-badge ok">Compliant</span>', lastAssessment: "2026-01-20", gaps: "Failover Latency" },
+      { vendor: "Card Embossing Co.", area: "Plastic Card Printing", bcpStatus: '<span class="status-badge critical">Review Pending</span>', lastAssessment: "2025-11-05", gaps: "Overdue Assessment" }
+    ],
+    bcpExceptions: [
+      { type: '<span class="status-badge critical">Critical Risk</span>', desc: "High latency on alternate network link to DR site", action: "Upgrade link bandwidth" },
+      { type: '<span class="status-badge critical">Overdue</span>', desc: "Vendor BCP assessment for Card Embossing Co. is overdue", action: "Schedule vendor review" },
+      { type: '<span class="status-badge critical">Process at Risk</span>', desc: "Card Processing - Async lag due to replication delay", action: "DBA troubleshooting" }
     ]
   };
 
@@ -1527,7 +1586,7 @@ function updateHeaderStatus() {
    7. NAVIGATION
    --------------------------------------------------------------------- */
 
-const VALID_PAGES = ["home", "overview", "adc-operations", "failure-reasons", "card-non-financials", "card-financials", "chargeback", "reconciliation", "secure-operations", "unsecured-operations", "banca"];
+const VALID_PAGES = ["home", "overview", "adc-operations", "failure-reasons", "card-non-financials", "card-financials", "chargeback", "reconciliation", "secure-operations", "unsecured-operations", "banca", "bcp"];
 
 const navigationStack = [];
 
@@ -2195,6 +2254,7 @@ function renderActivePage() {
     case "secure-operations": renderSecureOperations(data); break;
     case "unsecured-operations": renderUnsecuredOperations(data); break;
     case "banca": renderBanca(data); break;
+    case "bcp": renderBCP(data); break;
   }
 }
 
@@ -2233,7 +2293,8 @@ function buildAlertMailtoUrl(alert) {
     "reconciliation": "Reconciliation",
     "secure-operations": "Secure Operations",
     "unsecured-operations": "Unsecured Operations",
-    "banca": "Banca"
+    "banca": "Banca",
+    "bcp": "BCP (Business Continuity Plan)"
   };
   const categoryStr = pageMap[alert.page] || alert.page || "General Operations";
   const dateStr = alert.timestamp || new Date().toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -2273,7 +2334,8 @@ function renderAlertsInbox(rawAlerts) {
     "reconciliation": "Reconciliation",
     "secure-operations": "Secure Operations",
     "unsecured-operations": "Unsecured Operations",
-    "banca": "Banca"
+    "banca": "Banca",
+    "bcp": "BCP (Business Continuity Plan)"
   };
 
   rawAlerts.forEach(function (a) {
@@ -3396,6 +3458,55 @@ function renderHome(data) {
     '<span class="kpi-badge up">▲ MoM</span> <span>USD MoM: ' + usdMomStr + ' | AED MoM: ' + aedMomStr + '</span>'
   ));
 
+  const sec = data.secureOperations || generateIllustrativeData().secureOperations;
+  const unsec = data.unsecuredOperations || generateIllustrativeData().unsecuredOperations;
+  const ban = data.banca || generateIllustrativeData().banca;
+  const bcp = data.bcp || generateIllustrativeData().bcp;
+
+  const cardSec = createHomeKpiCard(
+    "Secured Operations",
+    formatCurrency(sec.totalAmountToday || 2450000000),
+    "accent-blue",
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+    '<span class="kpi-badge up">▲ ' + calculateComparisons(sec.totalAmountToday, sec.totalAmountYesterday, true, false).html + '</span> <span>Txns: ' + formatNumber(sec.successTxnToday || 33900) + '</span>'
+  );
+  cardSec.style.cursor = "pointer";
+  cardSec.addEventListener("click", function() { navigateToPage("secure-operations"); });
+  kpiGrid.appendChild(cardSec);
+
+  const cardUnsec = createHomeKpiCard(
+    "Unsecured Operations",
+    formatCurrency(unsec.totalAmountToday || 1680000000),
+    "accent-indigo",
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+    '<span class="kpi-badge up">▲ ' + calculateComparisons(unsec.totalAmountToday, unsec.totalAmountYesterday, true, false).html + '</span> <span>Txns: ' + formatNumber(unsec.successTxnToday || 21450) + '</span>'
+  );
+  cardUnsec.style.cursor = "pointer";
+  cardUnsec.addEventListener("click", function() { navigateToPage("unsecured-operations"); });
+  kpiGrid.appendChild(cardUnsec);
+
+  const cardBan = createHomeKpiCard(
+    "Banca",
+    formatCurrency(ban.totalAmountToday || 940000000),
+    "accent-teal",
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+    '<span class="kpi-badge ok">✓ ' + formatPercentage(ban.successRateToday || 97.51) + ' Success</span> <span>Txns: ' + formatNumber(ban.successTxnToday || 8240) + '</span>'
+  );
+  cardBan.style.cursor = "pointer";
+  cardBan.addEventListener("click", function() { navigateToPage("banca"); });
+  kpiGrid.appendChild(cardBan);
+
+  const cardBcp = createHomeKpiCard(
+    "BCP (Business Continuity)",
+    formatPercentage(bcp.drSyncStatus || 99.85),
+    "accent-emerald",
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+    '<span class="kpi-badge ok">✓ Operational</span> <span>DR RTO: ' + (bcp.overallRTO || 1.5) + ' Hrs | Sync Active</span>'
+  );
+  cardBcp.style.cursor = "pointer";
+  cardBcp.addEventListener("click", function() { navigateToPage("bcp"); });
+  kpiGrid.appendChild(cardBcp);
+
   root.appendChild(kpiGrid);
 
   // 2. Executive Visual Analytics & Operational Performance Matrix
@@ -4214,6 +4325,7 @@ function renderOvModules(root, data) {
   grid.appendChild(ovModuleCard("Secure Operations",               "secure-operations", ovSecOpsRows(data)));
   grid.appendChild(ovModuleCard("Unsecured Operations",            "unsecured-operations", ovUnsecOpsRows(data)));
   grid.appendChild(ovModuleCard("Banca",                           "banca",             ovBancaRows(data)));
+  grid.appendChild(ovModuleCard("BCP (Business Continuity Plan)",   "bcp",               ovBcpRows(data)));
   root.appendChild(grid);
 }
 
@@ -4929,6 +5041,16 @@ function ovBancaRows(data) {
     ["Banca Success Rate", formatPercentage(b.successRateToday)],
     ["Banca Transaction Amount", formatCurrency(b.totalAmountToday)],
     ["Pending / Exception Items", formatNumber(b.pendingItemsToday)]
+  ];
+}
+
+function ovBcpRows(data) {
+  const bcp = data.bcp || (generateIllustrativeData().bcp);
+  return [
+    ["Overall Recovery Time (RTO)", bcp.overallRTO + " Hours"],
+    ["Recovery Point (RPO)", (bcp.overallRPO * 60) + " Mins"],
+    ["DR Site Sync Health", formatPercentage(bcp.drSyncStatus)],
+    ["BCP Drill Compliance", formatPercentage(bcp.drDrillCompliance)]
   ];
 }
 
@@ -6675,7 +6797,112 @@ function buildBancaChartSVG(breakdown) {
 }
 
 /* ---------------------------------------------------------------------
-   20. INITIALIZATION
+   20. PAGE 10 — BCP (BUSINESS CONTINUITY PLAN)
+   --------------------------------------------------------------------- */
+
+function renderBCP(data) {
+  const root = document.getElementById("bcp-body");
+  if (!root) return;
+  root.innerHTML = "";
+
+  const bcp = data.bcp || {};
+  const lbl = getPeriodLabels();
+
+  // 1. BCP Executive KPIs
+  root.appendChild(sectionTitle("BCP Executive KPIs"));
+  const grid = el("div", { class: "home-kpi-grid" });
+
+  grid.appendChild(kpiCard("Overall BCP Readiness", formatPercentage(bcp.overallReadiness || 98.6), "Target: 100%"));
+  grid.appendChild(kpiCard("Critical Processes", bcp.criticalProcesses || 14, "Covered by BCP"));
+  grid.appendChild(kpiCard("BCP Plans Approved", bcp.bcpPlansApproved || 14, "Up to date"));
+  grid.appendChild(kpiCard("Overdue Plan Reviews", bcp.overduePlanReviews || 0, "Pending Review"));
+  grid.appendChild(kpiCard("Critical Open Gaps", bcp.criticalOpenGaps || 1, "High Severity"));
+  grid.appendChild(kpiCard("DR Readiness", formatPercentage(bcp.drReadiness || 99.1), "Target: 99.9%"));
+  grid.appendChild(kpiCard("Upcoming BCP Tests", bcp.upcomingBcpTests || 2, "Scheduled in next 30 days"));
+  grid.appendChild(kpiCard("Last BCP Test", bcp.lastBcpTest || "2026-09-15", "Completed Successfully"));
+  
+  root.appendChild(grid);
+
+  // 2. Critical Business Process Readiness table
+  root.appendChild(sectionTitle("Critical Business Process Readiness"));
+  const processCols = [
+    { key: "process", label: "Process" },
+    { key: "criticality", label: "Criticality" },
+    { key: "rto", label: "RTO" },
+    { key: "rpo", label: "RPO" },
+    { key: "bcpStatus", label: "BCP Status" },
+    { key: "lastTest", label: "Last Test" },
+    { key: "openGap", label: "Open Gap" }
+  ];
+  root.appendChild(buildTable(null, processCols, data.bcpProcessReadiness || []));
+
+  // 3. BCP / DR Testing & Drill Status
+  root.appendChild(sectionTitle("BCP / DR Testing & Drill Status"));
+  const testGrid = el("div", { class: "home-kpi-grid" });
+  const testing = data.bcpTesting || {};
+  testGrid.appendChild(kpiCard("Tests Completed", testing.completed || 0, "YTD"));
+  testGrid.appendChild(kpiCard("Upcoming Tests", testing.upcoming || 0, "Scheduled"));
+  testGrid.appendChild(kpiCard("Overdue Tests", testing.overdue || 0, "Require Attention"));
+  testGrid.appendChild(kpiCard("Successful Tests", testing.successful || 0, "Passed Criteria"));
+  testGrid.appendChild(kpiCard("Partial Success", testing.partial || 0, "Needs Follow-up"));
+  testGrid.appendChild(kpiCard("Failed Tests", testing.failed || 0, "Critical Action Required"));
+  testGrid.appendChild(kpiCard("Critical Findings", testing.criticalFindings || 0, "From recent drills"));
+  root.appendChild(testGrid);
+
+  // 4. Critical Issues & Gaps table
+  root.appendChild(sectionTitle("Critical Issues & Gaps"));
+  const issuesCols = [
+    { key: "issue", label: "Issue" },
+    { key: "area", label: "Area" },
+    { key: "severity", label: "Severity" },
+    { key: "owner", label: "Owner" },
+    { key: "dueDate", label: "Due Date" },
+    { key: "status", label: "Status" },
+    { key: "aging", label: "Aging" }
+  ];
+  root.appendChild(buildTable(null, issuesCols, data.bcpIssuesGaps || []));
+
+  // 5. DR / Recovery Readiness
+  root.appendChild(sectionTitle("DR / Recovery Readiness"));
+  const recoveryCols = [
+    { key: "metric", label: "Monitor Area" },
+    { key: "status", label: "Readiness Status" },
+    { key: "detail", label: "Details" }
+  ];
+  root.appendChild(buildTable(null, recoveryCols, data.bcpRecoveryReadiness || []));
+
+  // 6. Critical Systems & Dependencies
+  root.appendChild(sectionTitle("Critical Systems & Dependencies"));
+  const sysCols = [
+    { key: "sys", label: "System" },
+    { key: "dep", label: "Dependencies" },
+    { key: "status", label: "Continuity Status" }
+  ];
+  root.appendChild(buildTable(null, sysCols, data.bcpSystemsDependencies || []));
+
+  // 7. Third-Party / Vendor Continuity
+  root.appendChild(sectionTitle("Third-Party / Vendor Continuity"));
+  const vendorCols = [
+    { key: "vendor", label: "Critical Vendor" },
+    { key: "area", label: "Area" },
+    { key: "bcpStatus", label: "BCP Status" },
+    { key: "lastAssessment", label: "Last Assessment" },
+    { key: "gaps", label: "Outstanding Gaps" }
+  ];
+  root.appendChild(buildTable(null, vendorCols, data.bcpVendors || []));
+
+  // 8. Management Exception Summary
+  root.appendChild(sectionTitle("Management Exception Summary"));
+  const excCols = [
+    { key: "type", label: "Exception Type" },
+    { key: "desc", label: "Description" },
+    { key: "action", label: "Management Action" }
+  ];
+  root.appendChild(buildTable(null, excCols, data.bcpExceptions || []));
+}
+
+/* ---------------------------------------------------------------------
+   21. INITIALIZATION
    --------------------------------------------------------------------- */
 
 function cacheDom() {
