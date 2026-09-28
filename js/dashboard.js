@@ -296,6 +296,7 @@ function buildTable(caption, columns, rows, emptyMessage) {
   rows.forEach(function (row) {
     const trAttrs = {};
     if (row.rowClass) trAttrs.class = row.rowClass;
+    if (row.rowId) trAttrs.id = row.rowId;
     if (row.title) trAttrs.title = row.title;
     const tr = el("tr", trAttrs);
 
@@ -536,6 +537,8 @@ function generateIllustrativeData() {
       credit: {
         domestic: { count: 820, amount: 58000000, prevCount: 780, prevAmount: 54000000 },
         international: { count: 290, amount: 32000000, prevCount: 310, prevAmount: 34000000 },
+        raast: { count: 840, amount: 48000000, prevCount: 790, prevAmount: 45000000 },
+        ibft: { count: 1820, amount: 110000000, prevCount: 1750, prevAmount: 105000000 },
         pos: { count: 420, amount: 35000000, prevCount: 400, prevAmount: 33000000 },
         ecommerce: { count: 690, amount: 55000000, prevCount: 690, prevAmount: 55000000 },
         preArbRaised: { count: 62, amount: 7800000, prevCount: 56, prevAmount: 7100000 },
@@ -545,6 +548,8 @@ function generateIllustrativeData() {
       debit: {
         domestic: { count: 420, amount: 28000000, prevCount: 400, prevAmount: 27500000 },
         international: { count: 90, amount: 9000000, prevCount: 100, prevAmount: 10200000 },
+        raast: { count: 408, amount: 26000000, prevCount: 385, prevAmount: 24000000 },
+        ibft: { count: 2052, amount: 135000000, prevCount: 2460, prevAmount: 155000000 },
         pos: { count: 270, amount: 17000000, prevCount: 255, prevAmount: 16800000 },
         ecommerce: { count: 240, amount: 20000000, prevCount: 245, prevAmount: 20800000 },
         preArbRaised: { count: 20, amount: 2000000, prevCount: 20, prevAmount: 2000000 },
@@ -4204,7 +4209,7 @@ function renderOvModules(root, data) {
   grid.appendChild(ovModuleCard("ADC Operations",                  "adc-operations",    buildOvAdcTable(data)));
   grid.appendChild(ovModuleCard("Complain / Chargeback / Disputes","chargeback",        buildOvCbDisputesTable(data)));
   grid.appendChild(ovModuleCard("Income Stream",                   "card-financials",   buildOvCardFinTable(data)));
-  grid.appendChild(ovModuleCard("Provisional Taxes",               "card-financials",   buildOvProvisionalTaxesTable(data)));
+  grid.appendChild(buildOvProvisionalTaxesDualCard(data));
   grid.appendChild(ovModuleCard("Inventory / Stock Position",      "card-non-financials", buildOvInventoryTable(data)));
   grid.appendChild(ovModuleCard("Secure Operations",               "secure-operations", ovSecOpsRows(data)));
   grid.appendChild(ovModuleCard("Unsecured Operations",            "unsecured-operations", ovUnsecOpsRows(data)));
@@ -4487,6 +4492,16 @@ function buildOvInventoryTable(data) {
 
   const tbody = el("tbody");
 
+  const plasticChildren = [
+    { item: "Debit Classic Card", curStr: "40,000", subtext: "(5.7 mos)", prevStr: "18,000", comp: { html: '<span class="status-badge warning">Warning</span>' } },
+    { item: "Debit Gold Card", curStr: "18,000", subtext: "(5.8 mos)", prevStr: "9,000", comp: { html: '<span class="status-badge warning">Warning</span>' } },
+    { item: "Debit Platinum Card", curStr: "9,200", subtext: "(3.5 mos)", prevStr: "8,000", comp: { html: '<span class="status-badge warning">Warning</span>' } },
+    { item: "Credit Classic Card", curStr: "12,600", subtext: "(4.3 mos)", prevStr: "9,000", comp: { html: '<span class="status-badge warning">Warning</span>' } },
+    { item: "Credit Gold Card", curStr: "7,100", subtext: "(3.9 mos)", prevStr: "6,000", comp: { html: '<span class="status-badge warning">Warning</span>' } },
+    { item: "Credit Platinum Card", curStr: "3,200", subtext: "(2.2 mos)", prevStr: "4,500", comp: { html: '<span class="status-badge critical">Critical</span>' } },
+    { item: "World Elite Card", curStr: "640", subtext: "(2.5 mos)", prevStr: "800", comp: { html: '<span class="status-badge critical">Critical</span>' } }
+  ];
+
   const rows = [
     {
       item: "Card Plastic",
@@ -4497,7 +4512,9 @@ function buildOvInventoryTable(data) {
       prevStr: "60,000,000",
       targetPage: "card-non-financials",
       targetSection: "card-plastic-availability",
-      title: "Click to view Card Plastic Availability in Card Non-Financials"
+      title: "Click to expand/collapse Card Plastic stock breakdown or view in Card Non-Financials",
+      expandable: true,
+      children: plasticChildren
     },
     {
       item: "Envelopes Stock",
@@ -4525,28 +4542,93 @@ function buildOvInventoryTable(data) {
 
   rows.forEach(function (r) {
     const tr = el("tr");
-    if (r.targetPage) {
-      tr.classList.add("clickable-row");
+
+    if (r.expandable) {
+      tr.classList.add("ov-expandable-parent");
       tr.style.cursor = "pointer";
       tr.setAttribute("title", r.title);
-      tr.addEventListener("click", function () {
-        navigateToPage(r.targetPage, r.targetSection);
+
+      const tdName = el("td", { style: "text-align:left; font-weight:600;" });
+      const chevronSpan = el("span", { class: "row-expand-chevron", html: "&#8250;" });
+      const labelSpan = el("span", { text: r.item });
+      tdName.appendChild(chevronSpan);
+      tdName.appendChild(labelSpan);
+      tr.appendChild(tdName);
+
+      const tdCur = el("td", { class: "num" });
+      tdCur.innerHTML = '<strong>' + r.curStr + '</strong>' + (r.subtext ? ' <span class="stock-subtext">' + r.subtext + '</span>' : '');
+      tr.appendChild(tdCur);
+
+      tr.appendChild(el("td", { text: r.prevStr, class: "num", style: "color:var(--text-secondary);" }));
+
+      const comp = calculateComparisons(r.cur, r.prev, true, true);
+      const tdChg = el("td", { class: "num", style: "text-align:center;" });
+      tdChg.innerHTML = comp.html;
+      tr.appendChild(tdChg);
+
+      tbody.appendChild(tr);
+
+      const childElements = [];
+      r.children.forEach(function (c) {
+        const childTr = el("tr", { class: "ov-expandable-child clickable-row", style: "display: none; cursor: pointer;" });
+        
+        const tdChildName = el("td", { style: "text-align:left; padding-left: 20px;" });
+        tdChildName.appendChild(el("span", { text: c.item }));
+        childTr.appendChild(tdChildName);
+
+        const tdChildCur = el("td", { class: "num" });
+        tdChildCur.innerHTML = '<strong>' + c.curStr + '</strong>' + (c.subtext ? ' <span class="stock-subtext">' + c.subtext + '</span>' : '');
+        childTr.appendChild(tdChildCur);
+
+        childTr.appendChild(el("td", { text: c.prevStr, class: "num", style: "color:var(--text-secondary);" }));
+
+        const tdChildChg = el("td", { class: "num", style: "text-align:center;" });
+        tdChildChg.innerHTML = c.comp.html;
+        childTr.appendChild(tdChildChg);
+
+        childTr.setAttribute("title", "Click to view " + c.item + " in Card Non-Financials");
+        childTr.addEventListener("click", function (e) {
+          e.stopPropagation();
+          navigateToPage("card-non-financials", "card-plastic-availability");
+        });
+
+        tbody.appendChild(childTr);
+        childElements.push(childTr);
       });
+
+      let isExpanded = false;
+      tr.addEventListener("click", function () {
+        isExpanded = !isExpanded;
+        chevronSpan.innerHTML = isExpanded ? "&#9660;" : "&#8250;";
+        tr.classList.toggle("expanded", isExpanded);
+        childElements.forEach(function (childEl) {
+          childEl.style.display = isExpanded ? "table-row" : "none";
+        });
+      });
+    } else {
+      if (r.targetPage) {
+        tr.classList.add("clickable-row");
+        tr.style.cursor = "pointer";
+        tr.setAttribute("title", r.title);
+        tr.addEventListener("click", function () {
+          navigateToPage(r.targetPage, r.targetSection);
+        });
+      }
+      tr.appendChild(el("td", { text: r.item, style: "text-align:left; font-weight:600;" }));
+
+      const tdCur = el("td", { class: "num" });
+      tdCur.innerHTML = '<strong>' + r.curStr + '</strong>' + (r.subtext ? ' <span class="stock-subtext">' + r.subtext + '</span>' : '');
+      tr.appendChild(tdCur);
+
+      tr.appendChild(el("td", { text: r.prevStr, class: "num", style: "color:var(--text-secondary);" }));
+
+      const comp = calculateComparisons(r.cur, r.prev, true, true);
+      const tdChg = el("td", { class: "num", style: "text-align:center;" });
+      tdChg.innerHTML = comp.html;
+      tr.appendChild(tdChg);
+
+      tbody.appendChild(tr);
     }
-    tr.appendChild(el("td", { text: r.item, style: "text-align:left; font-weight:600;" }));
-
-    const tdCur = el("td", { class: "num" });
-    tdCur.innerHTML = '<strong>' + r.curStr + '</strong>' + (r.subtext ? ' <span class="stock-subtext">' + r.subtext + '</span>' : '');
-    tr.appendChild(tdCur);
-
-    tr.appendChild(el("td", { text: r.prevStr, class: "num", style: "color:var(--text-secondary);" }));
-
-    const comp = calculateComparisons(r.cur, r.prev, true, true);
-    const tdChg = el("td", { class: "num", style: "text-align:center;" });
-    tdChg.innerHTML = comp.html;
-    tr.appendChild(tdChg);
-
-    tbody.appendChild(tr);
   });
 
   table.appendChild(tbody);
@@ -4626,6 +4708,66 @@ function buildOvProvisionalTaxesTable(data) {
 
   table.appendChild(tbody);
   return table;
+}
+
+function buildOvProvisionalTaxesDualCard(data) {
+  // Outer wrapper — spans full grid column like a normal module card
+  const card = el("div", { class: "ov-module-card ov-provisional-dual-card" });
+
+  // Shared header with "View Details" button
+  const hdr = el("div", { class: "ov-module-header" });
+  hdr.appendChild(el("span", { class: "ov-module-title", text: "Provisional Taxes" }));
+  const btn = el("button", { class: "ov-view-details", type: "button", text: "View Details →" });
+  btn.addEventListener("click", function () { navigateToPage("card-financials"); });
+  hdr.appendChild(btn);
+  card.appendChild(hdr);
+
+  // Side-by-side container
+  const dualWrap = el("div", { class: "ov-provisional-dual-wrap" });
+
+  // ── Issuing Side ─────────────────────────────────────────────────────────
+  const issuingHalf = el("div", { class: "ov-provisional-half" });
+  issuingHalf.appendChild(el("div", { class: "ov-provisional-sub-title", text: "Issuing Side" }));
+  const issuingTableWrap = el("div", { class: "table-responsive", style: "padding:0;margin:0;" });
+  issuingTableWrap.appendChild(buildOvProvisionalTaxesTable(data));
+  issuingHalf.appendChild(issuingTableWrap);
+  dualWrap.appendChild(issuingHalf);
+
+  // ── Acquiring Side ───────────────────────────────────────────────────────
+  const acquiringHalf = el("div", { class: "ov-provisional-half" });
+  acquiringHalf.appendChild(el("div", { class: "ov-provisional-sub-title", text: "Acquiring Side" }));
+
+  const acqTable = el("table", { class: "ov-module-table" });
+  const acqThead = el("thead");
+  const acqTrHead = el("tr");
+  acqTrHead.appendChild(el("th", { text: "Metric",         style: "text-align:left;" }));
+  acqTrHead.appendChild(el("th", { text: "Current Month",  class: "num", style: "text-align:center;" }));
+  acqTrHead.appendChild(el("th", { text: "Previous Month", class: "num", style: "text-align:center;" }));
+  acqTrHead.appendChild(el("th", { text: "MoM Rate",       class: "num", style: "text-align:center;" }));
+  acqThead.appendChild(acqTrHead);
+  acqTable.appendChild(acqThead);
+
+  const acqTbody = el("tbody");
+  // Single row — PRA acquiring side
+  const praAcq = { metric: "PRA", curVal: 11.30, prevVal: 10.20, curStr: "PKR 11.30 Mn", prevStr: "PKR 10.20 Mn" };
+  const acqTr = el("tr");
+  acqTr.appendChild(el("td", { text: praAcq.metric, style: "text-align:left; font-weight:600;" }));
+  acqTr.appendChild(el("td", { text: praAcq.curStr,  class: "num", style: "font-weight:600;" }));
+  acqTr.appendChild(el("td", { text: praAcq.prevStr, class: "num", style: "color:var(--text-secondary);" }));
+  const acqComp = calculateComparisons(praAcq.curVal, praAcq.prevVal, true, true);
+  const acqTdChg = el("td", { class: "num", style: "text-align:center;" });
+  acqTdChg.innerHTML = acqComp.html;
+  acqTr.appendChild(acqTdChg);
+  acqTbody.appendChild(acqTr);
+
+  acqTable.appendChild(acqTbody);
+  const acqTableWrap = el("div", { class: "table-responsive", style: "padding:0;margin:0;" });
+  acqTableWrap.appendChild(acqTable);
+  acquiringHalf.appendChild(acqTableWrap);
+  dualWrap.appendChild(acquiringHalf);
+
+  card.appendChild(dualWrap);
+  return card;
 }
 
 function buildOvCbDisputesTable(data) {
@@ -5007,16 +5149,6 @@ function renderADCOperations(data) {
 
     const grid = el("div", { class: "kpi-grid" });
 
-    const domAtmCount = a.domesticATMs || Math.round((a.totalATMs || 1240) * 0.94);
-    const intlAtmCount = a.internationalATMs || ((a.totalATMs || 1240) - domAtmCount);
-    const totalAtmSubHTML = '<div class="kpi-atm-sub-breakdown">'
-      + '<div class="atm-badge-chip dom-chip"><span class="chip-label">Domestic ATMs</span><strong class="chip-value">' + formatNumber(domAtmCount, 0) + '</strong></div>'
-      + '<div class="atm-badge-chip intl-chip"><span class="chip-label">International ATMs</span><strong class="chip-value">' + formatNumber(intlAtmCount, 0) + '</strong></div>'
-      + '</div>';
-    const totalAtmCard = kpiCard("Total ATM Count", formatNumber(a.totalATMs), totalAtmSubHTML);
-    totalAtmCard.classList.add("total-atm-long-box");
-    root.appendChild(totalAtmCard);
-
     const numDays = Math.max(1, (lbl.mode === "month" ? (appState.filters.daysInMonth || 31) : (appState.filters.daysCount || 15)));
     const isMoM = !lbl.isDaily;
 
@@ -5176,11 +5308,13 @@ function renderADCOperations(data) {
       onClick: function() { navigateToPage("failure-reasons", "raast-failure-reasons"); }
     },
     {
-      kpi: "Complaints Count",
+      kpi: "Complaints/Disputes Count",
       current: formatNumber(r.complaintsToday),
       previous: formatNumber(r.complaintsYesterday),
       change: calculateComparisons(r.complaintsToday, r.complaintsYesterday, false, !lbl.isDaily).html,
-      dailyAvg: formatNumber(r.complaintsToday / numDays)
+      dailyAvg: formatNumber(r.complaintsToday / numDays),
+      title: "Click to view RAAST Chargeback & Disputes details",
+      onClick: function() { navigateToPage("chargeback", "chargeback-raast-disputes"); }
     }
   ];
   root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, raastRows));
@@ -5223,11 +5357,13 @@ function renderADCOperations(data) {
       onClick: function() { navigateToPage("failure-reasons", "ibft-failure-reasons"); }
     },
     {
-      kpi: "Complaints Count",
+      kpi: "Complaints/Disputes Count",
       current: formatNumber(i.complaintsToday),
       previous: formatNumber(i.complaintsYesterday),
       change: calculateComparisons(i.complaintsToday, i.complaintsYesterday, false, !lbl.isDaily).html,
-      dailyAvg: formatNumber(i.complaintsToday / numDays)
+      dailyAvg: formatNumber(i.complaintsToday / numDays),
+      title: "Click to view IBFT Chargeback & Disputes details",
+      onClick: function() { navigateToPage("chargeback", "chargeback-ibft-disputes"); }
     }
   ];
   root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, ibftRows));
@@ -5319,11 +5455,16 @@ function renderADCOperations(data) {
         onClick: function() { navigateToPage("failure-reasons", "pos-failure-reasons"); }
       },
       {
-        kpi: "Complaints Count",
+        kpi: "Complaints/Disputes Count",
         current: formatNumber(pCompCur),
         previous: formatNumber(pCompPrev),
         change: calculateComparisons(pCompCur, pCompPrev, false, !lbl.isDaily).html,
-        dailyAvg: formatNumber(pCompCur / numDays)
+        dailyAvg: formatNumber(pCompCur / numDays),
+        title: "Click to view POS Chargeback & Disputes details",
+        onClick: function() {
+          chargebackActiveTab = appState.posActiveTab || "debit";
+          navigateToPage("chargeback", "chargeback-pos-disputes");
+        }
       }
     ];
 
@@ -5433,11 +5574,16 @@ function renderADCOperations(data) {
         onClick: function() { navigateToPage("failure-reasons", "ecommerce-failure-reasons"); }
       },
       {
-        kpi: "Complaints Count",
+        kpi: "Complaints/Disputes Count",
         current: formatNumber(ecCompCur),
         previous: formatNumber(ecCompPrev),
         change: calculateComparisons(ecCompCur, ecCompPrev, false, !lbl.isDaily).html,
-        dailyAvg: formatNumber(ecCompCur / numDays)
+        dailyAvg: formatNumber(ecCompCur / numDays),
+        title: "Click to view Ecommerce Chargeback & Disputes details",
+        onClick: function() {
+          chargebackActiveTab = appState.ecomActiveTab || "debit";
+          navigateToPage("chargeback", "chargeback-ecom-disputes");
+        }
       }
     ];
 
@@ -5747,13 +5893,15 @@ function renderChargeback(data) {
     tableContainer.innerHTML = "";
     const selectedCb = chargebackActiveTab === "debit" ? debitCb : creditCb;
     const rowsDef = [
-      { key: "domestic", label: "Domestic Disputes" },
-      { key: "international", label: "International Disputes" },
-      { key: "pos", label: "POS Disputes" },
-      { key: "ecommerce", label: "E-Commerce Disputes" },
-      { key: "preArbRaised", label: "Pre-Arbitration Raised" },
-      { key: "preArbReceived", label: "Pre-Arbitration Received" },
-      { key: "highAging", label: "High-Aging Disputes" }
+      { key: "domestic", label: "Domestic Disputes", rowId: "chargeback-domestic-disputes" },
+      { key: "international", label: "International Disputes", rowId: "chargeback-international-disputes" },
+      { key: "raast", label: "RAAST Disputes", rowId: "chargeback-raast-disputes" },
+      { key: "ibft", label: "IBFT Disputes", rowId: "chargeback-ibft-disputes" },
+      { key: "pos", label: "POS Disputes", rowId: "chargeback-pos-disputes" },
+      { key: "ecommerce", label: "E-Commerce Disputes", rowId: "chargeback-ecom-disputes" },
+      { key: "preArbRaised", label: "Pre-Arbitration Raised", rowId: "chargeback-prearb-raised" },
+      { key: "preArbReceived", label: "Pre-Arbitration Received", rowId: "chargeback-prearb-received" },
+      { key: "highAging", label: "High-Aging Disputes", rowId: "chargeback-high-aging" }
     ];
 
     const rows = rowsDef.map(function (def) {
@@ -5765,6 +5913,7 @@ function renderChargeback(data) {
 
       return {
         metric: def.label,
+        rowId: def.rowId,
         countCurrent: formatNumber(countCurrent),
         countPrev: formatNumber(countPrev),
         countChange: calculateComparisons(countCurrent, countPrev, false, true).html,
