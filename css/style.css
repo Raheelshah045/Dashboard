@@ -931,6 +931,18 @@ button, input, select {
   margin-bottom: var(--space-3);
 }
 
+#page-adc-operations .table-wrap,
+#adc-operations-body .table-wrap,
+#page-card-financials .table-wrap,
+#card-financials-body .table-wrap,
+#page-card-non-financials .table-wrap,
+#card-non-financials-body .table-wrap {
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  border-radius: 0;
+}
+
 table.data-table {
   width: 100%;
   border-collapse: separate;
@@ -1561,9 +1573,13 @@ table.data-table th {
   z-index: 2;
 }
 
-/* ADC Operations Page - Header Row Background & Full Table Borders */
+/* ADC Operations, Card Financials & Card Non-Financials Pages - Header Row Background & Full Table Borders */
 #page-adc-operations table.data-table,
-#adc-operations-body table.data-table {
+#adc-operations-body table.data-table,
+#page-card-financials table.data-table,
+#card-financials-body table.data-table,
+#page-card-non-financials table.data-table,
+#card-non-financials-body table.data-table {
   border-collapse: separate;
   border-spacing: 0;
   border: 1px solid #cbd5e1 !important;
@@ -1574,7 +1590,15 @@ table.data-table th {
 #page-adc-operations table.data-table th,
 #adc-operations-body table.data-table th,
 #page-adc-operations table.data-table thead tr,
-#adc-operations-body table.data-table thead tr {
+#adc-operations-body table.data-table thead tr,
+#page-card-financials table.data-table th,
+#card-financials-body table.data-table th,
+#page-card-financials table.data-table thead tr,
+#card-financials-body table.data-table thead tr,
+#page-card-non-financials table.data-table th,
+#card-non-financials-body table.data-table th,
+#page-card-non-financials table.data-table thead tr,
+#card-non-financials-body table.data-table thead tr {
   background: #D0E5F3 !important;
   color: #0D5F92 !important;
 }
@@ -1582,7 +1606,15 @@ table.data-table th {
 #page-adc-operations table.data-table th,
 #adc-operations-body table.data-table th,
 #page-adc-operations table.data-table td,
-#adc-operations-body table.data-table td {
+#adc-operations-body table.data-table td,
+#page-card-financials table.data-table th,
+#card-financials-body table.data-table th,
+#page-card-financials table.data-table td,
+#card-financials-body table.data-table td,
+#page-card-non-financials table.data-table th,
+#card-non-financials-body table.data-table th,
+#page-card-non-financials table.data-table td,
+#card-non-financials-body table.data-table td {
   border-bottom: 1px solid #cbd5e1 !important;
   border-right: 1px solid #cbd5e1 !important;
 }
@@ -1590,13 +1622,38 @@ table.data-table th {
 #page-adc-operations table.data-table th:last-child,
 #adc-operations-body table.data-table th:last-child,
 #page-adc-operations table.data-table td:last-child,
-#adc-operations-body table.data-table td:last-child {
+#adc-operations-body table.data-table td:last-child,
+#page-card-financials table.data-table th:last-child,
+#card-financials-body table.data-table th:last-child,
+#page-card-financials table.data-table td:last-child,
+#card-financials-body table.data-table td:last-child,
+#page-card-non-financials table.data-table th:last-child,
+#card-non-financials-body table.data-table th:last-child,
+#page-card-non-financials table.data-table td:last-child,
+#card-non-financials-body table.data-table td:last-child {
   border-right: none !important;
 }
 
 #page-adc-operations table.data-table tbody tr:last-child td,
-#adc-operations-body table.data-table tbody tr:last-child td {
+#adc-operations-body table.data-table tbody tr:last-child td,
+#page-card-financials table.data-table tbody tr:last-child td,
+#card-financials-body table.data-table tbody tr:last-child td,
+#page-card-non-financials table.data-table tbody tr:last-child td,
+#card-non-financials-body table.data-table tbody tr:last-child td {
   border-bottom: none !important;
+}
+
+/* Card Financials & Card Non-Financials: center-align all columns after the first */
+#page-card-financials table.data-table th:not(:first-child),
+#card-financials-body table.data-table th:not(:first-child),
+#page-card-financials table.data-table td:not(:first-child),
+#card-financials-body table.data-table td:not(:first-child),
+#page-card-non-financials table.data-table th:not(:first-child),
+#card-non-financials-body table.data-table th:not(:first-child),
+#page-card-non-financials table.data-table td:not(:first-child),
+#card-non-financials-body table.data-table td:not(:first-child) {
+  text-align: center !important;
+  font-variant-numeric: tabular-nums;
 }
 
 table.data-table td.num, table.data-table th.num {

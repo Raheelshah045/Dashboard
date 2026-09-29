@@ -462,7 +462,6 @@ function generateIllustrativeData() {
     cardStationery: [
       { item: "Envelopes", qty: 96000, avgMonthlyUse: 21000, minStock: 63000 },
       { item: "Mailers", qty: 41000, avgMonthlyUse: 19500, minStock: 58500 },
-      { item: "PIN mailers", qty: 88000, avgMonthlyUse: 20500, minStock: 61500 },
       { item: "Welcome packs", qty: 26000, avgMonthlyUse: 8600, minStock: 25800 }
     ],
     activeCards: [
@@ -5759,7 +5758,7 @@ function renderCardNonFinancials(data) {
       root.appendChild(el("div", { class: "kpi-sub", html: "Requires urgent attention (Lowest Card Plastic Availability): <strong>" + urgent.category + "</strong> " + statusBadge(urgent.status) }));
     }
     const wrap = buildTable(null,
-      [{ key: "category", label: "Plastic Category" }, { key: "qty", label: "Current Quantity", numeric: true },
+      [{ key: "category", label: "Plastic Category" }, { key: "qty", label: "Stock In Hand", numeric: true },
        { key: "avgMonthlyUse", label: "Avg Monthly Consumption", numeric: true }, { key: "monthsCoverDisplay", label: "Months of Cover" },
        { key: "minStock", label: "Required Minimum Stock", numeric: true }, { key: "statusDisplay", label: "Status" }],
       rows.map(function (r) { return Object.assign({}, r, { monthsCoverDisplay: r.monthsCover.toFixed(1), statusDisplay: statusBadge(r.status) }); })
@@ -6154,7 +6153,7 @@ const RECON_UNITS = [
   { id: "7928", code: "7928", name: "Credit Card (Card Pro)", fullName: "7928 - Credit Card (Card Pro)", titleName: "Branch 7928 - Credit Card (Card Pro)" },
   { id: "1922", code: "1922", name: "Ijarah", fullName: "1922 - Ijarah", titleName: "Branch 1922 - Ijarah" },
   { id: "1944", code: "1944", name: "Auto", fullName: "1944 - Auto", titleName: "Branch 1944 - Auto Loan" },
-  { id: "PRL", code: "PRL", name: "Personal Loan", fullName: "PRL - Personal Loan", titleName: "PRL - Personal Loan" },
+  { id: "1945", code: "1945", name: "Personal Loan (PRL)", fullName: "PRL - Personal Loan", titleName: "PRL - Personal Loan" },
   { id: "1946", code: "1946", name: "MTG - Mortgage", fullName: "1946 - MTG - Mortgage", titleName: "Branch 1946 - Mortgage" },
   { id: "2000", code: "2000", name: "SME", fullName: "2000 - SME", titleName: "Branch 2000 - SME" },
   { id: "banca", code: "Banca", name: "Banca", fullName: "Banca", titleName: "Banca" }
