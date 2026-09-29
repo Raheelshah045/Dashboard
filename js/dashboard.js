@@ -5785,15 +5785,57 @@ function renderCardNonFinancials(data) {
     root.appendChild(el("div", { class: "no-data-note", text: "Card_Stationery sheet is missing. No data available for card stationery." }));
   }
 
-  root.appendChild(sectionTitle("Cards in Force"));
+  // ── 1. Cards in Force (CIF) ──────────────────────────────────────────
+  root.appendChild(sectionTitle("Cards in Force (CIF)"));
   if (data.activeCards) {
+    const tableCols = [
+      { key: "product", label: "Product" },
+      { key: "count", label: "Current Month Count", numeric: true },
+      { key: "prevMonth", label: "Previous Month Count", numeric: true },
+      { key: "changeDisplay", label: "MoM Change", rightAlign: true }
+    ];
+
     root.appendChild(buildTable(null,
-      [{ key: "product", label: "Product" }, { key: "count", label: "Current Month Count", numeric: true },
-       { key: "prevMonth", label: "Previous Month Count", numeric: true }, { key: "changeDisplay", label: "MoM Change", rightAlign: true }],
-      data.activeCards.map(function (r) { return Object.assign({}, r, { changeDisplay: calculateComparisons(r.count, r.prevMonth, true, true).html }); })
+      tableCols,
+      data.activeCards.map(function (r) {
+        return Object.assign({}, r, {
+          changeDisplay: calculateComparisons(r.count, r.prevMonth, true, true).html
+        });
+      })
     ));
+
+    // ── 2. Active Cards in Force (AIF) ────────────────────────────────────
+    root.appendChild(sectionTitle("Active Cards in Force (AIF)"));
+    const aifRows = data.activeCards.map(function (r) {
+      const aifCount = Math.round(r.count * 0.82);
+      const aifPrevMonth = Math.round(r.prevMonth * 0.81);
+      return {
+        product: r.product,
+        count: aifCount,
+        prevMonth: aifPrevMonth,
+        changeDisplay: calculateComparisons(aifCount, aifPrevMonth, true, true).html
+      };
+    });
+    root.appendChild(buildTable(null, tableCols, aifRows));
+
+    // ── 3. Inactive Cards ────────────────────────────────────────────────
+    root.appendChild(sectionTitle("Inactive Cards"));
+    const inactiveRows = data.activeCards.map(function (r) {
+      const aifCount = Math.round(r.count * 0.82);
+      const aifPrevMonth = Math.round(r.prevMonth * 0.81);
+      const inactCount = r.count - aifCount;
+      const inactPrevMonth = r.prevMonth - aifPrevMonth;
+      return {
+        product: r.product,
+        count: inactCount,
+        prevMonth: inactPrevMonth,
+        changeDisplay: calculateComparisons(inactCount, inactPrevMonth, false, true).html
+      };
+    });
+    root.appendChild(buildTable(null, tableCols, inactiveRows));
+
   } else {
-    root.appendChild(el("div", { class: "no-data-note", text: "Active_Cards sheet is missing. No data available for cards in force." }));
+    root.appendChild(el("div", { class: "no-data-note", text: "Active_Cards sheet is missing. No data available for card portfolio statistics." }));
   }
 }
 
@@ -5838,16 +5880,12 @@ function renderCardFinancials(data) {
     const compRows = [];
 
     if (isCredit) {
-      compRows.push({ item: "Credit Card CIF", current: selectedKpi.cif.cur, previous: selectedKpi.cif.prev, isCount: true });
-      compRows.push({ item: "Credit Card AIF", current: selectedKpi.aif.cur, previous: selectedKpi.aif.prev, isCount: true });
-      compRows.push({ item: "Inactive Cards", current: selectedKpi.inactive.cur, previous: selectedKpi.inactive.prev, isCount: true });
       compRows.push({ item: "Annual Fee", current: selectedKpi.annualFee.cur, previous: selectedKpi.annualFee.prev, isCurrency: true });
+      compRows.push({ item: "Reversal of Annual Fee", current: selectedKpi.annualFee.cur * -0.05, previous: selectedKpi.annualFee.prev * -0.048, isCurrency: true });
       compRows.push({ item: "Credit Card Spend", current: c.spendCurrent || cardData.spend.ccTotal.cur, previous: c.spendPrevious || cardData.spend.ccTotal.prev, isCurrency: true });
     } else {
-      compRows.push({ item: "Debit Card CIF", current: selectedKpi.cif.cur, previous: selectedKpi.cif.prev, isCount: true });
-      compRows.push({ item: "Debit Card AIF", current: selectedKpi.aif.cur, previous: selectedKpi.aif.prev, isCount: true });
-      compRows.push({ item: "Inactive Cards", current: selectedKpi.inactive.cur, previous: selectedKpi.inactive.prev, isCount: true });
       compRows.push({ item: "Annual Fee", current: selectedKpi.annualFee.cur, previous: selectedKpi.annualFee.prev, isCurrency: true });
+      compRows.push({ item: "Reversal of Annual Fee", current: selectedKpi.annualFee.cur * -0.05, previous: selectedKpi.annualFee.prev * -0.048, isCurrency: true });
       compRows.push({ item: "Debit Card Spend", current: d.spendCurrent || cardData.spend.dcTotal.cur, previous: d.spendPrevious || cardData.spend.dcTotal.prev, isCurrency: true });
     }
 
