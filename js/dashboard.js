@@ -1587,38 +1587,83 @@ function updateHeaderStatus() {
 
 const VALID_PAGES = ["home", "overview", "adc-operations", "failure-reasons", "card-non-financials", "card-financials", "chargeback", "reconciliation", "secure-operations", "unsecured-operations", "banca", "bcp"];
 
+/* Internal navigation history — never relies on window.history */
 const navigationStack = [];
 
-function isEditableElement(el) {
-  if (!el) return false;
-  const tagName = el.tagName ? el.tagName.toUpperCase() : "";
-  if (tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT") {
-    return true;
-  }
-  if (el.isContentEditable) return true;
+function isEditableElement(target) {
+  if (!target) return false;
+  const tag = target.tagName ? target.tagName.toUpperCase() : "";
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+  if (target.isContentEditable) return true;
   return false;
 }
 
+/* ── Sub-page state registry ──────────────────────────────────────────
+   Pages that have internal sub-levels (e.g. reconciliation unit detail)
+   register clear/check callbacks here so goBack() can step through them
+   before doing a full page-level back.
+   Each entry: { pageId, hasSubState, clearSubState }
+   ------------------------------------------------------------------- */
+const subPageRegistry = {};
+
+function registerSubPage(pageId, hasSubStateFn, clearSubStateFn) {
+  subPageRegistry[pageId] = { hasSubState: hasSubStateFn, clearSubState: clearSubStateFn };
+}
+
 function goBack() {
-  if (window.history.length > 1 && navigationStack.length > 1) {
-    window.history.back();
-  } else if (navigationStack.length > 1) {
+  const currentPageId = appState.activePage;
+
+  /* 1. If the current page has an active sub-level, step back within it */
+  if (subPageRegistry[currentPageId] && subPageRegistry[currentPageId].hasSubState()) {
+    subPageRegistry[currentPageId].clearSubState();
+    renderActivePage();
+    return;
+  }
+
+  /* 2. Pop the page-level stack and go to the previous page */
+  if (navigationStack.length > 1) {
     navigationStack.pop();
     const prev = navigationStack[navigationStack.length - 1];
     if (prev && prev.pageId) {
-      navigateToPage(prev.pageId, prev.targetId);
-    }
-  } else {
-    if (appState.activePage === "failure-reasons") {
-      navigateToPage("adc-operations");
-    } else if (appState.activePage !== "home" && appState.activePage !== "overview") {
-      navigateToPage("home");
+      /* Navigate without pushing a new stack entry (internal back) */
+      _applyPageChange(prev.pageId);
     }
   }
+  /* 3. Stack exhausted — stay on current page (already at root) */
 }
+
+/* Internal helper: change page without modifying the stack */
+function _applyPageChange(pageId) {
+  if (VALID_PAGES.indexOf(pageId) === -1) pageId = "home";
+  /* Sync hash without triggering handleHashChange to push a new entry */
+  if (window.location.hash !== "#" + pageId) {
+    /* Flag that this hash change is a back-navigation so handleHashChange
+       won't push a new entry */
+    _backNavInProgress = true;
+    window.location.hash = "#" + pageId;
+  } else {
+    applyActivePage(pageId);
+  }
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+let _backNavInProgress = false;
 
 function navigateToPage(pageId, targetId) {
   if (VALID_PAGES.indexOf(pageId) === -1) pageId = "home";
+
+  /* Clear stale sub-page state when leaving the current page,
+     or when re-navigating to the current page's root (sidebar click) */
+  const leavingPage = appState.activePage;
+  if (leavingPage !== pageId) {
+    if (subPageRegistry[leavingPage]) {
+      subPageRegistry[leavingPage].clearSubState();
+    }
+  } else if (!targetId) {
+    if (subPageRegistry[pageId]) {
+      subPageRegistry[pageId].clearSubState();
+    }
+  }
 
   const scrollToTarget = function () {
     if (targetId) {
@@ -1662,6 +1707,19 @@ function applyActivePage(pageId) {
 function handleHashChange() {
   const hash = (window.location.hash || "#home").replace("#", "");
   const pageId = VALID_PAGES.indexOf(hash) !== -1 ? hash : "home";
+
+  if (_backNavInProgress) {
+    /* This hash change was triggered by goBack() — don't push a new entry */
+    _backNavInProgress = false;
+    applyActivePage(pageId);
+    return;
+  }
+
+  /* Clear stale sub-page state of the page we're leaving */
+  const leavingPage = appState.activePage;
+  if (leavingPage !== pageId && subPageRegistry[leavingPage]) {
+    subPageRegistry[leavingPage].clearSubState();
+  }
 
   const stackLen = navigationStack.length;
   if (stackLen >= 2 && navigationStack[stackLen - 2].pageId === pageId) {
@@ -3751,7 +3809,7 @@ function renderOvNostro(root, data) {
     { unit: "7928 - Credit Card (Card Pro)",count: 32, reconUnitId: "7928"  },
     { unit: "1922 - Ijarah",               count: 14, reconUnitId: "1922"  },
     { unit: "1944 - Auto Loan",            count: 22, reconUnitId: "1944"  },
-    { unit: "1945 - PRL (Personal Loan)",  count: 29, reconUnitId: "PRL"   },
+    { unit: "1945 - PRL (Personal Loan)",  count: 29, reconUnitId: "1945"   },
     { unit: "1946 - MTG (Mortgage)",       count: 16, reconUnitId: "1946"  },
     { unit: "2000 - SME",                  count: 12, reconUnitId: "2000"  },
     { unit: "Banca",                       count: 9,  reconUnitId: "banca" }
@@ -6160,6 +6218,22 @@ const RECON_UNITS = [
 ];
 
 let activeReconciliationUnit = null;
+let activeReconSubOption = null;
+
+/* Register reconciliation as a sub-page so Backspace steps back through
+   unit-detail → unit-selection before popping the full page stack. */
+registerSubPage(
+  "reconciliation",
+  function hasSubState() { return activeReconciliationUnit !== null; },
+  function clearSubState() {
+    if (activeReconSubOption !== null) {
+      activeReconSubOption = null;
+    } else {
+      activeReconciliationUnit = null;
+    }
+  }
+);
+
 
 function formatReconVal(val) {
   if (val === null || val === undefined || isNaN(val)) return "\u2014";
@@ -6174,7 +6248,1228 @@ function formatAgingCount(val) {
   return Number(val).toLocaleString("en-US");
 }
 
-function getReconciliationUnitRows(unit, data) {
+const REAL_RECON_DATA = {
+  "1948_SD": [
+    {
+      "sNo": 1,
+      "sundryCode": "206319649",
+      "description": "SUNDRY ACCOUNT REJECTED DRAFT LOCAL",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 2,
+      "sundryCode": "41401200",
+      "description": "WHT CASH ADVANCE TRANSACTIONS",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 3,
+      "sundryCode": "206319724",
+      "description": "SUNDRY ACCOUNT MERCHANT HELD PAYMENTS",
+      "asPerTB": 113289.38,
+      "asPerRecon": 113289.38,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    }
+  ],
+  "1948_IPS": [
+    {
+      "sNo": 1,
+      "sundryCode": "27503610",
+      "description": "O/A MasterCard Int'l Settlement",
+      "asPerTB": -4911625.5,
+      "asPerRecon": -4911625.5,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 2,
+      "sundryCode": "27503000",
+      "description": "D/A MC ISIS ACQUIRING FUNDS",
+      "asPerTB": -8494484.12,
+      "asPerRecon": -8494484.12,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    }
+  ],
+  "1948_TPA": [
+    {
+      "sNo": 1,
+      "sundryCode": "27502200",
+      "description": "O/A RECON ADV TAX-SD MERCHANT ACCOUNT",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 2,
+      "sundryCode": "41803920",
+      "description": "SD MERCHANT ACCOUNT [F-ACCESS]",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 3,
+      "sundryCode": "70502620",
+      "description": "BNK SERV INTCHG-IRP-PAYFAST",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 4,
+      "sundryCode": "70502630",
+      "description": "BNK SERV ASS-PAYFAST",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 5,
+      "sundryCode": "70502840",
+      "description": "BNK SERV INTCHG-IRP-SAFEPAY",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 6,
+      "sundryCode": "70502610",
+      "description": "BNK SERV ASSOC CHRG-SAFEPAY",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 7,
+      "sundryCode": "41803050",
+      "description": "SD MERCHANT ACCOUNT [PAYFAST]",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 8,
+      "sundryCode": "27502100",
+      "description": "D/A RECEIVABLE SD MERCHANT ACCOUNT",
+      "asPerTB": -9804755.61,
+      "asPerRecon": -9804755.61,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 9,
+      "sundryCode": "64204930",
+      "description": "TPA MOR INCOME",
+      "asPerTB": 420424394.76,
+      "asPerRecon": 420424394.76,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 10,
+      "sundryCode": "70502560",
+      "description": "BNK SERV INTCHG-IRP-TAPSYS",
+      "asPerTB": 351129844.85,
+      "asPerRecon": 351129844.85,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 11,
+      "sundryCode": "70502630",
+      "description": "BNK SERV ASS TAPSYS",
+      "asPerTB": -89294549.91,
+      "asPerRecon": -89294549.91,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 12,
+      "sundryCode": "27504020",
+      "description": "O/A-MC International Settlement (TAPSYS)",
+      "asPerTB": -920229147.41,
+      "asPerRecon": -920229147.41,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 13,
+      "sundryCode": "27504040",
+      "description": "D/ATPA-MC local Settlement (TAPSYS)",
+      "asPerTB": 401452747.06,
+      "asPerRecon": 401452747.06,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 14,
+      "sundryCode": "27504210",
+      "description": "O/A VISA INT",
+      "asPerTB": -19759242.14,
+      "asPerRecon": -19759242.14,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 15,
+      "sundryCode": "27504030",
+      "description": "O/A-VISA LOCAL NMSS",
+      "asPerTB": -704977314.69,
+      "asPerRecon": -704977314.69,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 16,
+      "sundryCode": "27503840",
+      "description": "O/A RECEIVABLE FROM TPA - CHGS",
+      "asPerTB": -177560450.95,
+      "asPerRecon": -177560450.95,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 17,
+      "sundryCode": "27503850",
+      "description": "O/A RCVBL FROM SAFEPAY-CHGS",
+      "asPerTB": -25904439.23,
+      "asPerRecon": -25904439.23,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 18,
+      "sundryCode": "27503800",
+      "description": "O/A RECEIVABLE ACCOUNT (TAPSYS MOR)",
+      "asPerTB": -15807240.36,
+      "asPerRecon": -15807240.36,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 19,
+      "sundryCode": "41803840",
+      "description": "SD MERCHANT ACCOUNT SAFEPAY",
+      "asPerTB": 79058956.53,
+      "asPerRecon": 79058956.53,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 20,
+      "sundryCode": "27504070",
+      "description": "TPA PARKING ACCOUNT",
+      "asPerTB": -238569210.02,
+      "asPerRecon": -238569210.02,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 21,
+      "sundryCode": "41803830",
+      "description": "SD MERCHANT ACCOUNT SAFEPAY",
+      "asPerTB": -911985140.5,
+      "asPerRecon": -911985140.5,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 22,
+      "sundryCode": "41801850",
+      "description": "SD MERCHANT ACCOUNT SAFEPAY",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 23,
+      "sundryCode": "27504150",
+      "description": "O/A MASTERCARD ACC INTL - POS",
+      "asPerTB": -12592770.81,
+      "asPerRecon": -12592770.81,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 24,
+      "sundryCode": "27504110",
+      "description": "O/A MASTERCARD ACC LOCAL - POS",
+      "asPerTB": -572575628.97,
+      "asPerRecon": -572575628.97,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 25,
+      "sundryCode": "27504160",
+      "description": "O/A VISA ACQUIRING INT - POS",
+      "asPerTB": -18968817.18,
+      "asPerRecon": -18968817.18,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 26,
+      "sundryCode": "27504120",
+      "description": "O/A VISA ACQUIRING LOCAL - POS",
+      "asPerTB": -445871091.48,
+      "asPerRecon": -445871091.48,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 27,
+      "sundryCode": "27504140",
+      "description": "O/A 1-LINK ACQUIRING - POS",
+      "asPerTB": -76724069.28,
+      "asPerRecon": -76724069.28,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 28,
+      "sundryCode": "41803960",
+      "description": "Retail UBL POS Merchant Payment (UNPAYTXT)",
+      "asPerTB": -562596525.14,
+      "asPerRecon": -562596525.14,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 29,
+      "sundryCode": "70503240",
+      "description": "INTERCHANGE FEE MC INT - POS",
+      "asPerTB": -33373481.22,
+      "asPerRecon": -33373481.22,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 30,
+      "sundryCode": "70503200",
+      "description": "INTERCHANGE FEE MC INT - POS",
+      "asPerTB": -4306455.67,
+      "asPerRecon": -4306455.67,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 31,
+      "sundryCode": "70503250",
+      "description": "INTERCHANGE FEE VISA LOCAL - POS",
+      "asPerTB": -98924010.87,
+      "asPerRecon": -98924010.87,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 32,
+      "sundryCode": "70503290",
+      "description": "INTERCHANGE FEE VISA INT - POS",
+      "asPerTB": -5105887.64,
+      "asPerRecon": -5105887.64,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 33,
+      "sundryCode": "70503270",
+      "description": "INTERCHANGE FEE 1-LINK - POS",
+      "asPerTB": -8717185.99,
+      "asPerRecon": -8717185.99,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    }
+  ],
+  "2000": [
+    {
+      "sNo": 1,
+      "sundryCode": "27500190",
+      "description": "OVERDUE RECEIVABLE CMR COVID-19",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 2,
+      "sundryCode": "27500180",
+      "description": "Paid Not Due From Customer",
+      "asPerTB": -677132.36,
+      "asPerRecon": -677132.36,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    }
+  ],
+  "1946": [
+    {
+      "sNo": 1,
+      "sundryCode": "200000176",
+      "description": "DOWN PAYMENT - UBL ADDRESS",
+      "asPerTB": 48300.0,
+      "asPerRecon": 48300.0,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    }
+  ],
+  "1945": [
+    {
+      "sNo": 1,
+      "sundryCode": "27500190",
+      "description": "OVERDUE RECEIVABLE CMR COVID-19",
+      "asPerTB": -26590.38,
+      "asPerRecon": -26590.38,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    }
+  ],
+  "1922": [
+    {
+      "sNo": 1,
+      "sundryCode": "270124798",
+      "description": "DOWN PAYMENT MPMI",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 2,
+      "sundryCode": "347511254",
+      "description": "SD WareHouseUBL Ameen E-Bike",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 3,
+      "sundryCode": "272528174",
+      "description": "UBL AMEEN ADDRESS DOWN PAYMENT ACCOU",
+      "asPerTB": 184020.0,
+      "asPerRecon": 184020.0,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 4,
+      "sundryCode": "277182962",
+      "description": "SD PO ISSUANCE ADAMJEE INSURANCE WTO",
+      "asPerTB": 1877121.83,
+      "asPerRecon": 1877121.83,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 5,
+      "sundryCode": "222555041",
+      "description": "SD WH TAX PAY DEALER PAY (AD)",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 6,
+      "sundryCode": "293447548",
+      "description": "SD ACCOUNT PO ISSUANCE - UBL AMEEN",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 7,
+      "sundryCode": "293447265",
+      "description": "SD PAK QATAR GENERAL TAKAFUL - UBL AMEEN",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 8,
+      "sundryCode": "211075088",
+      "description": "SD PARKING ACCOUNT AMEEN IJARAH",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 9,
+      "sundryCode": "243921794",
+      "description": "SD PO ISSUANCE SUNDRY UBL INSURER LTD W",
+      "asPerTB": 5758169.63,
+      "asPerRecon": 5758169.63,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 10,
+      "sundryCode": "347510870",
+      "description": "Down Payment -UBL Ameen E-Bike",
+      "asPerTB": 17156.5,
+      "asPerRecon": 17156.5,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 11,
+      "sundryCode": "272528341",
+      "description": "UBL AMEEN ADDRESS PCI ISSUANCE",
+      "asPerTB": 575975415.0,
+      "asPerRecon": 575975415.0,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 12,
+      "sundryCode": "203446989",
+      "description": "SD SALAAM TAKAFUL LTD - UBL AMEEN LCV",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 13,
+      "sundryCode": "293447074",
+      "description": "SD EFU WTO - UBL AMEEN LCV",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 14,
+      "sundryCode": "293447456",
+      "description": "SD ACCOUNT DOWN PAYMENT - UBL AMEEN LCV",
+      "asPerTB": 2007949.6,
+      "asPerRecon": 2007949.6,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 15,
+      "sundryCode": "347510916",
+      "description": "SD EFU Window Takeful Operations -UBL",
+      "asPerTB": 175881.5,
+      "asPerRecon": 175881.5,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 16,
+      "sundryCode": "253571951",
+      "description": "SALAAM TAKAFUL LIMITED",
+      "asPerTB": 38919.48,
+      "asPerRecon": 38919.48,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 17,
+      "sundryCode": "347510909",
+      "description": "SD PO ISSUANCE-UBL Ameen E-Bike",
+      "asPerTB": 1264000.0,
+      "asPerRecon": 1264000.0,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 18,
+      "sundryCode": "274073168",
+      "description": "SD PO ISSUANCE TPL WINDOW TAKAFUL OPERA",
+      "asPerTB": 3225833.58,
+      "asPerRecon": 3225833.58,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 19,
+      "sundryCode": "271113388",
+      "description": "MPMG PO ISSUANCE",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 20,
+      "sundryCode": "222554604",
+      "description": "SD PO ISSUANCE (AMEEN DRIVE)",
+      "asPerTB": 55157124.0,
+      "asPerRecon": 55157124.0,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 21,
+      "sundryCode": "226821962",
+      "description": "PAK KUWAIT TAKAFUL (AD)",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 22,
+      "sundryCode": "293447296",
+      "description": "SD ADAMJEE INSURANCE WTO - UBL AMEEN LCV",
+      "asPerTB": 461411.72,
+      "asPerRecon": 461411.72,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 23,
+      "sundryCode": "222554666",
+      "description": "DOWN PAYMENT (AMEEN DRIVE)",
+      "asPerTB": 118677596.62,
+      "asPerRecon": 118677596.62,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 24,
+      "sundryCode": "225044199",
+      "description": "EFU GENERAL INSURANCE LTD WINDOW TAKAFU",
+      "asPerTB": 648747.69,
+      "asPerRecon": 648747.69,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 25,
+      "sundryCode": "243197121",
+      "description": "SD DOWN PAYMENT BOOKED TRADE DEALS",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 26,
+      "sundryCode": "215683791",
+      "description": "SD PO ISSUANCE AMEEN IJARAH",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 27,
+      "sundryCode": "222554802",
+      "description": "PAK QATAR TAKAFUL(AD)",
+      "asPerTB": 411036.84,
+      "asPerRecon": 411036.84,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 28,
+      "sundryCode": "293447012",
+      "description": "SD PPL WTO - UBL AMEEN LCV",
+      "asPerTB": 416865.77,
+      "asPerRecon": 416865.77,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 29,
+      "sundryCode": "222554871",
+      "description": "SD WARE HOUSE (AMEEN DRIVE)",
+      "asPerTB": 380874.25,
+      "asPerRecon": 380874.25,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 30,
+      "sundryCode": "27403500",
+      "description": "O/A ADV AGAINST AUTO IJARAH",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 31,
+      "sundryCode": "27403540",
+      "description": "O/A ADV AGENT AMEN RDA APNI CAR",
+      "asPerTB": -154939270.0,
+      "asPerRecon": -154939270.0,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 32,
+      "sundryCode": "27403550",
+      "description": "O/A ADV AGENT AUTO IJARAH",
+      "asPerTB": -970660521.5,
+      "asPerRecon": -970660521.5,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 33,
+      "sundryCode": "27403560",
+      "description": "ADVANCE AGNST AMEEN DM - ADDRESS",
+      "asPerTB": -59197500.0,
+      "asPerRecon": -59197500.0,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 34,
+      "sundryCode": "27403720",
+      "description": "ADVANCE AGNST AMEEN - MPMG",
+      "asPerTB": -1525000.0,
+      "asPerRecon": -1525000.0,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 35,
+      "sundryCode": "27403730",
+      "description": "ADVANCE AGNST AMEEN - MGMA",
+      "asPerTB": -2159770300.0,
+      "asPerRecon": -2159770300.0,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 36,
+      "sundryCode": "27403950",
+      "description": "O/A ADV AGST AMEEN STF SOLAR",
+      "asPerTB": -2372898.0,
+      "asPerRecon": -2372898.0,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 37,
+      "sundryCode": "27500180",
+      "description": "O/A INS PAID NOT DUE FRM CUSTOMER",
+      "asPerTB": -3609873.66,
+      "asPerRecon": -3609873.66,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 38,
+      "sundryCode": "27500190",
+      "description": "OVER DUE RECEIVABLE CMR COVID-19",
+      "asPerTB": -72595.31,
+      "asPerRecon": -72595.31,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 39,
+      "sundryCode": "41401320",
+      "description": "WHT PAY DEALER COMMISSION",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 40,
+      "sundryCode": "41401420",
+      "description": "WHT ON LEASE OF MOTOR VEHICLE",
+      "asPerTB": 0.0,
+      "asPerRecon": 0.0,
+      "difference": 0.0,
+      "remarks": "Fully Reconciled",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 41,
+      "sundryCode": "41801480",
+      "description": "O/ E-BIKE / RICKS / LOAD. INSUR",
+      "asPerTB": -11950000.0,
+      "asPerRecon": -11950000.0,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 42,
+      "sundryCode": "41802920",
+      "description": "D/ LCLIENT SERVICE",
+      "asPerTB": -21550.0,
+      "asPerRecon": -21550.0,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 43,
+      "sundryCode": "70500110",
+      "description": "BANKING SERV DEALERS SALES",
+      "asPerTB": -356231.0,
+      "asPerRecon": -356231.0,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    },
+    {
+      "sNo": 44,
+      "sundryCode": "27403810",
+      "description": "O/A ADV AGAINST AMEEN DM - LCV",
+      "asPerTB": -125329164.0,
+      "asPerRecon": -125329164.0,
+      "difference": 0.0,
+      "remarks": "Outstanding Transactions - Closure Required",
+      "a10": 0,
+      "a30": 0,
+      "a60": 0,
+      "a90": 0,
+      "aAbove": 0
+    }
+  ]
+};
+
+function getReconciliationUnitRows(unit, subOpt, data) {
   const code = unit ? unit.code : "1888";
   
   const unitDemoMap = {
@@ -6207,9 +7502,9 @@ function getReconciliationUnitRows(unit, data) {
       { sNo: 3, sundryCode: "1944-403", description: "Insurance Premium Discrepancy Account", asPerTB: 890000.00, asPerRecon: 840000.00, remarks: "Vendor Statement Pending", a10: 1, a30: 2, a60: 1, a90: 0, aAbove: 0 }
     ],
     "PRL": [
-      { sNo: 1, sundryCode: "PRL-501", description: "Personal Loan Monthly Recovery GL", asPerTB: 54600000.00, asPerRecon: 54600000.00, remarks: "Fully Reconciled", a10: 0, a30: 0, a60: 0, a90: 0, aAbove: 0 },
-      { sNo: 2, sundryCode: "PRL-502", description: "Early Settlement Excess Payment Account", asPerTB: -850300.00, asPerRecon: -850300.00, remarks: "Customer Refund Processing", a10: 3, a30: 4, a60: 2, a90: 1, aAbove: 3 },
-      { sNo: 3, sundryCode: "PRL-503", description: "Mark-up Subsidy Clearing Account", asPerTB: 1420000.00, asPerRecon: 1400000.00, remarks: "Rate Difference Reconciled", a10: 2, a30: 1, a60: 0, a90: 0, aAbove: 0 }
+      { sNo: 1, sundryCode: "1945-501", description: "Personal Loan Monthly Recovery GL", asPerTB: 54600000.00, asPerRecon: 54600000.00, remarks: "Fully Reconciled", a10: 0, a30: 0, a60: 0, a90: 0, aAbove: 0 },
+      { sNo: 2, sundryCode: "1945-502", description: "Early Settlement Excess Payment Account", asPerTB: -850300.00, asPerRecon: -850300.00, remarks: "Customer Refund Processing", a10: 3, a30: 4, a60: 2, a90: 1, aAbove: 3 },
+      { sNo: 3, sundryCode: "1945-503", description: "Mark-up Subsidy Clearing Account", asPerTB: 1420000.00, asPerRecon: 1400000.00, remarks: "Rate Difference Reconciled", a10: 2, a30: 1, a60: 0, a90: 0, aAbove: 0 }
     ],
     "1946": [
       { sNo: 1, sundryCode: "1946-601", description: "Housing Mortgage Disbursement Suspense", asPerTB: 68900000.00, asPerRecon: 68900000.00, remarks: "Fully Reconciled", a10: 0, a30: 0, a60: 0, a90: 0, aAbove: 0 },
@@ -6228,7 +7523,15 @@ function getReconciliationUnitRows(unit, data) {
     ]
   };
 
-  const baseRows = unitDemoMap[code] || unitDemoMap["1888"];
+  let key = code;
+  if (code === "1948" && subOpt) {
+    key = "1948_" + subOpt;
+  }
+  
+  let baseRows = unitDemoMap[code] || unitDemoMap["1888"];
+  if (typeof REAL_RECON_DATA !== "undefined" && REAL_RECON_DATA[key]) {
+      baseRows = REAL_RECON_DATA[key];
+  }
 
   return baseRows.map(function (r) {
     const diff = Number(r.asPerTB || 0) - Number(r.asPerRecon || 0);
@@ -6369,25 +7672,71 @@ function renderReconciliation(data) {
       
       card.addEventListener("click", function () {
         activeReconciliationUnit = unit;
+        activeReconSubOption = null;
         renderReconciliation(currentData());
       });
       grid.appendChild(card);
     });
     root.appendChild(grid);
-  } else {
-    // LEVEL 2: Unit-specific Reconciliation Details
+  } else if (activeReconciliationUnit.id === "1948" && !activeReconSubOption) {
+    // LEVEL 2 for 1948: Sub-options Window
     const unit = activeReconciliationUnit;
 
-    // --- Centered unit heading with inline back chevron ---
     const headerWrapper = el("div", { style: "display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-3);" });
-    const backBtn = el("button", { class: "inline-back-chevron", type: "button", title: "Back to Reconciliation", "aria-label": "Back to Reconciliation" });
+    const backBtn = el("button", { class: "inline-back-chevron", type: "button", title: "Back to Unit Selection", "aria-label": "Back to Unit Selection" });
     backBtn.innerHTML = "&#8249;";
     backBtn.addEventListener("click", function () {
       activeReconciliationUnit = null;
       renderReconciliation(currentData());
     });
     const heading = el("h3", { class: "recon-centered-heading", style: "margin: 0;" });
-    heading.textContent = "Reconciliation OF " + (unit.titleName || unit.fullName);
+    heading.textContent = "Reconciliation Sub-Units OF " + (unit.titleName || unit.fullName);
+
+    headerWrapper.appendChild(backBtn);
+    headerWrapper.appendChild(heading);
+    root.appendChild(headerWrapper);
+
+    const subOpts = [
+      { id: "SD", name: "SD Credit Card" },
+      { id: "IPS", name: "Credit Card Recon (IPS)" },
+      { id: "TPA", name: "TPA Reconciliation" }
+    ];
+
+    const grid = el("div", { class: "recon-unit-grid" });
+    subOpts.forEach(function (opt) {
+      const card = el("div", { class: "recon-unit-card", type: "button" });
+      card.appendChild(el("div", { class: "recon-unit-code", text: opt.id }));
+      card.appendChild(el("div", { class: "recon-unit-name", text: opt.name }));
+      card.addEventListener("click", function () {
+        activeReconSubOption = opt.id;
+        renderReconciliation(currentData());
+      });
+      grid.appendChild(card);
+    });
+    root.appendChild(grid);
+
+  } else {
+    // LEVEL 3 (or LEVEL 2 for non-1948): Unit-specific Reconciliation Details
+    const unit = activeReconciliationUnit;
+    const subOpt = activeReconSubOption;
+
+    const headerWrapper = el("div", { style: "display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-3);" });
+    const backBtn = el("button", { class: "inline-back-chevron", type: "button", title: "Back", "aria-label": "Back" });
+    backBtn.innerHTML = "&#8249;";
+    backBtn.addEventListener("click", function () {
+      if (unit.id === "1948" && subOpt) {
+        activeReconSubOption = null;
+      } else {
+        activeReconciliationUnit = null;
+      }
+      renderReconciliation(currentData());
+    });
+    const heading = el("h3", { class: "recon-centered-heading", style: "margin: 0;" });
+    let titleText = "Reconciliation OF " + (unit.titleName || unit.fullName);
+    if (unit.id === "1948" && subOpt) {
+      titleText += " - " + subOpt;
+    }
+    heading.textContent = titleText;
 
     headerWrapper.appendChild(backBtn);
     headerWrapper.appendChild(heading);
@@ -6395,7 +7744,7 @@ function renderReconciliation(data) {
 
     // --- Table 1: Reconciliation Summary ---
     root.appendChild(sectionTitle("Reconciliation Summary"));
-    const rows = getReconciliationUnitRows(unit, data);
+    const rows = getReconciliationUnitRows(unit, subOpt, data);
     root.appendChild(buildReconSummaryTable(rows));
 
     // --- Table 2: Aging Analysis ---
