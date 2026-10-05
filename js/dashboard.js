@@ -620,6 +620,21 @@ function generateIllustrativeData() {
       { channel: "Tokenized Contactless (NFC)", txnCount: 1410, amount: 70000000, successRate: 99.3, pendingItems: 4 }
     ],
 
+    // Secured Operations — product login & disbursement tracking
+    securedOpsProducts: [
+      { product: "Auto",                                    loginApplications: 98,  loginApplicationsMTD: 2156, loginApplicationsPrevMTD: 1940, disbursementCount: 62,  disbursementCountMTD: 1364, disbursementCountPrevMTD: 1230, disbursementAmount: 310000000,  disbursementAmountMTD: 6820000000,  disbursementAmountPrevMTD: 6150000000  },
+      { product: "Ameen-LCV (Lite Commercial Vehicle)",     loginApplications: 44,  loginApplicationsMTD: 968,  loginApplicationsPrevMTD: 870,  disbursementCount: 28,  disbursementCountMTD: 616,  disbursementCountPrevMTD: 555,  disbursementAmount: 196000000,  disbursementAmountMTD: 4312000000,  disbursementAmountPrevMTD: 3885000000  },
+      { product: "Ameen - LCV (Lite Commercial Vehicle)",   loginApplications: 37,  loginApplicationsMTD: 814,  loginApplicationsPrevMTD: 732,  disbursementCount: 22,  disbursementCountMTD: 484,  disbursementCountPrevMTD: 435,  disbursementAmount: 154000000,  disbursementAmountMTD: 3388000000,  disbursementAmountPrevMTD: 3049000000  },
+      { product: "RDA (ROSHAN DIGITAL ACCOUNT)",            loginApplications: 31,  loginApplicationsMTD: 682,  loginApplicationsPrevMTD: 614,  disbursementCount: 18,  disbursementCountMTD: 396,  disbursementCountPrevMTD: 356,  disbursementAmount: 126000000,  disbursementAmountMTD: 2772000000,  disbursementAmountPrevMTD: 2495000000  },
+      { product: "Ameen - Drive",                           loginApplications: 55,  loginApplicationsMTD: 1210, loginApplicationsPrevMTD: 1089, disbursementCount: 34,  disbursementCountMTD: 748,  disbursementCountPrevMTD: 673,  disbursementAmount: 238000000,  disbursementAmountMTD: 5236000000,  disbursementAmountPrevMTD: 4712000000  },
+      { product: "SME - LCV (Lite Commercial Vehicle)",     loginApplications: 26,  loginApplicationsMTD: 572,  loginApplicationsPrevMTD: 515,  disbursementCount: 15,  disbursementCountMTD: 330,  disbursementCountPrevMTD: 297,  disbursementAmount: 105000000,  disbursementAmountMTD: 2310000000,  disbursementAmountPrevMTD: 2079000000  },
+      { product: "AMEEN - Advance",                         loginApplications: 42,  loginApplicationsMTD: 924,  loginApplicationsPrevMTD: 832,  disbursementCount: 27,  disbursementCountMTD: 594,  disbursementCountPrevMTD: 535,  disbursementAmount: 189000000,  disbursementAmountMTD: 4158000000,  disbursementAmountPrevMTD: 3742000000  },
+      { product: "UBL - Advance",                           loginApplications: 38,  loginApplicationsMTD: 836,  loginApplicationsPrevMTD: 752,  disbursementCount: 24,  disbursementCountMTD: 528,  disbursementCountPrevMTD: 475,  disbursementAmount: 168000000,  disbursementAmountMTD: 3696000000,  disbursementAmountPrevMTD: 3326000000  },
+      { product: "MGMA (MERA GHAR MERA AASHIYANA)",          loginApplications: 29,  loginApplicationsMTD: 638,  loginApplicationsPrevMTD: 574,  disbursementCount: 17,  disbursementCountMTD: 374,  disbursementCountPrevMTD: 337,  disbursementAmount: 510000000,  disbursementAmountMTD:11220000000,  disbursementAmountPrevMTD:10098000000  },
+      { product: "RV Drive (Residual Value Drive)",         loginApplications: 23,  loginApplicationsMTD: 506,  loginApplicationsPrevMTD: 455,  disbursementCount: 13,  disbursementCountMTD: 286,  disbursementCountPrevMTD: 257,  disbursementAmount: 91000000,   disbursementAmountMTD: 2002000000,  disbursementAmountPrevMTD: 1802000000  }
+    ],
+
+
     unsecuredOperations: {
       totalTxnToday: 22100, totalTxnYesterday: 21400, totalTxnMTD: 498000, totalTxnPrevMTD: 475000,
       successTxnToday: 21450, successTxnYesterday: 20720, successTxnMTD: 482500, successTxnPrevMTD: 460000,
@@ -633,6 +648,14 @@ function generateIllustrativeData() {
       { product: "Virtual Card E-Com", txnCount: 7640, amount: 510000000, successRate: 96.8, pendingItems: 28 },
       { product: "Digital Overdraft Ops", txnCount: 3220, amount: 310000000, successRate: 96.2, pendingItems: 14 },
       { product: "BNPL / Installments", txnCount: 1785, amount: 140000000, successRate: 98.0, pendingItems: 6 }
+    ],
+
+    // Unsecured Operations — product login & disbursement tracking (Credit Card: login only)
+    unsecuredOpsProducts: [
+      { product: "Personal Loan (PRL)",               loginApplications: 215, loginApplicationsMTD: 4730, loginApplicationsPrevMTD: 4257, disbursementCount: 148, disbursementCountMTD: 3256, disbursementCountPrevMTD: 2930, disbursementAmount: 296000000,  disbursementAmountMTD: 6512000000,  disbursementAmountPrevMTD: 5861000000,  loginOnly: false },
+      { product: "Credit Card",                        loginApplications: 184, loginApplicationsMTD: 4048, loginApplicationsPrevMTD: 3643, disbursementCount: 0,   disbursementCountMTD: 0,    disbursementCountPrevMTD: 0,    disbursementAmount: 0,          disbursementAmountMTD: 0,           disbursementAmountPrevMTD: 0,           loginOnly: true  },
+      { product: "Clean Overdraft / Instant Finance",  loginApplications: 97,  loginApplicationsMTD: 2134, loginApplicationsPrevMTD: 1921, disbursementCount: 71,  disbursementCountMTD: 1562, disbursementCountPrevMTD: 1406, disbursementAmount: 142000000,  disbursementAmountMTD: 3124000000,  disbursementAmountPrevMTD: 2812000000,  loginOnly: false },
+      { product: "SME Unsecured Loan",                 loginApplications: 52,  loginApplicationsMTD: 1144, loginApplicationsPrevMTD: 1030, disbursementCount: 34,  disbursementCountMTD: 748,  disbursementCountPrevMTD: 673,  disbursementAmount: 102000000,  disbursementAmountMTD: 2244000000,  disbursementAmountPrevMTD: 2020000000,  loginOnly: false }
     ],
 
     banca: {
@@ -2168,7 +2191,36 @@ function getFilteredData(rawData, filters) {
     });
   }
 
-  // 7. Secure Operations
+
+  if (Array.isArray(data.securedOpsProducts)) {
+    data.securedOpsProducts.forEach(function (p) {
+      p.loginApplications = scale(p.loginApplications, factor);
+      p.disbursementCount = scale(p.disbursementCount, factor);
+      p.disbursementAmount = scale(p.disbursementAmount, factor);
+      p.loginApplicationsMTD = scale(p.loginApplicationsMTD, factor);
+      p.loginApplicationsPrevMTD = scale(p.loginApplicationsPrevMTD, factor);
+      p.disbursementCountMTD = scale(p.disbursementCountMTD, factor);
+      p.disbursementCountPrevMTD = scale(p.disbursementCountPrevMTD, factor);
+      p.disbursementAmountMTD = scale(p.disbursementAmountMTD, factor);
+      p.disbursementAmountPrevMTD = scale(p.disbursementAmountPrevMTD, factor);
+    });
+  }
+
+  if (Array.isArray(data.unsecuredOpsProducts)) {
+    data.unsecuredOpsProducts.forEach(function (p) {
+      p.loginApplications = scale(p.loginApplications, factor);
+      p.disbursementCount = scale(p.disbursementCount, factor);
+      p.disbursementAmount = scale(p.disbursementAmount, factor);
+      p.loginApplicationsMTD = scale(p.loginApplicationsMTD, factor);
+      p.loginApplicationsPrevMTD = scale(p.loginApplicationsPrevMTD, factor);
+      p.disbursementCountMTD = scale(p.disbursementCountMTD, factor);
+      p.disbursementCountPrevMTD = scale(p.disbursementCountPrevMTD, factor);
+      p.disbursementAmountMTD = scale(p.disbursementAmountMTD, factor);
+      p.disbursementAmountPrevMTD = scale(p.disbursementAmountPrevMTD, factor);
+    });
+  }
+
+  // 7. Secure Loan
   if (data.secureOperations) {
     if (mode === "month") {
       data.secureOperations.totalTxnToday = data.secureOperations.totalTxnMTD;
@@ -2348,8 +2400,8 @@ function buildAlertMailtoUrl(alert) {
     "card-financials": "Card Financials",
     "chargeback": "Chargeback / Disputes",
     "reconciliation": "Reconciliation",
-    "secure-operations": "Secure Operations",
-    "unsecured-operations": "Unsecured Operations",
+    "secure-operations": "Secure Loan",
+    "unsecured-operations": "Unsecure Loan",
     "banca": "Banca",
     "bcp": "BCP (Business Continuity Plan)"
   };
@@ -2389,8 +2441,8 @@ function renderAlertsInbox(rawAlerts) {
     "card-financials": "Card Financials",
     "chargeback": "Chargeback / Disputes",
     "reconciliation": "Reconciliation",
-    "secure-operations": "Secure Operations",
-    "unsecured-operations": "Unsecured Operations",
+    "secure-operations": "Secure Loan",
+    "unsecured-operations": "Unsecure Loan",
     "banca": "Banca",
     "bcp": "BCP (Business Continuity Plan)"
   };
@@ -2431,6 +2483,13 @@ function renderAlertsInbox(rawAlerts) {
     if (invBtn) {
       invBtn.addEventListener("click", function () {
         modal.style.display = "none";
+        if (a.page === "reconciliation" && a.unitId) {
+          const matchedUnit = RECON_UNITS.find(function (u) { return u.id === a.unitId; });
+          if (matchedUnit) {
+            activeReconciliationUnit = matchedUnit;
+            activeReconSubOption = a.subOpt || null;
+          }
+        }
         navigateToPage(a.page);
       });
     }
@@ -2486,22 +2545,38 @@ function evaluateAndShowToastAlerts(data) {
     });
   }
 
-  /* 4. Reconciliation High Aging Receivables */
-  if (data.reconciliation) {
-    const highAgeRec = (data.reconciliation.receivables || []).filter(function (r) {
-      return r.bucket === "60+" || r.bucket === "90+" || r.bucket === "120+";
-    });
-    if (highAgeRec.length > 0) {
-      const totAmt = sumBy(highAgeRec, "amount");
+  /* 4. Reconciliation Unit Aging Alerts: IF(MAX(Aging)>=4) → "Outstanding Transactions - Closure Required" */
+  const reconTargets = [
+    { unitId: "1948", subOpt: "SD",   name: "1948 - SD (Credit Card)" },
+    { unitId: "1948", subOpt: "IPS",  name: "1948 - IPS (Credit Card)" },
+    { unitId: "1948", subOpt: "TPA",  name: "1948 - TPA (Credit Card)" },
+    { unitId: "7928", subOpt: null,  name: "7928 - Credit Card (Card Pro)" },
+    { unitId: "1922", subOpt: null,  name: "1922 - Ijarah" },
+    { unitId: "1944", subOpt: null,  name: "1944 - Auto Loan" },
+    { unitId: "1945", subOpt: null,  name: "1945 - Personal Loan (PRL)" },
+    { unitId: "1946", subOpt: null,  name: "1946 - Mortgage (MTG)" },
+    { unitId: "2000", subOpt: null,  name: "2000 - SME" }
+  ];
+
+  reconTargets.forEach(function (tgt) {
+    const unitObj = RECON_UNITS.find(function (u) { return u.id === tgt.unitId; });
+    if (!unitObj) return;
+    const unitRows = getReconciliationUnitRows(unitObj, tgt.subOpt, data);
+    const alertInfo = getUnitAgingAlertStatus(unitRows);
+
+    if (alertInfo.isAlert) {
+      const keySuffix = tgt.unitId + (tgt.subOpt ? "_" + tgt.subOpt : "");
       rawAlerts.push({
-        id: "toast_recon_high_aging",
-        severity: "HIGH AGING",
-        title: "Recon Receivables Over 60 Days",
-        detail: highAgeRec.length + " items outstanding totaling " + formatCurrency(totAmt),
-        page: "reconciliation"
+        id: "toast_recon_unit_" + keySuffix,
+        severity: "WARNING",
+        title: "Recon Alert: " + tgt.name,
+        detail: "Outstanding Transactions - Closure Required (Aging >= 61 Days)",
+        page: "reconciliation",
+        unitId: tgt.unitId,
+        subOpt: tgt.subOpt
       });
     }
-  }
+  });
 
   /* 5. Chargeback High Aging Disputes */
   const activeCb = data.chargeback ? (data.chargeback.credit || data.chargeback) : null;
@@ -2568,6 +2643,13 @@ function evaluateAndShowToastAlerts(data) {
 
     toast.addEventListener("click", function (e) {
       if (e.target.classList.contains("toast-close") || e.target.closest(".toast-email-action")) return;
+      if (a.page === "reconciliation" && a.unitId) {
+        const matchedUnit = RECON_UNITS.find(function (u) { return u.id === a.unitId; });
+        if (matchedUnit) {
+          activeReconciliationUnit = matchedUnit;
+          activeReconSubOption = a.subOpt || null;
+        }
+      }
       navigateToPage(a.page);
     });
 
@@ -3521,7 +3603,7 @@ function renderHome(data) {
   const bcp = data.bcp || generateIllustrativeData().bcp;
 
   const cardSec = createHomeKpiCard(
-    "Secured Operations",
+    "Secure Loan",
     formatCurrency(sec.totalAmountToday || 2450000000),
     "accent-blue",
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
@@ -3532,7 +3614,7 @@ function renderHome(data) {
   kpiGrid.appendChild(cardSec);
 
   const cardUnsec = createHomeKpiCard(
-    "Unsecured Operations",
+    "Unsecure Loan",
     formatCurrency(unsec.totalAmountToday || 1680000000),
     "accent-indigo",
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
@@ -4379,8 +4461,8 @@ function renderOvModules(root, data) {
   grid.appendChild(ovModuleCard("Income Stream",                   "card-financials",   buildOvCardFinTable(data)));
   grid.appendChild(buildOvProvisionalTaxesDualCard(data));
   grid.appendChild(ovModuleCard("Inventory / Stock Position",      "card-non-financials", buildOvInventoryTable(data)));
-  grid.appendChild(ovModuleCard("Secure Operations",               "secure-operations", ovSecOpsRows(data)));
-  grid.appendChild(ovModuleCard("Unsecured Operations",            "unsecured-operations", ovUnsecOpsRows(data)));
+  grid.appendChild(ovModuleCard("Secure Loan",               "secure-operations", ovSecOpsRows(data)));
+  grid.appendChild(ovModuleCard("Unsecure Loan",            "unsecured-operations", ovUnsecOpsRows(data)));
   grid.appendChild(ovModuleCard("Banca",                           "banca",             ovBancaRows(data)));
   grid.appendChild(ovModuleCard("BCP (Business Continuity Plan)",   "bcp",               ovBcpRows(data)));
   root.appendChild(grid);
@@ -5072,24 +5154,119 @@ function ovCardFRows(data) {
 }
 
 function ovSecOpsRows(data) {
-  const s = data.secureOperations || (generateIllustrativeData().secureOperations);
-  return [
-    ["Secure Transactions Count", formatNumber(s.successTxnToday)],
-    ["Secure Success Rate", formatPercentage(s.successRateToday)],
-    ["Secure Transaction Amount", formatCurrency(s.totalAmountToday)],
-    ["Pending / Exception Items", formatNumber(s.pendingItemsToday)]
-  ];
+  const products = (data.securedOpsProducts) || (generateIllustrativeData().securedOpsProducts);
+
+  const wrap = el("div");
+
+  // Login Applications Tracking table
+  const loginTitle = el("div", { style: "font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;margin-top:0;" });
+  loginTitle.textContent = "Login Tracking";
+  wrap.appendChild(loginTitle);
+
+  const loginTable = el("table", { class: "ov-module-table" });
+  const lThead = el("thead");
+  const lHr = el("tr");
+  lHr.appendChild(el("th", { text: "Product", style: "text-align:left;" }));
+  lHr.appendChild(el("th", { text: "Login Applications", class: "num" }));
+  lThead.appendChild(lHr);
+  loginTable.appendChild(lThead);
+  const lTbody = el("tbody");
+  products.forEach(function (p) {
+    const tr = el("tr");
+    tr.appendChild(el("td", { text: p.product, style: "text-align:left;" }));
+    tr.appendChild(el("td", { text: formatNumber(p.loginApplications), class: "num" }));
+    lTbody.appendChild(tr);
+  });
+  loginTable.appendChild(lTbody);
+  wrap.appendChild(loginTable);
+
+  // Disbursement Tracking table
+  const disbTitle = el("div", { style: "font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;margin-top:10px;" });
+  disbTitle.textContent = "Disbursement Tracking";
+  wrap.appendChild(disbTitle);
+
+  const disbTable = el("table", { class: "ov-module-table" });
+  const dThead = el("thead");
+  const dHr = el("tr");
+  dHr.appendChild(el("th", { text: "Product", style: "text-align:left;" }));
+  dHr.appendChild(el("th", { text: "Count", class: "num" }));
+  dHr.appendChild(el("th", { text: "Amount", class: "num" }));
+  dThead.appendChild(dHr);
+  disbTable.appendChild(dThead);
+  const dTbody = el("tbody");
+  products.forEach(function (p) {
+    const tr = el("tr");
+    tr.appendChild(el("td", { text: p.product, style: "text-align:left;" }));
+    tr.appendChild(el("td", { text: formatNumber(p.disbursementCount), class: "num" }));
+    tr.appendChild(el("td", { text: formatCurrency(p.disbursementAmount), class: "num" }));
+    dTbody.appendChild(tr);
+  });
+  disbTable.appendChild(dTbody);
+  wrap.appendChild(disbTable);
+
+  return wrap;
 }
 
 function ovUnsecOpsRows(data) {
-  const u = data.unsecuredOperations || (generateIllustrativeData().unsecuredOperations);
-  return [
-    ["Unsecured Transactions Count", formatNumber(u.successTxnToday)],
-    ["Unsecured Success Rate", formatPercentage(u.successRateToday)],
-    ["Unsecured Transaction Amount", formatCurrency(u.totalAmountToday)],
-    ["Pending / Exception Items", formatNumber(u.pendingItemsToday)]
-  ];
+  const products = (data.unsecuredOpsProducts) || (generateIllustrativeData().unsecuredOpsProducts);
+
+  const wrap = el("div");
+
+  // Login Applications Tracking table (all products, including Credit Card)
+  const loginTitle = el("div", { style: "font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;margin-top:0;" });
+  loginTitle.textContent = "Login Tracking";
+  wrap.appendChild(loginTitle);
+
+  const loginTable = el("table", { class: "ov-module-table" });
+  const lThead = el("thead");
+  const lHr = el("tr");
+  lHr.appendChild(el("th", { text: "Product", style: "text-align:left;" }));
+  lHr.appendChild(el("th", { text: "Login Applications", class: "num" }));
+  lThead.appendChild(lHr);
+  loginTable.appendChild(lThead);
+  const lTbody = el("tbody");
+  products.forEach(function (p) {
+    const tr = el("tr");
+    const nameCell = el("td", { text: p.product, style: "text-align:left;" });
+    if (p.loginOnly) {
+      const badge = el("span", { style: "font-size:9px;background:#FEF3C7;color:#92400E;border-radius:3px;padding:1px 4px;margin-left:4px;font-weight:600;" });
+      badge.textContent = "Login Only";
+      nameCell.appendChild(badge);
+    }
+    tr.appendChild(nameCell);
+    tr.appendChild(el("td", { text: formatNumber(p.loginApplications), class: "num" }));
+    lTbody.appendChild(tr);
+  });
+  loginTable.appendChild(lTbody);
+  wrap.appendChild(loginTable);
+
+  // Disbursement Tracking table 
+  const disbTitle = el("div", { style: "font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;margin-top:10px;" });
+  disbTitle.textContent = "Disbursement Tracking";
+  wrap.appendChild(disbTitle);
+
+  const disbTable = el("table", { class: "ov-module-table" });
+  const dThead = el("thead");
+  const dHr = el("tr");
+  dHr.appendChild(el("th", { text: "Product", style: "text-align:left;" }));
+  dHr.appendChild(el("th", { text: "Count", class: "num" }));
+  dHr.appendChild(el("th", { text: "Amount", class: "num" }));
+  dThead.appendChild(dHr);
+  disbTable.appendChild(dThead);
+  const dTbody = el("tbody");
+  products.filter(function (p) { return !p.loginOnly; }).forEach(function (p) {
+    const tr = el("tr");
+    tr.appendChild(el("td", { text: p.product, style: "text-align:left;" }));
+    tr.appendChild(el("td", { text: formatNumber(p.disbursementCount), class: "num" }));
+    tr.appendChild(el("td", { text: formatCurrency(p.disbursementAmount), class: "num" }));
+    dTbody.appendChild(tr);
+  });
+  disbTable.appendChild(dTbody);
+  wrap.appendChild(disbTable);
+
+  return wrap;
 }
+
 
 function ovBancaRows(data) {
   const b = data.banca || (generateIllustrativeData().banca);
@@ -5228,17 +5405,39 @@ function renderFailureReasonsPage(data) {
   if (!root) return;
   root.innerHTML = "";
 
+  const parentPage = document.getElementById("page-failure-reasons");
+  if (parentPage) {
+    const origHead = parentPage.querySelector(".page-head");
+    if (origHead) origHead.style.display = "none";
+  }
+
   const lbl = getPeriodLabels();
   const numDays = Math.max(1, (lbl.mode === "month" ? (appState.filters.daysInMonth || 31) : (appState.filters.daysCount || 15)));
   const illustrativeFallback = generateIllustrativeData();
 
-  // Left-edge back button — standalone, top of page body
+  // Left-edge back button + page heading on SAME horizontal row
+  const headRow = el("div", { class: "detail-page-header-row" });
+  const headLeft = el("div", { class: "detail-header-left" });
+
   const backBtn = el("button", { class: "page-back-btn", type: "button", title: "Go Back", "aria-label": "Go Back" });
   backBtn.innerHTML = "&#8249;";
   backBtn.addEventListener("click", function () {
     goBack();
   });
-  root.appendChild(backBtn);
+
+  const heading = el("h2", { class: "detail-page-heading", text: "Failure Reasons" });
+
+  headLeft.appendChild(backBtn);
+  headLeft.appendChild(heading);
+  headRow.appendChild(headLeft);
+
+  const headRight = el("div", { class: "detail-header-right" });
+  const periodLabel = el("span", { class: "period-label" });
+  periodLabel.textContent = lbl.primaryLabel || "";
+  headRight.appendChild(periodLabel);
+  headRow.appendChild(headRight);
+
+  root.appendChild(headRow);
 
   const columnsDaily = [
     { key: "kpi", label: "Failure Reason / Operational Category" },
@@ -5314,12 +5513,11 @@ function renderADCOperations(data) {
   root.innerHTML = "";
   const lbl = getPeriodLabels();
 
-  root.appendChild(sectionTitle("ATM Operations"));
+  const atmTitle = sectionTitle("ATM Transactions");
+  atmTitle.id = "atm-operations";
+  root.appendChild(atmTitle);
   if (data.atm) {
     const a = data.atm;
-    const uptComp = formatUptimeComparison(a.uptimeToday, a.uptimeYesterday);
-
-    const grid = el("div", { class: "kpi-grid" });
 
     const numDays = Math.max(1, (lbl.mode === "month" ? (appState.filters.daysInMonth || 31) : (appState.filters.daysCount || 15)));
     const isMoM = !lbl.isDaily;
@@ -5334,16 +5532,11 @@ function renderADCOperations(data) {
 
     const retractCur = a.retractTxnToday !== undefined ? a.retractTxnToday : (a.retractTxnMTD || 940);
     const retractPrev = a.retractTxnYesterday !== undefined ? a.retractTxnYesterday : (a.retractTxnPrevMTD || 910);
-    const retractComp = calculateComparisons(retractCur, retractPrev, false, isMoM);
+
+    const failedCur = (a.failedTxnToday || 0) + retractCur;
+    const failedPrev = (a.failedTxnYesterday || 0) + retractPrev;
 
     const atmSummaryRows = [
-      {
-        kpi: "ATM Uptime (%)",
-        current: uptComp.todayStr,
-        previous: uptComp.yesterdayStr,
-        change: uptComp.html,
-        dailyAvg: uptComp.todayStr
-      },
       {
         kpi: "Withdrawal Transaction Count",
         current: formatNumber(a.withdrawalCountToday),
@@ -5360,10 +5553,10 @@ function renderADCOperations(data) {
       },
       {
         kpi: "Failed ATM Transactions Count",
-        current: formatNumber(a.failedTxnToday),
-        previous: formatNumber(a.failedTxnYesterday),
-        change: calculateComparisons(a.failedTxnToday, a.failedTxnYesterday, false, isMoM).html,
-        dailyAvg: formatNumber(a.failedTxnToday / numDays)
+        current: formatNumber(failedCur),
+        previous: formatNumber(failedPrev),
+        change: calculateComparisons(failedCur, failedPrev, false, isMoM).html,
+        dailyAvg: formatNumber(failedCur / numDays)
       },
       {
         kpi: "ATM Disputes / Claims Count",
@@ -5378,13 +5571,6 @@ function renderADCOperations(data) {
         previous: formatNumber(capturedPrev, 0),
         change: capturedComp.html,
         dailyAvg: formatNumber(capturedCur / numDays)
-      },
-      {
-        kpi: "Cash-Retract Transactions Count",
-        current: formatNumber(retractCur, 0),
-        previous: formatNumber(retractPrev, 0),
-        change: retractComp.html,
-        dailyAvg: formatNumber(retractCur / numDays)
       }
     ];
 
@@ -5404,23 +5590,8 @@ function renderADCOperations(data) {
     ];
 
     root.appendChild(buildTable(null, lbl.isDaily ? atmColumnsDaily : atmColumnsPeriod, atmSummaryRows));
-
-    /* ATM Performance tables displaying explicit Txn Amount column */
-    const atmPerfTitle = sectionTitle("ATM Performance");
-    atmPerfTitle.id = "atm-performance";
-    root.appendChild(atmPerfTitle);
-    root.appendChild(sectionTitle("Top 5 Best-Performing ATMs"));
-    root.appendChild(buildTable(null,
-      [{ key: "rank", label: "Rank", center: true, width: "80px" }, { key: "atmId", label: "ATM ID" }, { key: "location", label: "Location" },
-       { key: "txnCount", label: "Txn Count", numeric: true }, { key: "txnAmount", label: "Txn Amount", currency: true }, { key: "successRate", label: "Success Rate", percent: true }, { key: "uptime", label: "Uptime", percent: true }],
-      data.atmTop5Best));
-    root.appendChild(sectionTitle("Top 5 Lowest-Performing ATMs (Underperforming)"));
-    root.appendChild(buildTable(null,
-      [{ key: "rank", label: "Rank", center: true, width: "80px" }, { key: "atmId", label: "ATM ID" }, { key: "location", label: "Location" },
-       { key: "txnCount", label: "Txn Count", numeric: true }, { key: "txnAmount", label: "Txn Amount", currency: true }, { key: "successRate", label: "Success Rate", percent: true }, { key: "uptime", label: "Uptime", percent: true }],
-      data.atmBottom5));
   } else {
-    root.appendChild(el("div", { class: "no-data-note", text: "ATM sheet is missing. No data available for ATM Operations." }));
+    root.appendChild(el("div", { class: "no-data-note", text: "ATM sheet is missing. No data available for ATM Transactions." }));
   }
 
   const numDays = Math.max(1, (lbl.mode === "month" ? (appState.filters.daysInMonth || 31) : (appState.filters.daysCount || 15)));
@@ -5442,8 +5613,8 @@ function renderADCOperations(data) {
 
   const illustrativeFallback = generateIllustrativeData();
 
-  /* 3. RAAST Operations Table */
-  const raastTitle = sectionTitle("RAAST Operations");
+  /* 2. RAAST Transactions Table */
+  const raastTitle = sectionTitle("RAAST Transactions");
   raastTitle.id = "raast-operations";
   root.appendChild(raastTitle);
   const r = data.raast || illustrativeFallback.raast;
@@ -5491,8 +5662,8 @@ function renderADCOperations(data) {
   ];
   root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, raastRows));
 
-  /* 4. IBFT Operations Table */
-  const ibftTitle = sectionTitle("IBFT Operations");
+  /* 3. IBFT Transactions Table */
+  const ibftTitle = sectionTitle("IBFT Transactions");
   ibftTitle.id = "ibft-operations";
   root.appendChild(ibftTitle);
   const i = data.ibft || illustrativeFallback.ibft;
@@ -5540,8 +5711,8 @@ function renderADCOperations(data) {
   ];
   root.appendChild(buildTable(null, lbl.isDaily ? adcThreeColumnsDaily : adcThreeColumnsPeriod, ibftRows));
 
-  /* 5. POS Operations Table */
-  const posTitle = sectionTitle("POS Operations");
+  /* 4. POS Transactions Table */
+  const posTitle = sectionTitle("POS Transactions");
   posTitle.id = "pos-operations";
   root.appendChild(posTitle);
 
@@ -5659,8 +5830,8 @@ function renderADCOperations(data) {
 
   renderPosOperationsTable();
 
-  /* 6. Ecommerce Operations Table */
-  const ecomTitle = sectionTitle("Ecommerce Operations");
+  /* 5. Ecommerce Transactions Table */
+  const ecomTitle = sectionTitle("Ecommerce Transactions");
   ecomTitle.id = "ecommerce-operations";
   root.appendChild(ecomTitle);
 
@@ -5777,6 +5948,23 @@ function renderADCOperations(data) {
   });
 
   renderEcomOperationsTable();
+
+  /* 6. ATM Performance tables (Moved to the very bottom of the ADC Operations page) */
+  if (data.atm) {
+    const atmPerfTitle = sectionTitle("ATM Performance");
+    atmPerfTitle.id = "atm-performance";
+    root.appendChild(atmPerfTitle);
+    root.appendChild(sectionTitle("Top 5 Best-Performing ATMs"));
+    root.appendChild(buildTable(null,
+      [{ key: "rank", label: "Rank", center: true, width: "80px" }, { key: "atmId", label: "ATM ID" }, { key: "location", label: "Location" },
+       { key: "txnCount", label: "Txn Count", numeric: true }, { key: "txnAmount", label: "Txn Amount", currency: true }, { key: "successRate", label: "Success Rate", percent: true }, { key: "uptime", label: "Uptime", percent: true }],
+      data.atmTop5Best));
+    root.appendChild(sectionTitle("Top 5 Lowest-Performing ATMs (Underperforming)"));
+    root.appendChild(buildTable(null,
+      [{ key: "rank", label: "Rank", center: true, width: "80px" }, { key: "atmId", label: "ATM ID" }, { key: "location", label: "Location" },
+       { key: "txnCount", label: "Txn Count", numeric: true }, { key: "txnAmount", label: "Txn Amount", currency: true }, { key: "successRate", label: "Success Rate", percent: true }, { key: "uptime", label: "Uptime", percent: true }],
+      data.atmBottom5));
+  }
 }
 
 /* ---------------------------------------------------------------------
@@ -6212,6 +6400,7 @@ const RECON_UNITS = [
 
 let activeReconciliationUnit = null;
 let activeReconSubOption = null;
+let reconSearchQuery = "";
 
 /* Register reconciliation as a sub-page so Backspace steps back through
    unit-detail → unit-selection before popping the full page stack. */
@@ -6219,6 +6408,7 @@ registerSubPage(
   "reconciliation",
   function hasSubState() { return activeReconciliationUnit !== null; },
   function clearSubState() {
+    reconSearchQuery = "";
     if (activeReconSubOption !== null) {
       activeReconSubOption = null;
     } else {
@@ -6226,6 +6416,44 @@ registerSubPage(
     }
   }
 );
+
+function getUnitMaxAging(rows) {
+  let maxAging = 0;
+  (rows || []).forEach(function (r) {
+    const aAbove = Number(r.aAbove) || 0;
+    const a90    = Number(r.a90) || 0;
+    const a60    = Number(r.a60) || 0;
+    const a30    = Number(r.a30) || 0;
+    const a10    = Number(r.a10) || 0;
+
+    let rowMax = 0;
+    if (aAbove > 0) rowMax = 5;
+    else if (a90 > 0) rowMax = 4;
+    else if (a60 > 0) rowMax = 3;
+    else if (a30 > 0) rowMax = 2;
+    else if (a10 > 0) rowMax = 1;
+
+    if (rowMax > maxAging) maxAging = rowMax;
+  });
+  return maxAging;
+}
+
+function getUnitAgingAlertStatus(rows) {
+  const maxAging = getUnitMaxAging(rows);
+  if (maxAging >= 4) {
+    return {
+      status: "Outstanding Transactions - Closure Required",
+      maxAging: maxAging,
+      isAlert: true
+    };
+  } else {
+    return {
+      status: "Fully Reconciled",
+      maxAging: maxAging,
+      isAlert: false
+    };
+  }
+}
 
 
 function formatReconVal(val) {
@@ -11933,6 +12161,7 @@ function buildReconAgingTable(rows) {
 
   [
     { text: "S.No",                cls: "col-center" },
+    { text: "Sundry Code",         cls: "col-left" },
     { text: "Description",         cls: "col-left col-wide" },
     { text: "01 to 10 Days" },
     { text: "11 to 30 Days" },
@@ -11959,6 +12188,7 @@ function buildReconAgingTable(rows) {
 
     const tr = el("tr");
     tr.appendChild(el("td", { text: String(r.sNo), class: "center" }));
+    tr.appendChild(el("td", { text: r.sundryCode || "-", style: "font-weight:600;" }));
     tr.appendChild(el("td", { text: r.description, style: "font-weight:600;" }));
     tr.appendChild(el("td", { text: formatAgingCount(r.a10),    class: "num" }));
     tr.appendChild(el("td", { text: formatAgingCount(r.a30),    class: "num" }));
@@ -11971,6 +12201,7 @@ function buildReconAgingTable(rows) {
   const trTotal = el("tr", { class: "total-row" });
   trTotal.appendChild(el("td", { text: "", class: "center" }));
   trTotal.appendChild(el("td", { text: "TOTAL", style: "font-weight:700;" }));
+  trTotal.appendChild(el("td", { text: "Summary Total", style: "font-weight:700;" }));
   trTotal.appendChild(el("td", { text: formatAgingCount(totA10),    class: "num" }));
   trTotal.appendChild(el("td", { text: formatAgingCount(totA30),    class: "num" }));
   trTotal.appendChild(el("td", { text: formatAgingCount(totA60),    class: "num" }));
@@ -11988,7 +12219,10 @@ function renderReconciliation(data) {
   if (!root) return;
   root.innerHTML = "";
 
+  const mainPageHead = document.querySelector("#page-reconciliation .page-head");
+
   if (!activeReconciliationUnit) {
+    if (mainPageHead) mainPageHead.style.display = "";
     // LEVEL 1: Unit Selection Window — no back button needed (top-level)
     root.appendChild(sectionTitle("Reconciliation Unit Selection"));
 
@@ -12007,21 +12241,28 @@ function renderReconciliation(data) {
     });
     root.appendChild(grid);
   } else if (activeReconciliationUnit.id === "1948" && !activeReconSubOption) {
+    if (mainPageHead) mainPageHead.style.display = "none";
     // LEVEL 2 for 1948: Sub-options Window
     const unit = activeReconciliationUnit;
 
-    // Back button — standalone, left-aligned, top of content
+    const headRow = el("div", { class: "detail-page-header-row" });
+    const headLeft = el("div", { class: "detail-header-left" });
+
     const backBtn = el("button", { class: "page-back-btn", type: "button", title: "Back to Unit Selection", "aria-label": "Back to Unit Selection" });
     backBtn.innerHTML = "&#8249;";
     backBtn.addEventListener("click", function () {
       activeReconciliationUnit = null;
       renderReconciliation(currentData());
     });
-    root.appendChild(backBtn);
 
-    const heading = el("h3", { class: "recon-centered-heading" });
+    const heading = el("h2", { class: "detail-page-heading" });
     heading.textContent = "Reconciliation Sub-Units OF " + (unit.titleName || unit.fullName);
-    root.appendChild(heading);
+
+    headLeft.appendChild(backBtn);
+    headLeft.appendChild(heading);
+    headRow.appendChild(headLeft);
+
+    root.appendChild(headRow);
 
     const subOpts = [
       { id: "SD", name: "SD Credit Card" },
@@ -12043,14 +12284,21 @@ function renderReconciliation(data) {
     root.appendChild(grid);
 
   } else {
+    if (mainPageHead) mainPageHead.style.display = "none";
     // LEVEL 3 (or LEVEL 2 for non-1948): Unit-specific Reconciliation Details
     const unit = activeReconciliationUnit;
     const subOpt = activeReconSubOption;
 
-    // Back button — standalone, left-aligned, top of content
+    const rows = getReconciliationUnitRows(unit, subOpt, data);
+    const alertInfo = getUnitAgingAlertStatus(rows);
+
+    const headRow = el("div", { class: "detail-page-header-row" });
+    const headLeft = el("div", { class: "detail-header-left" });
+
     const backBtn = el("button", { class: "page-back-btn", type: "button", title: "Back", "aria-label": "Back" });
     backBtn.innerHTML = "&#8249;";
     backBtn.addEventListener("click", function () {
+      reconSearchQuery = "";
       if (unit.id === "1948" && subOpt) {
         activeReconSubOption = null;
       } else {
@@ -12058,24 +12306,262 @@ function renderReconciliation(data) {
       }
       renderReconciliation(currentData());
     });
-    root.appendChild(backBtn);
 
-    const heading = el("h3", { class: "recon-centered-heading" });
+    const heading = el("h2", { class: "detail-page-heading" });
     let titleText = "Reconciliation OF " + (unit.titleName || unit.fullName);
     if (unit.id === "1948" && subOpt) {
       titleText += " - " + subOpt;
     }
     heading.textContent = titleText;
-    root.appendChild(heading);
 
-    // --- Table 1: Reconciliation Summary ---
+    headLeft.appendChild(backBtn);
+    headLeft.appendChild(heading);
+    headRow.appendChild(headLeft);
+
+    // TOP-RIGHT: Compact Aging Alerts Button
+    const headRight = el("div", { class: "detail-header-right" });
+    const btnAgingAlerts = el("button", {
+      class: "btn-aging-alerts " + (alertInfo.isAlert ? "warning" : "ok"),
+      type: "button",
+      title: "Click to toggle Aging Alert details"
+    });
+    btnAgingAlerts.innerHTML = '<span>🔔 Aging Alerts</span>' + (alertInfo.isAlert ? ' <span class="aging-alert-badge">!</span>' : '');
+
+    headRight.appendChild(btnAgingAlerts);
+    headRow.appendChild(headRight);
+
+    root.appendChild(headRow);
+
+    // Filter outstanding items for detailed alert display
+    const outstandingItems = rows.filter(function (r) {
+      const hasAging = (Number(r.aAbove) || 0) > 0 || (Number(r.a90) || 0) > 0 || (Number(r.a60) || 0) > 0 || (Number(r.a30) || 0) > 0 || (Number(r.a10) || 0) > 0;
+      const isClosureReq = r.remarks && r.remarks.toLowerCase().indexOf("closure") !== -1;
+      const hasTBVal = Math.abs(Number(r.asPerTB) || 0) > 0;
+      return hasAging || isClosureReq || hasTBVal;
+    });
+
+    let alertItemsHTML = "";
+    if (outstandingItems.length > 0) {
+      alertItemsHTML = '<div class="aging-alert-items-list">';
+      outstandingItems.forEach(function (item) {
+        const amtVal = Math.abs(Number(item.asPerTB) || Number(item.asPerRecon) || 0);
+        const amtStr = "PKR " + formatNumber(amtVal, 2);
+
+        // Determine aging days description from available data
+        let agingBucketStr = "";
+        if ((Number(item.aAbove) || 0) > 0) agingBucketStr = "91+ days (" + item.aAbove + " items)";
+        else if ((Number(item.a90) || 0) > 0) agingBucketStr = "61 to 90 days (" + item.a90 + " items)";
+        else if ((Number(item.a60) || 0) > 0) agingBucketStr = "31 to 60 days (" + item.a60 + " items)";
+        else if ((Number(item.a30) || 0) > 0) agingBucketStr = "11 to 30 days (" + item.a30 + " items)";
+        else if ((Number(item.a10) || 0) > 0) agingBucketStr = "1 to 10 days (" + item.a10 + " items)";
+        else agingBucketStr = "Pending Closure";
+
+        const codeStr = item.sundryCode || "GL-" + item.sNo;
+
+        alertItemsHTML += '<div class="aging-alert-item-card">'
+          + 'GL <strong>' + codeStr + '</strong> (' + item.description + ') has <strong>' + amtStr + '</strong> outstanding for <strong>' + agingBucketStr + '</strong> &mdash; <em>Closure Required</em>.'
+          + '</div>';
+      });
+      alertItemsHTML += '</div>';
+    } else {
+      alertItemsHTML = '<div style="font-size: 12px; margin-top: 6px; color: var(--positive); font-weight: 500;">All GL/Sundry accounts are fully reconciled. No outstanding aging items requiring closure.</div>';
+    }
+
+    // Expandable compact panel for Aging Alert details
+    const alertPanel = el("div", { class: "aging-alerts-panel " + (alertInfo.isAlert ? "warning" : "ok"), style: "display: none;" });
+    const alertStatusTag = alertInfo.isAlert ? "warning" : "ok";
+    const alertText = alertInfo.status;
+
+    alertPanel.innerHTML = '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom: 4px;">'
+      + '<div style="display:flex; align-items:center; gap:8px;">'
+      + '<span class="status-badge ' + alertStatusTag + '">Aging Alert</span>'
+      + '<strong style="font-size: 13px;">Reconciliation Status: ' + alertText + ' (' + outstandingItems.length + ' Outstanding Account' + (outstandingItems.length !== 1 ? 's' : '') + ')</strong>'
+      + '</div>'
+      + '<button type="button" class="panel-close-btn" style="background:none;border:none;cursor:pointer;font-size:16px;line-height:1;color:inherit;" aria-label="Close aging alerts">&times;</button>'
+      + '</div>'
+      + alertItemsHTML;
+
+    root.appendChild(alertPanel);
+
+    btnAgingAlerts.addEventListener("click", function () {
+      const isHidden = alertPanel.style.display === "none";
+      alertPanel.style.display = isHidden ? "block" : "none";
+    });
+
+    const closeBtn = alertPanel.querySelector(".panel-close-btn");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", function () {
+        alertPanel.style.display = "none";
+      });
+    }
+
+    // --- Interactive Sundry / GL Code & Description Search Box UI with Session Recent Searches ---
+    const searchContainer = el("div", { class: "recon-search-container" });
+    const searchBoxRow = el("div", { class: "recon-search-box-row" });
+
+    const searchIcon = el("span", { class: "recon-search-icon" });
+    searchIcon.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
+
+    const searchInput = el("input", {
+      type: "text",
+      id: "recon-search-input",
+      class: "recon-search-input",
+      placeholder: "Search by Sundry / GL Code or Description...",
+      value: reconSearchQuery || "",
+      autocomplete: "off"
+    });
+
+    searchBoxRow.appendChild(searchIcon);
+    searchBoxRow.appendChild(searchInput);
+
+    if (reconSearchQuery) {
+      const clearBtn = el("button", {
+        type: "button",
+        class: "recon-search-clear-btn",
+        title: "Clear Search",
+        ariaLabel: "Clear Search"
+      });
+      clearBtn.innerHTML = "&times;";
+      clearBtn.addEventListener("click", function () {
+        reconSearchQuery = "";
+        searchInput.value = "";
+        renderSearchRecentChips();
+        renderFilteredTables();
+      });
+      searchBoxRow.appendChild(clearBtn);
+    }
+
+    searchContainer.appendChild(searchBoxRow);
+
+    const recentContainer = el("div", { class: "recon-recent-searches", id: "recon-recent-searches" });
+    searchContainer.appendChild(recentContainer);
+
+    root.appendChild(searchContainer);
+
+    function addRecentSearch(term) {
+      const cleaned = (term || "").trim();
+      if (!cleaned || cleaned.length < 2) return;
+      appState.reconRecentSearches = appState.reconRecentSearches || [];
+      const idx = appState.reconRecentSearches.indexOf(cleaned);
+      if (idx !== -1) {
+        appState.reconRecentSearches.splice(idx, 1);
+      }
+      appState.reconRecentSearches.unshift(cleaned);
+      if (appState.reconRecentSearches.length > 5) {
+        appState.reconRecentSearches.pop();
+      }
+    }
+
+    function showRecentSearches() {
+      const container = document.getElementById("recon-recent-searches");
+      if (!container) return;
+      const recents = appState.reconRecentSearches || [];
+      if (recents.length > 0) {
+        container.classList.add("active");
+      }
+    }
+
+    function hideRecentSearches() {
+      const container = document.getElementById("recon-recent-searches");
+      if (container) {
+        container.classList.remove("active");
+      }
+    }
+
+    function renderSearchRecentChips() {
+      const container = document.getElementById("recon-recent-searches");
+      if (!container) return;
+      container.innerHTML = "";
+
+      const recents = appState.reconRecentSearches || [];
+      if (recents.length === 0) {
+        container.classList.remove("active");
+        return;
+      }
+
+      const label = el("span", { class: "recon-recent-label", text: "Recent Searches:" });
+      container.appendChild(label);
+
+      recents.forEach(function (term) {
+        const chip = el("button", { class: "recon-recent-chip", type: "button", title: "Click to search " + term });
+        chip.innerHTML = '<span style="opacity:0.7;">🔍</span> <span>' + term + '</span>';
+        chip.addEventListener("click", function (e) {
+          e.stopPropagation();
+          reconSearchQuery = term;
+          const inputEl = document.getElementById("recon-search-input");
+          if (inputEl) inputEl.value = term;
+          addRecentSearch(term);
+          renderSearchRecentChips();
+          renderFilteredTables();
+          hideRecentSearches();
+        });
+        container.appendChild(chip);
+      });
+    }
+
+    renderSearchRecentChips();
+
+    // Dynamic Summary & Aging Tables Containers
     root.appendChild(sectionTitle("Reconciliation Summary"));
-    const rows = getReconciliationUnitRows(unit, subOpt, data);
-    root.appendChild(buildReconSummaryTable(rows));
+    const summaryWrap = el("div", { id: "recon-summary-wrap" });
+    root.appendChild(summaryWrap);
 
-    // --- Table 2: Aging Analysis ---
     root.appendChild(sectionTitle("Aging Analysis"));
-    root.appendChild(buildReconAgingTable(rows));
+    const agingWrap = el("div", { id: "recon-aging-wrap" });
+    root.appendChild(agingWrap);
+
+    function renderFilteredTables() {
+      const query = (reconSearchQuery || "").trim().toLowerCase();
+      const filteredRows = rows.filter(function (r) {
+        if (!query) return true;
+        const code = String(r.sundryCode || "").toLowerCase();
+        const desc = String(r.description || "").toLowerCase();
+        return code.indexOf(query) !== -1 || desc.indexOf(query) !== -1;
+      });
+
+      summaryWrap.innerHTML = "";
+      summaryWrap.appendChild(buildReconSummaryTable(filteredRows));
+
+      agingWrap.innerHTML = "";
+      agingWrap.appendChild(buildReconAgingTable(filteredRows));
+    }
+
+    renderFilteredTables();
+
+    searchInput.addEventListener("input", function (e) {
+      reconSearchQuery = e.target.value;
+      renderFilteredTables();
+    });
+
+    searchInput.addEventListener("focus", function () {
+      showRecentSearches();
+    });
+
+    searchInput.addEventListener("click", function (e) {
+      e.stopPropagation();
+      showRecentSearches();
+    });
+
+    searchInput.addEventListener("change", function (e) {
+      addRecentSearch(e.target.value);
+      renderSearchRecentChips();
+    });
+
+    searchInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        addRecentSearch(e.target.value);
+        renderSearchRecentChips();
+        hideRecentSearches();
+      }
+    });
+
+    // Hide recent searches when user clicks outside the search container
+    const onDocClick = function (e) {
+      if (searchContainer && !searchContainer.contains(e.target)) {
+        hideRecentSearches();
+      }
+    };
+    document.addEventListener("click", onDocClick);
   }
 }
 
@@ -12099,106 +12585,242 @@ function deriveAgingBuckets(rec) {
    17. PAGE 7 — SECURE OPERATIONS
    --------------------------------------------------------------------- */
 
+function calcMoM(cur, prev) {
+  if (!prev || prev === 0) return "<span>N/A</span>";
+  var pct = ((cur - prev) / prev) * 100;
+  var sign = pct >= 0 ? "+" : "";
+  var cls = pct >= 0 ? "trend-up" : "trend-down";
+  return "<span class=\"" + cls + "\">" + sign + pct.toFixed(1) + "%</span>";
+}
+
 function renderSecureOperations(data) {
   const root = document.getElementById("secure-operations-body");
   if (!root) return;
   root.innerHTML = "";
   const lbl = getPeriodLabels();
+  const isMonthly = !lbl.isDaily;
 
-  const sec = data.secureOperations || generateIllustrativeData().secureOperations;
-  const breakdown = data.secureOpsBreakdown || generateIllustrativeData().secureOpsBreakdown;
+  const sec      = data.secureOperations  || generateIllustrativeData().secureOperations;
+  const products = data.securedOpsProducts || generateIllustrativeData().securedOpsProducts;
 
-  root.appendChild(sectionTitle("Secure Operations Executive Summary"));
+  // Executive KPI Summary
+  root.appendChild(sectionTitle("Executive Summary"));
+
+  const totalLogins    = isMonthly ? products.reduce(function(s,p){return s+p.loginApplicationsMTD;},0)    : products.reduce(function(s,p){return s+p.loginApplications;},0);
+  const totalDisbCount = isMonthly ? products.reduce(function(s,p){return s+p.disbursementCountMTD;},0)    : products.reduce(function(s,p){return s+p.disbursementCount;},0);
+  const totalDisbAmt   = isMonthly ? products.reduce(function(s,p){return s+p.disbursementAmountMTD;},0)   : products.reduce(function(s,p){return s+p.disbursementAmount;},0);
 
   const grid = el("div", { class: "kpi-grid" });
-  grid.appendChild(kpiCard("Total Secure Transactions (" + lbl.shortPrimary + ")", formatNumber(sec.totalTxnToday),
-    lbl.comparisonTerm + ": " + formatNumber(sec.totalTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.totalTxnToday, sec.totalTxnYesterday, true, false).html));
-
-  grid.appendChild(kpiCard("Successful Transactions (" + lbl.shortPrimary + ")", formatNumber(sec.successTxnToday),
-    lbl.comparisonTerm + ": " + formatNumber(sec.successTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.successTxnToday, sec.successTxnYesterday, true, false).html));
-
-  grid.appendChild(kpiCard("Secure Success Rate (" + lbl.shortPrimary + ")", formatPercentage(sec.successRateToday),
-    lbl.comparisonTerm + ": " + formatPercentage(sec.successRateYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.successRateToday, sec.successRateYesterday, true, false).html));
-
-  grid.appendChild(kpiCard("Total Transaction Amount (" + lbl.shortPrimary + ")", formatCurrency(sec.totalAmountToday),
-    lbl.comparisonTerm + ": " + formatCurrency(sec.totalAmountYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.totalAmountToday, sec.totalAmountYesterday, true, false).html, fullValueTitle(sec.totalAmountToday, true)));
-
-  grid.appendChild(kpiCard("Failed Transactions (" + lbl.shortPrimary + ")", formatNumber(sec.failedTxnToday),
-    lbl.comparisonTerm + ": " + formatNumber(sec.failedTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.failedTxnToday, sec.failedTxnYesterday, false, false).html));
-
-  grid.appendChild(kpiCard("Pending / Exception Items (" + lbl.shortPrimary + ")", formatNumber(sec.pendingItemsToday),
-    lbl.comparisonTerm + ": " + formatNumber(sec.pendingItemsYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(sec.pendingItemsToday, sec.pendingItemsYesterday, false, false).html));
-
+  grid.appendChild(kpiCard("Total Login Applications (" + lbl.shortPrimary + ")", formatNumber(totalLogins), "Applications logged in across all secured products"));
+  grid.appendChild(kpiCard("Total Disbursements (" + lbl.shortPrimary + ")", formatNumber(totalDisbCount), "Total disbursement cases processed"));
+  grid.appendChild(kpiCard("Total Disbursement Amount (" + lbl.shortPrimary + ")", formatCurrency(totalDisbAmt), "Aggregate disbursed amount", fullValueTitle(totalDisbAmt, true)));
+  grid.appendChild(kpiCard("Pending / Exception Items (" + lbl.shortPrimary + ")", formatNumber(totalLogins - totalDisbCount), "Pending Applications"));
   root.appendChild(grid);
 
-  root.appendChild(sectionTitle(lbl.tableSectionTitle));
-  const dailyColumns = [
-    { key: "metric", label: "Metric" },
-    { key: "today", label: lbl.shortPrimary, numeric: true },
-    { key: "yesterday", label: lbl.comparisonTerm, numeric: true },
-    { key: "change", label: "Change", numeric: true },
-    { key: "currentMonth", label: lbl.trendTerm, numeric: true }
-  ];
+  // Login Applications Tracking
+  root.appendChild(sectionTitle("Login Applications Tracking"));
+  var loginColumns, loginRows;
+  if (isMonthly) {
+    loginColumns = [
+      { key: "product",   label: "Product" },
+      { key: "curLogin",  label: lbl.colCurrent,  numeric: true },
+      { key: "prevLogin", label: lbl.colPrevious, numeric: true },
+      { key: "momLogin",  label: "MoM Change",    numeric: true }
+    ];
+    loginRows = products.map(function(p) {
+      return {
+        product:   p.product,
+        curLogin:  formatNumber(p.loginApplicationsMTD),
+        prevLogin: formatNumber(p.loginApplicationsPrevMTD),
+        momLogin:  calcMoM(p.loginApplicationsMTD, p.loginApplicationsPrevMTD)
+      };
+    });
+  } else {
+    loginColumns = [
+      { key: "product",           label: "Product" },
+      { key: "loginApplications", label: "Login Applications", numeric: true }
+    ];
+    loginRows = products.map(function(p) {
+      return { product: p.product, loginApplications: formatNumber(p.loginApplications) };
+    });
+  }
+  root.appendChild(buildBorderedTable(loginColumns, loginRows));
 
-  const dailyRows = [
-    {
-      metric: "Successful Secure Transactions Count",
-      today: formatNumber(sec.successTxnToday),
-      yesterday: formatNumber(sec.successTxnYesterday),
-      change: calculateComparisons(sec.successTxnToday, sec.successTxnYesterday, true, false).html,
-      currentMonth: formatNumber(sec.successTxnMTD)
-    },
-    {
-      metric: "Successful Transaction Amount",
-      today: formatCurrency(sec.totalAmountToday),
-      yesterday: formatCurrency(sec.totalAmountYesterday),
-      change: calculateComparisons(sec.totalAmountToday, sec.totalAmountYesterday, true, false).html,
-      currentMonth: formatCurrency(sec.totalAmountMTD)
-    },
-    {
-      metric: "Secure Success Rate (%)",
-      today: formatPercentage(sec.successRateToday),
-      yesterday: formatPercentage(sec.successRateYesterday),
-      change: calculateComparisons(sec.successRateToday, sec.successRateYesterday, true, false).html,
-      currentMonth: formatPercentage(sec.successRateMTD)
-    },
-    {
-      metric: "Failed Transactions Count",
-      today: formatNumber(sec.failedTxnToday),
-      yesterday: formatNumber(sec.failedTxnYesterday),
-      change: calculateComparisons(sec.failedTxnToday, sec.failedTxnYesterday, false, false).html,
-      currentMonth: formatNumber(sec.failedTxnMTD)
-    },
-    {
-      metric: "Pending / Exception Items",
-      today: formatNumber(sec.pendingItemsToday),
-      yesterday: formatNumber(sec.pendingItemsYesterday),
-      change: calculateComparisons(sec.pendingItemsToday, sec.pendingItemsYesterday, false, false).html,
-      currentMonth: formatNumber(sec.pendingItemsMTD)
-    }
-  ];
+  // Disbursement Tracking — Count + Amount only, no MoM
+  root.appendChild(sectionTitle("Disbursement Tracking"));
+  var disbColumns, disbRows;
+  if (isMonthly) {
+    disbColumns = [
+      { key: "product",   label: "Product" },
+      { key: "curCount",  label: lbl.colCurrent  + " Count",  numeric: true },
+      { key: "prevCount", label: lbl.colPrevious + " Count",  numeric: true },
+      { key: "curAmt",    label: lbl.colCurrent  + " Amount", numeric: true },
+      { key: "prevAmt",   label: lbl.colPrevious + " Amount", numeric: true }
+    ];
+    disbRows = products.map(function(p) {
+      return {
+        product:   p.product,
+        curCount:  formatNumber(p.disbursementCountMTD),
+        prevCount: formatNumber(p.disbursementCountPrevMTD),
+        curAmt:    formatCurrency(p.disbursementAmountMTD),
+        prevAmt:   formatCurrency(p.disbursementAmountPrevMTD)
+      };
+    });
+  } else {
+    disbColumns = [
+      { key: "product",            label: "Product" },
+      { key: "disbursementCount",  label: "Disbursement Count",  numeric: true },
+      { key: "disbursementAmount", label: "Disbursement Amount", numeric: true }
+    ];
+    disbRows = products.map(function(p) {
+      return {
+        product:            p.product,
+        disbursementCount:  formatNumber(p.disbursementCount),
+        disbursementAmount: formatCurrency(p.disbursementAmount)
+      };
+    });
+  }
+  root.appendChild(buildBorderedTable(disbColumns, disbRows));
 
-  root.appendChild(buildTable(null, dailyColumns, dailyRows));
-
-  root.appendChild(sectionTitle("Authentication Channel Breakdown"));
-  const breakdownColumns = [
-    { key: "channel", label: "Authentication Channel" },
-    { key: "txnCount", label: "Transaction Count", numeric: true },
-    { key: "amount", label: "Transaction Amount", currency: true },
-    { key: "successRate", label: "Success Rate (%)", percent: true },
-    { key: "pendingItems", label: "Pending Items", numeric: true }
-  ];
-
-  root.appendChild(buildTable(null, breakdownColumns, breakdown));
-
-  root.appendChild(sectionTitle("Channel Volume & Success Rate Insight"));
-  const chartCard = el("div", { class: "ov-chart-card" });
-  chartCard.appendChild(el("div", { class: "ov-chart-title", text: "Secure Operations Channel Share" }));
-  const chartBody = el("div", { class: "ov-chart-body" });
-  chartBody.innerHTML = buildSecOpsChartSVG(breakdown);
-  chartCard.appendChild(chartBody);
-  root.appendChild(chartCard);
+  // Product Finance Distribution chart
+  root.appendChild(sectionTitle("Product Finance Distribution"));
+  const pfdCard = el("div", { class: "ov-chart-card pfd-card" });
+  const pfdChart = buildProductFinanceChart(products, isMonthly, "secure-operations");
+  if (pfdChart) {
+    pfdCard.appendChild(pfdChart);
+  } else {
+    pfdCard.appendChild(el("p", { text: "No disbursement data available for the selected period.", class: "pfd-empty" }));
+  }
+  root.appendChild(pfdCard);
 }
+
+
+
+// Builds a fully bordered table for Secure/Unsecure loan pages
+function buildBorderedTable(columns, rows) {
+  var wrap = document.createElement('div');
+  wrap.className = 'loan-table-wrap';
+
+  var tbl = document.createElement('table');
+  tbl.className = 'data-table loan-table';
+
+  // Header
+  var thead = document.createElement('thead');
+  var hrow  = document.createElement('tr');
+  columns.forEach(function(col) {
+    var th = document.createElement('th');
+    th.textContent = col.label;
+    if (col.numeric) th.className = 'num';
+    hrow.appendChild(th);
+  });
+  thead.appendChild(hrow);
+  tbl.appendChild(thead);
+
+  // Body
+  var tbody = document.createElement('tbody');
+  rows.forEach(function(row) {
+    var tr = document.createElement('tr');
+    columns.forEach(function(col) {
+      var td = document.createElement('td');
+      var val = row[col.key] !== undefined ? row[col.key] : '';
+      if (col.numeric || col.currency || col.percent) {
+        td.className = 'num';
+      }
+      // Allow HTML strings (e.g. trend spans)
+      if (typeof val === 'string' && val.indexOf('<') !== -1) {
+        td.innerHTML = val;
+      } else {
+        td.textContent = val;
+      }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody);
+  wrap.appendChild(tbl);
+  return wrap;
+}
+
+function buildProductFinanceChart(products, isMonthly, pageId) {
+  var COLORS = [
+    '#6FAED2', '#8BC34A', '#5C6BC0', '#4DD0E1', '#9FA8DA',
+    '#81C784', '#64B5F6', '#BCAAA4', '#4DB6AC', '#7986CB'
+  ];
+
+  var items = products.filter(function(p) {
+    return (isMonthly ? p.disbursementAmountMTD : p.disbursementAmount) > 0;
+  });
+  if (!items.length) return null;
+
+  var maxAmt = 0;
+  items.forEach(function(p) {
+    var v = isMonthly ? p.disbursementAmountMTD : p.disbursementAmount;
+    if (v > maxAmt) maxAmt = v;
+  });
+
+  var wrapper = document.createElement('div');
+  wrapper.className = 'pfd-chart-wrapper';
+  wrapper.setAttribute('role', 'figure');
+  wrapper.setAttribute('aria-label', 'Product Finance Distribution chart');
+
+  var barSection = document.createElement('div');
+  barSection.className = 'pfd-bars';
+
+  items.forEach(function(p, i) {
+    var amt   = isMonthly ? p.disbursementAmountMTD : p.disbursementAmount;
+    var count = isMonthly ? p.disbursementCountMTD  : p.disbursementCount;
+    var pct   = maxAmt > 0 ? (amt / maxAmt) * 100 : 0;
+    var color = COLORS[i % COLORS.length];
+    var fmtAmt   = typeof formatCurrency === 'function' ? formatCurrency(amt)   : String(amt);
+    var fmtCount = typeof formatNumber   === 'function' ? formatNumber(count) : String(count);
+
+    var row = document.createElement('div');
+    row.className = 'pfd-row';
+
+    // Product label column
+    var label = document.createElement('div');
+    label.className = 'pfd-label';
+    label.textContent = p.product;
+    label.title = p.product;
+
+    // Bar + count overlay column
+    var barWrap = document.createElement('div');
+    barWrap.className = 'pfd-bar-wrap';
+
+    var bar = document.createElement('div');
+    bar.className = 'pfd-bar';
+    bar.style.width = '0%';
+    bar.style.background = color;
+    bar.setAttribute('aria-label', p.product + ': ' + fmtAmt + ', Count: ' + fmtCount);
+
+    // Count label — always visible subtly, highlights on hover
+    var countLbl = document.createElement('span');
+    countLbl.className = 'pfd-count-lbl';
+    countLbl.textContent = fmtCount + ' cases';
+    bar.appendChild(countLbl);
+
+    barWrap.appendChild(bar);
+
+    // Amount value column (right side)
+    var valLabel = document.createElement('div');
+    valLabel.className = 'pfd-val';
+    valLabel.textContent = fmtAmt;
+
+    row.appendChild(label);
+    row.appendChild(barWrap);
+    row.appendChild(valLabel);
+    barSection.appendChild(row);
+
+    // Animate bar width — respects prefers-reduced-motion via CSS transition
+    (function(b, w) {
+      requestAnimationFrame(function() { b.style.width = w + '%'; });
+    })(bar, pct);
+  });
+
+  wrapper.appendChild(barSection);
+  return wrapper;   // No separate legend
+}
+
 
 function buildSecOpsChartSVG(breakdown) {
   var total = breakdown.reduce(function (s, b) { return s + b.txnCount; }, 0) || 1;
@@ -12229,7 +12851,7 @@ function buildSecOpsChartSVG(breakdown) {
       + '<text x="' + (lx + 180) + '" y="' + (ly + 10) + '" font-size="11.5" fill="#6B7280">' + formatNumber(b.txnCount) + ' (' + pct + '%)</text>';
   }).join("");
 
-  return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Secure Operations Breakdown" style="width:100%;max-height:160px;display:block">'
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Secure Loan Breakdown" style="width:100%;max-height:160px;display:block">'
     + rects + legends + '</svg>';
 }
 
@@ -12242,103 +12864,105 @@ function renderUnsecuredOperations(data) {
   if (!root) return;
   root.innerHTML = "";
   const lbl = getPeriodLabels();
+  const isMonthly = !lbl.isDaily;
 
-  const unsec = data.unsecuredOperations || generateIllustrativeData().unsecuredOperations;
-  const breakdown = data.unsecuredOpsBreakdown || generateIllustrativeData().unsecuredOpsBreakdown;
+  const unsec        = data.unsecuredOperations  || generateIllustrativeData().unsecuredOperations;
+  const products     = data.unsecuredOpsProducts || generateIllustrativeData().unsecuredOpsProducts;
+  const disbProducts = products.filter(function(p) { return !p.loginOnly; });
 
-  root.appendChild(sectionTitle("Unsecured Operations Executive Summary"));
+  // Executive KPI Summary
+  root.appendChild(sectionTitle("Executive Summary"));
+
+  const totalLogins    = isMonthly ? products.reduce(function(s,p){return s+p.loginApplicationsMTD;},0)     : products.reduce(function(s,p){return s+p.loginApplications;},0);
+  const totalDisbCount = isMonthly ? disbProducts.reduce(function(s,p){return s+p.disbursementCountMTD;},0)  : disbProducts.reduce(function(s,p){return s+p.disbursementCount;},0);
+  const totalDisbAmt   = isMonthly ? disbProducts.reduce(function(s,p){return s+p.disbursementAmountMTD;},0) : disbProducts.reduce(function(s,p){return s+p.disbursementAmount;},0);
 
   const grid = el("div", { class: "kpi-grid" });
-  grid.appendChild(kpiCard("Total Transactions (" + lbl.shortPrimary + ")", formatNumber(unsec.totalTxnToday),
-    lbl.comparisonTerm + ": " + formatNumber(unsec.totalTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.totalTxnToday, unsec.totalTxnYesterday, true, false).html));
-
-  grid.appendChild(kpiCard("Successful Transactions (" + lbl.shortPrimary + ")", formatNumber(unsec.successTxnToday),
-    lbl.comparisonTerm + ": " + formatNumber(unsec.successTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.successTxnToday, unsec.successTxnYesterday, true, false).html));
-
-  grid.appendChild(kpiCard("Success Rate (" + lbl.shortPrimary + ")", formatPercentage(unsec.successRateToday),
-    lbl.comparisonTerm + ": " + formatPercentage(unsec.successRateYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.successRateToday, unsec.successRateYesterday, true, false).html));
-
-  grid.appendChild(kpiCard("Transaction Amount (" + lbl.shortPrimary + ")", formatCurrency(unsec.totalAmountToday),
-    lbl.comparisonTerm + ": " + formatCurrency(unsec.totalAmountYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.totalAmountToday, unsec.totalAmountYesterday, true, false).html, fullValueTitle(unsec.totalAmountToday, true)));
-
-  grid.appendChild(kpiCard("Failed Transactions (" + lbl.shortPrimary + ")", formatNumber(unsec.failedTxnToday),
-    lbl.comparisonTerm + ": " + formatNumber(unsec.failedTxnYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.failedTxnToday, unsec.failedTxnYesterday, false, false).html));
-
-  grid.appendChild(kpiCard("Pending / Exception Items (" + lbl.shortPrimary + ")", formatNumber(unsec.pendingItemsToday),
-    lbl.comparisonTerm + ": " + formatNumber(unsec.pendingItemsYesterday) + " &nbsp;|&nbsp; " + calculateComparisons(unsec.pendingItemsToday, unsec.pendingItemsYesterday, false, false).html));
-
+  grid.appendChild(kpiCard("Total Login Applications (" + lbl.shortPrimary + ")", formatNumber(totalLogins), "Applications logged in across all unsecured products (incl. Credit Card)"));
+  grid.appendChild(kpiCard("Total Disbursements (" + lbl.shortPrimary + ")", formatNumber(totalDisbCount), "Total disbursement cases processed "));
+  grid.appendChild(kpiCard("Total Disbursement Amount (" + lbl.shortPrimary + ")", formatCurrency(totalDisbAmt), "Aggregate disbursed amount ", fullValueTitle(totalDisbAmt, true)));
+  grid.appendChild(kpiCard("Pending / Exception Items (" + lbl.shortPrimary + ")", formatNumber(totalLogins - totalDisbCount), "Pending Applications"));
   root.appendChild(grid);
 
-  root.appendChild(sectionTitle(lbl.tableSectionTitle));
-  const dailyColumns = [
-    { key: "metric", label: "Metric" },
-    { key: "today", label: lbl.shortPrimary, numeric: true },
-    { key: "yesterday", label: lbl.comparisonTerm, numeric: true },
-    { key: "change", label: "Change", numeric: true },
-    { key: "currentMonth", label: lbl.trendTerm, numeric: true }
-  ];
+  // Login Applications Tracking
+  root.appendChild(sectionTitle("Login Applications Tracking"));
+  var loginColumns, loginRows;
+  if (isMonthly) {
+    loginColumns = [
+      { key: "product",   label: "Product" },
+      { key: "curLogin",  label: lbl.colCurrent,  numeric: true },
+      { key: "prevLogin", label: lbl.colPrevious, numeric: true },
+      { key: "momLogin",  label: "MoM Change",    numeric: true }];
+    loginRows = products.map(function(p) {
+      return {
+        product:   p.product,
+        curLogin:  formatNumber(p.loginApplicationsMTD),
+        prevLogin: formatNumber(p.loginApplicationsPrevMTD),
+        momLogin:  calcMoM(p.loginApplicationsMTD, p.loginApplicationsPrevMTD)};
+    });
+  } else {
+    loginColumns = [
+      { key: "product",           label: "Product" },
+      { key: "loginApplications", label: "Login Applications", numeric: true }];
+    loginRows = products.map(function(p) {
+      return {
+        product:           p.product,
+        loginApplications: formatNumber(p.loginApplications)};
+    });
+  }
+  root.appendChild(buildBorderedTable(loginColumns, loginRows));
 
-  const dailyRows = [
-    {
-      metric: "Successful Unsecured Transactions Count",
-      today: formatNumber(unsec.successTxnToday),
-      yesterday: formatNumber(unsec.successTxnYesterday),
-      change: calculateComparisons(unsec.successTxnToday, unsec.successTxnYesterday, true, false).html,
-      currentMonth: formatNumber(unsec.successTxnMTD)
-    },
-    {
-      metric: "Transaction Amount",
-      today: formatCurrency(unsec.totalAmountToday),
-      yesterday: formatCurrency(unsec.totalAmountYesterday),
-      change: calculateComparisons(unsec.totalAmountToday, unsec.totalAmountYesterday, true, false).html,
-      currentMonth: formatCurrency(unsec.totalAmountMTD)
-    },
-    {
-      metric: "Success Rate (%)",
-      today: formatPercentage(unsec.successRateToday),
-      yesterday: formatPercentage(unsec.successRateYesterday),
-      change: calculateComparisons(unsec.successRateToday, unsec.successRateYesterday, true, false).html,
-      currentMonth: formatPercentage(unsec.successRateMTD)
-    },
-    {
-      metric: "Failed Transactions Count",
-      today: formatNumber(unsec.failedTxnToday),
-      yesterday: formatNumber(unsec.failedTxnYesterday),
-      change: calculateComparisons(unsec.failedTxnToday, unsec.failedTxnYesterday, false, false).html,
-      currentMonth: formatNumber(unsec.failedTxnMTD)
-    },
-    {
-      metric: "Pending / Exception Items",
-      today: formatNumber(unsec.pendingItemsToday),
-      yesterday: formatNumber(unsec.pendingItemsYesterday),
-      change: calculateComparisons(unsec.pendingItemsToday, unsec.pendingItemsYesterday, false, false).html,
-      currentMonth: formatNumber(unsec.pendingItemsMTD)
-    }
-  ];
+  // Disbursement Tracking  — Count + Amount only, no MoM
+  root.appendChild(sectionTitle("Disbursement Tracking"));
+  var disbColumns, disbRows;
+  if (isMonthly) {
+    disbColumns = [
+      { key: "product",   label: "Product" },
+      { key: "curCount",  label: lbl.colCurrent  + " Count",  numeric: true },
+      { key: "prevCount", label: lbl.colPrevious + " Count",  numeric: true },
+      { key: "curAmt",    label: lbl.colCurrent  + " Amount", numeric: true },
+      { key: "prevAmt",   label: lbl.colPrevious + " Amount", numeric: true }
+    ];
+    disbRows = disbProducts.map(function(p) {
+      return {
+        product:   p.product,
+        curCount:  formatNumber(p.disbursementCountMTD),
+        prevCount: formatNumber(p.disbursementCountPrevMTD),
+        curAmt:    formatCurrency(p.disbursementAmountMTD),
+        prevAmt:   formatCurrency(p.disbursementAmountPrevMTD)
+      };
+    });
+  } else {
+    disbColumns = [
+      { key: "product",            label: "Product" },
+      { key: "disbursementCount",  label: "Disbursement Count",  numeric: true },
+      { key: "disbursementAmount", label: "Disbursement Amount", numeric: true }
+    ];
+    disbRows = disbProducts.map(function(p) {
+      return {
+        product:            p.product,
+        disbursementCount:  formatNumber(p.disbursementCount),
+        disbursementAmount: formatCurrency(p.disbursementAmount)
+      };
+    });
+  }
+  root.appendChild(buildBorderedTable(disbColumns, disbRows));
 
-  root.appendChild(buildTable(null, dailyColumns, dailyRows));
-
-  root.appendChild(sectionTitle("Unsecured Product Performance Breakdown"));
-  const breakdownColumns = [
-    { key: "product", label: "Product Category" },
-    { key: "txnCount", label: "Transaction Count", numeric: true },
-    { key: "amount", label: "Transaction Amount", currency: true },
-    { key: "successRate", label: "Success Rate (%)", percent: true },
-    { key: "pendingItems", label: "Pending Items", numeric: true }
-  ];
-
-  root.appendChild(buildTable(null, breakdownColumns, breakdown));
-
-  root.appendChild(sectionTitle("Unsecured Product Volume & Distribution"));
-  const chartCard = el("div", { class: "ov-chart-card" });
-  chartCard.appendChild(el("div", { class: "ov-chart-title", text: "Unsecured Product Volume Share" }));
-  const chartBody = el("div", { class: "ov-chart-body" });
-  chartBody.innerHTML = buildUnsecOpsChartSVG(breakdown);
-  chartCard.appendChild(chartBody);
-  root.appendChild(chartCard);
+  // Product Finance Distribution chart
+  root.appendChild(sectionTitle("Product Finance Distribution"));
+  const pfdCard = el("div", { class: "ov-chart-card pfd-card" });
+  const pfdChart = buildProductFinanceChart(disbProducts, isMonthly, "unsecured-operations");
+  if (pfdChart) {
+    pfdCard.appendChild(pfdChart);
+  } else {
+    pfdCard.appendChild(el("p", { text: "No disbursement data available for the selected period.", class: "pfd-empty" }));
+  }
+  root.appendChild(pfdCard);
 }
 
+
 function buildUnsecOpsChartSVG(breakdown) {
+
   var total = breakdown.reduce(function (s, b) { return s + b.amount; }, 0) || 1;
   var COLORS = ["#117ABF", "#6FAED2", "#90C4E4", "#D0E5F3"];
   var W = 600, barH = 28, padX = 10, gapY = 14, legH = 20;
@@ -12367,7 +12991,7 @@ function buildUnsecOpsChartSVG(breakdown) {
       + '<text x="' + (lx + 180) + '" y="' + (ly + 10) + '" font-size="11.5" fill="#6B7280">' + formatCurrency(b.amount) + ' (' + pct + '%)</text>';
   }).join("");
 
-  return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Unsecured Operations Breakdown" style="width:100%;max-height:160px;display:block">'
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Unsecure Loan Breakdown" style="width:100%;max-height:160px;display:block">'
     + rects + legends + '</svg>';
 }
 
