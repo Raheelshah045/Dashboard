@@ -1,0 +1,26 @@
+# AI & Agent Tooling Directories
+.agent/
+.agents/
+.gemini/
+.gsd/
+scratch/
+scripts/
+adapters/
+model_capabilities.yaml
+
+# AI Prompt & Rule Files
+GSD-STYLE.md
+PROJECT_RULES.md
+
+# Local Data Files
+*.xlsx
+*.csv
+
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
