@@ -250,13 +250,13 @@ function el(tag, attrs, children) {
 
 /* KPI colour map: pattern → CSS variable defined in .kpi-card::before rules */
 var KPI_COLOUR_MAP = [
-  { patterns: [/total login/i, /login application/i],              colour: "var(--kpi-blue)"   },
-  { patterns: [/disbursement amount/i, /transaction amount/i],     colour: "var(--kpi-teal)"   },
-  { patterns: [/total disbursement/i, /successful transaction/i, /success rate/i, /readiness/i, /approved/i, /completed/i, /successful/i], colour: "var(--kpi-green)"  },
-  { patterns: [/pending/i, /exception/i, /overdue/i, /upcoming/i, /partial/i], colour: "var(--kpi-amber)"  },
-  { patterns: [/failed/i, /critical/i, /chargeback/i, /dispute/i, /captured/i, /gap/i], colour: "var(--kpi-coral)"  },
-  { patterns: [/banca/i, /total banca/i, /total spend/i, /oif/i, /net interchange/i, /total dispute/i], colour: "var(--kpi-purple)" },
-  { patterns: [/total transaction/i, /bcp plan/i, /dr readiness/i, /last bcp/i, /test/i, /nostro/i, /recon/i], colour: "var(--kpi-indigo)" },
+  { patterns: [/uptime/i, /login/i, /atm/i, /raast/i, /ibft/i, /active card/i, /inventory/i, /threshold/i], colour: "var(--kpi-blue)" },
+  { patterns: [/disbursement amount/i, /transaction amount/i, /disputed amount/i, /amount/i, /volume/i, /financial/i, /revenue/i], colour: "var(--kpi-teal)" },
+  { patterns: [/disbursement/i, /success/i, /rate/i, /approved/i, /readiness/i, /completed/i, /profit/i, /earned/i], colour: "var(--kpi-green)" },
+  { patterns: [/pending/i, /exception/i, /overdue/i, /warning/i, /review/i, /upcoming/i, /stationery/i, /partial/i], colour: "var(--kpi-amber)" },
+  { patterns: [/failed/i, /failure/i, /critical/i, /chargeback/i, /dispute/i, /gap/i, /reject/i, /finding/i], colour: "var(--kpi-coral)" },
+  { patterns: [/banca/i, /spend/i, /oif/i, /merchant/i, /card performance/i], colour: "var(--kpi-purple)" },
+  { patterns: [/bcp/i, /dr/i, /nostro/i, /recon/i, /system/i, /test/i, /transaction/i], colour: "var(--kpi-indigo)" }
 ];
 
 var _kpiColoursActive = true; // colours ON by default
@@ -3490,28 +3490,57 @@ function animateHomeYearlyTrendSVG(targetEndYear, data) {
 }
 
 function createHomeKpiCard(label, valText, accentClass, iconSVG, subHTML) {
-  const card = el("div", { class: "home-kpi-card " + accentClass });
+  const colour = _getKpiColour(label);
+  const withColour = colour && _kpiColoursActive;
 
-  const head = el("div", { class: "home-kpi-head" });
-  head.appendChild(el("span", { class: "home-kpi-title", text: label }));
-  
-  if (iconSVG) {
-    const iconWrap = el("div", { class: "home-kpi-icon", html: iconSVG });
-    head.appendChild(iconWrap);
-  }
-  card.appendChild(head);
+  const card = el("div", { class: "home-kpi-card " + accentClass + (withColour ? " home-kpi-has-header-band" : "") });
 
-  if (typeof valText === "string" && valText.indexOf("<") !== -1) {
-    card.appendChild(el("div", { class: "home-kpi-val", html: valText }));
+  if (withColour) {
+    const head = el("div", { class: "home-kpi-head home-kpi-header-band" });
+    head.style.background = colour;
+    head.appendChild(el("span", { class: "home-kpi-title home-kpi-title-in-band", text: label }));
+    if (iconSVG) {
+      const iconWrap = el("div", { class: "home-kpi-icon home-kpi-icon-in-band", html: iconSVG });
+      head.appendChild(iconWrap);
+    }
+    card.appendChild(head);
+
+    const bodyEl = el("div", { class: "home-kpi-body" });
+    if (typeof valText === "string" && valText.indexOf("<") !== -1) {
+      bodyEl.appendChild(el("div", { class: "home-kpi-val", html: valText }));
+    } else {
+      bodyEl.appendChild(el("div", { class: "home-kpi-val", text: valText }));
+    }
+    if (subHTML) {
+      if (typeof subHTML === "string") {
+        bodyEl.appendChild(el("div", { class: "home-kpi-sub", html: subHTML }));
+      } else if (subHTML instanceof HTMLElement) {
+        bodyEl.appendChild(subHTML);
+      }
+    }
+    card.appendChild(bodyEl);
+
   } else {
-    card.appendChild(el("div", { class: "home-kpi-val", text: valText }));
-  }
+    const head = el("div", { class: "home-kpi-head" });
+    head.appendChild(el("span", { class: "home-kpi-title", text: label }));
+    if (iconSVG) {
+      const iconWrap = el("div", { class: "home-kpi-icon", html: iconSVG });
+      head.appendChild(iconWrap);
+    }
+    card.appendChild(head);
 
-  if (subHTML) {
-    if (typeof subHTML === "string") {
-      card.appendChild(el("div", { class: "home-kpi-sub", html: subHTML }));
-    } else if (subHTML instanceof HTMLElement) {
-      card.appendChild(subHTML);
+    if (typeof valText === "string" && valText.indexOf("<") !== -1) {
+      card.appendChild(el("div", { class: "home-kpi-val", html: valText }));
+    } else {
+      card.appendChild(el("div", { class: "home-kpi-val", text: valText }));
+    }
+
+    if (subHTML) {
+      if (typeof subHTML === "string") {
+        card.appendChild(el("div", { class: "home-kpi-sub", html: subHTML }));
+      } else if (subHTML instanceof HTMLElement) {
+        card.appendChild(subHTML);
+      }
     }
   }
 
@@ -4078,11 +4107,17 @@ function getCardKpiData(data) {
 
 function renderOvCardKpiTableCard(title, rows) {
   const isFourRows = rows.length === 4;
-  const card = el("div", { class: "ov-table-kpi-card" + (isFourRows ? " ov-card-4-rows" : "") });
+  const colour = _getKpiColour(title);
+  const withColour = colour && _kpiColoursActive;
 
-  const header = el("div", { class: "ov-table-kpi-header" });
-  header.appendChild(el("div", { class: "ov-table-kpi-title", text: title }));
-  header.appendChild(el("div", { class: "ov-table-kpi-freq", text: "MONTHLY" }));
+  const card = el("div", { class: "ov-table-kpi-card" + (isFourRows ? " ov-card-4-rows" : "") + (withColour ? " ov-table-kpi-has-header-band" : "") });
+
+  const header = el("div", { class: "ov-table-kpi-header" + (withColour ? " ov-table-kpi-header-in-band" : "") });
+  if (withColour) {
+    header.style.background = colour;
+  }
+  header.appendChild(el("div", { class: "ov-table-kpi-title" + (withColour ? " ov-table-kpi-title-in-band" : ""), text: title }));
+  header.appendChild(el("div", { class: "ov-table-kpi-freq" + (withColour ? " ov-table-kpi-freq-in-band" : ""), text: "MONTHLY" }));
   card.appendChild(header);
 
   const wrap = el("div", { class: "ov-table-kpi-wrap" });
@@ -4245,45 +4280,103 @@ function renderOvKpiStrip(root, data) {
 }
 
 function ovExecCardRedesign(title, todayLabel, todayVal, yestLabel, yestVal, perfHtml, titleAttr) {
-  const card = el("div", { class: "ov-kpi-card ov-exec-card-redesign" });
+  const colour = _getKpiColour(title);
+  const withColour = colour && _kpiColoursActive;
+
+  const card = el("div", { class: "ov-kpi-card ov-exec-card-redesign" + (withColour ? " ov-exec-has-header-band" : "") });
   if (titleAttr) card.setAttribute("title", titleAttr);
 
-  card.appendChild(el("div", { class: "ov-exec-title", text: title }));
+  if (withColour) {
+    const head = el("div", { class: "ov-exec-header-band" });
+    head.style.background = colour;
+    head.appendChild(el("div", { class: "ov-exec-title ov-exec-title-in-band", text: title }));
+    card.appendChild(head);
 
-  const colsRow = el("div", { class: "ov-exec-cols-row" });
+    const bodyEl = el("div", { class: "ov-exec-body" });
+    const colsRow = el("div", { class: "ov-exec-cols-row" });
 
-  const colToday = el("div", { class: "ov-exec-col" });
-  colToday.appendChild(el("div", { class: "ov-exec-col-lbl", text: todayLabel }));
-  colToday.appendChild(el("div", { class: "ov-exec-col-val", text: todayVal }));
+    const colToday = el("div", { class: "ov-exec-col" });
+    colToday.appendChild(el("div", { class: "ov-exec-col-lbl", text: todayLabel }));
+    colToday.appendChild(el("div", { class: "ov-exec-col-val", text: todayVal }));
 
-  const colYest = el("div", { class: "ov-exec-col" });
-  colYest.appendChild(el("div", { class: "ov-exec-col-lbl", text: yestLabel }));
-  colYest.appendChild(el("div", { class: "ov-exec-col-val", text: yestVal }));
+    const colYest = el("div", { class: "ov-exec-col" });
+    colYest.appendChild(el("div", { class: "ov-exec-col-lbl", text: yestLabel }));
+    colYest.appendChild(el("div", { class: "ov-exec-col-val", text: yestVal }));
 
-  colsRow.appendChild(colToday);
-  colsRow.appendChild(colYest);
-  card.appendChild(colsRow);
+    colsRow.appendChild(colToday);
+    colsRow.appendChild(colYest);
+    bodyEl.appendChild(colsRow);
 
-  const perfRow = el("div", { class: "ov-exec-perf-row" });
-  perfRow.appendChild(el("span", { class: "ov-exec-perf-lbl", text: "Performance:" }));
-  const perfVal = el("span", { class: "ov-exec-perf-val" });
-  perfVal.innerHTML = perfHtml;
-  perfRow.appendChild(perfVal);
-  card.appendChild(perfRow);
+    const perfRow = el("div", { class: "ov-exec-perf-row" });
+    perfRow.appendChild(el("span", { class: "ov-exec-perf-lbl", text: "Performance:" }));
+    const perfVal = el("span", { class: "ov-exec-perf-val" });
+    perfVal.innerHTML = perfHtml;
+    perfRow.appendChild(perfVal);
+    bodyEl.appendChild(perfRow);
+
+    card.appendChild(bodyEl);
+
+  } else {
+    card.appendChild(el("div", { class: "ov-exec-title", text: title }));
+
+    const colsRow = el("div", { class: "ov-exec-cols-row" });
+
+    const colToday = el("div", { class: "ov-exec-col" });
+    colToday.appendChild(el("div", { class: "ov-exec-col-lbl", text: todayLabel }));
+    colToday.appendChild(el("div", { class: "ov-exec-col-val", text: todayVal }));
+
+    const colYest = el("div", { class: "ov-exec-col" });
+    colYest.appendChild(el("div", { class: "ov-exec-col-lbl", text: yestLabel }));
+    colYest.appendChild(el("div", { class: "ov-exec-col-val", text: yestVal }));
+
+    colsRow.appendChild(colToday);
+    colsRow.appendChild(colYest);
+    card.appendChild(colsRow);
+
+    const perfRow = el("div", { class: "ov-exec-perf-row" });
+    perfRow.appendChild(el("span", { class: "ov-exec-perf-lbl", text: "Performance:" }));
+    const perfVal = el("span", { class: "ov-exec-perf-val" });
+    perfVal.innerHTML = perfHtml;
+    perfRow.appendChild(perfVal);
+    card.appendChild(perfRow);
+  }
 
   return card;
 }
 
 function ovExecCard(label, value, indicHtml, vsLabel, freq, titleAttr) {
-  const card = el("div", { class: "ov-kpi-card" });
-  const valEl = el("div", { class: "ov-kpi-value", text: value });
-  if (titleAttr) valEl.setAttribute("title", titleAttr);
-  const compEl = el("div", { class: "ov-kpi-comparison" });
-  compEl.innerHTML = indicHtml + (vsLabel ? '<span class="ov-kpi-vs"> ' + vsLabel + '</span>' : "");
-  card.appendChild(el("div", { class: "ov-kpi-label", text: label }));
-  card.appendChild(valEl);
-  card.appendChild(compEl);
-  card.appendChild(el("div", { class: "ov-kpi-freq", text: freq || "DAILY" }));
+  const colour = _getKpiColour(label);
+  const withColour = colour && _kpiColoursActive;
+
+  const card = el("div", { class: "ov-kpi-card" + (withColour ? " ov-kpi-has-header-band" : "") });
+
+  if (withColour) {
+    const head = el("div", { class: "ov-kpi-header-band" });
+    head.style.background = colour;
+    head.appendChild(el("div", { class: "ov-kpi-label ov-kpi-label-in-band", text: label }));
+    card.appendChild(head);
+
+    const bodyEl = el("div", { class: "ov-kpi-body" });
+    const valEl = el("div", { class: "ov-kpi-value", text: value });
+    if (titleAttr) valEl.setAttribute("title", titleAttr);
+    const compEl = el("div", { class: "ov-kpi-comparison" });
+    compEl.innerHTML = indicHtml + (vsLabel ? '<span class="ov-kpi-vs"> ' + vsLabel + '</span>' : "");
+    bodyEl.appendChild(valEl);
+    bodyEl.appendChild(compEl);
+    bodyEl.appendChild(el("div", { class: "ov-kpi-freq", text: freq || "DAILY" }));
+    card.appendChild(bodyEl);
+
+  } else {
+    const valEl = el("div", { class: "ov-kpi-value", text: value });
+    if (titleAttr) valEl.setAttribute("title", titleAttr);
+    const compEl = el("div", { class: "ov-kpi-comparison" });
+    compEl.innerHTML = indicHtml + (vsLabel ? '<span class="ov-kpi-vs"> ' + vsLabel + '</span>' : "");
+    card.appendChild(el("div", { class: "ov-kpi-label", text: label }));
+    card.appendChild(valEl);
+    card.appendChild(compEl);
+    card.appendChild(el("div", { class: "ov-kpi-freq", text: freq || "DAILY" }));
+  }
+
   return card;
 }
 

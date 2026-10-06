@@ -5368,3 +5368,157 @@ html, body {
   .kpi-header-band { transition: none !important; }
   .btn-undo-kpi { transition: none; }
 }
+
+
+/* =========================================================================
+   UNIVERSAL KPI COLOUR HEADER BANDS (ALL DASHBOARD PAGES)
+   ========================================================================= */
+
+/* 1. Standard Sub-page KPI Cards (.kpi-card) */
+.kpi-card.kpi-has-header-band {
+  padding: 0 !important;
+  border-top: none !important;
+  overflow: hidden;
+}
+.kpi-header-band {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  min-height: 50px;
+  border-radius: calc(var(--radius-md, 8px) - 1px) calc(var(--radius-md, 8px) - 1px) 0 0;
+  text-align: center;
+}
+.kpi-label-in-band {
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.18);
+  white-space: normal;
+  word-break: break-word;
+}
+.kpi-body {
+  padding: var(--space-2, 16px);
+  background: var(--card-bg, #ffffff);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+/* 2. Home Page KPI Cards (.home-kpi-card) */
+.home-kpi-card.home-kpi-has-header-band {
+  padding: 0 !important;
+  border-top: none !important;
+  overflow: hidden;
+}
+.home-kpi-card.home-kpi-has-header-band::before {
+  display: none !important;
+}
+.home-kpi-head.home-kpi-header-band {
+  padding: 12px 16px !important;
+  margin-bottom: 0 !important;
+  border-radius: calc(var(--radius-md, 8px) - 1px) calc(var(--radius-md, 8px) - 1px) 0 0;
+  min-height: 48px;
+}
+.home-kpi-title-in-band {
+  color: #ffffff !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.03em !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+.home-kpi-icon-in-band {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+}
+.home-kpi-body {
+  padding: 16px !important;
+  background: var(--card-bg, #ffffff);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+/* 3. Overview Executive Cards (.ov-exec-card-redesign) */
+.ov-exec-card-redesign.ov-exec-has-header-band {
+  padding: 0 !important;
+  border-top: none !important;
+  overflow: hidden;
+}
+.ov-exec-header-band {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  min-height: 48px;
+  border-radius: calc(var(--radius-md, 8px) - 1px) calc(var(--radius-md, 8px) - 1px) 0 0;
+}
+.ov-exec-title-in-band {
+  color: #ffffff !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  margin-bottom: 0 !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.18);
+}
+.ov-exec-body {
+  padding: 14px 16px 16px 16px;
+  background: var(--surface, #ffffff);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: 1;
+}
+
+/* 4. Overview Daily KPI Cards (.ov-kpi-card) */
+.ov-kpi-card.ov-kpi-has-header-band {
+  padding: 0 !important;
+  border-top: none !important;
+  overflow: hidden;
+}
+.ov-kpi-header-band {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  min-height: 44px;
+  border-radius: calc(var(--radius-md, 8px) - 1px) calc(var(--radius-md, 8px) - 1px) 0 0;
+  text-align: center;
+}
+.ov-kpi-label-in-band {
+  color: #ffffff !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.03em !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+.ov-kpi-body {
+  padding: 14px;
+  background: var(--card-bg, #ffffff);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5, 4px);
+  flex: 1;
+}
+
+/* 5. Overview Table KPI Cards (.ov-table-kpi-card) */
+.ov-table-kpi-card.ov-table-kpi-has-header-band {
+  border-top: none !important;
+  overflow: hidden;
+}
+.ov-table-kpi-header.ov-table-kpi-header-in-band {
+  padding: 10px 14px !important;
+  border-bottom: none !important;
+}
+.ov-table-kpi-title-in-band {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+.ov-table-kpi-freq-in-band {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+}
