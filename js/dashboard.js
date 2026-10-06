@@ -248,8 +248,39 @@ function el(tag, attrs, children) {
   return node;
 }
 
+/* KPI colour map: pattern → CSS variable defined in .kpi-card::before rules */
+var KPI_COLOUR_MAP = [
+  { patterns: [/total login/i, /login application/i],              colour: "var(--kpi-blue)"   },
+  { patterns: [/disbursement amount/i, /transaction amount/i],     colour: "var(--kpi-teal)"   },
+  { patterns: [/total disbursement/i, /successful transaction/i, /success rate/i, /readiness/i, /approved/i, /completed/i, /successful/i], colour: "var(--kpi-green)"  },
+  { patterns: [/pending/i, /exception/i, /overdue/i, /upcoming/i, /partial/i], colour: "var(--kpi-amber)"  },
+  { patterns: [/failed/i, /critical/i, /chargeback/i, /dispute/i, /captured/i, /gap/i], colour: "var(--kpi-coral)"  },
+  { patterns: [/banca/i, /total banca/i, /total spend/i, /oif/i, /net interchange/i, /total dispute/i], colour: "var(--kpi-purple)" },
+  { patterns: [/total transaction/i, /bcp plan/i, /dr readiness/i, /last bcp/i, /test/i, /nostro/i, /recon/i], colour: "var(--kpi-indigo)" },
+];
+
+var _kpiColoursActive = true; // colours ON by default
+
+function _getKpiColour(label) {
+  if (!_kpiColoursActive) return null;
+  for (var i = 0; i < KPI_COLOUR_MAP.length; i++) {
+    var entry = KPI_COLOUR_MAP[i];
+    for (var j = 0; j < entry.patterns.length; j++) {
+      if (entry.patterns[j].test(label)) return entry.colour;
+    }
+  }
+  return "var(--kpi-blue)"; // default
+}
+
 function kpiCard(label, valueText, subHTML, titleAttr) {
-  const card = el("div", { class: "kpi-card" });
+  var colour = _getKpiColour(label);
+  var cardClass = "kpi-card" + (colour && _kpiColoursActive ? " kpi-has-strip" : "");
+  const card = el("div", { class: cardClass });
+  if (colour && _kpiColoursActive) {
+    var strip = el("div", { class: "kpi-colour-strip" });
+    strip.style.background = colour;
+    card.appendChild(strip);
+  }
   card.appendChild(el("div", { class: "kpi-label", text: label }));
   if (valueText !== null && valueText !== undefined) {
     const valEl = el("div", { class: "kpi-value", text: valueText });
@@ -13267,6 +13298,16 @@ function cacheDom() {
 }
 
 function bindEvents() {
+  // KPI Colour Undo Button
+  var undoBtn = document.getElementById("btnUndoKpiColours");
+  if (undoBtn) {
+    undoBtn.addEventListener("click", function() {
+      _kpiColoursActive = !_kpiColoursActive;
+      undoBtn.textContent = _kpiColoursActive ? "Undo KPI Colours" : "Restore KPI Colours";
+      undoBtn.title = _kpiColoursActive ? "Revert KPI header strips to original design" : "Re-apply KPI header colour strips";
+      renderActivePage();
+    });
+  }
   if (dom.btnLoadExcel) {
     dom.btnLoadExcel.addEventListener("click", function () { dom.fileInput.click(); });
   }

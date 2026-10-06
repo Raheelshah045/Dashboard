@@ -5011,6 +5011,7 @@ html, body {
   .pfd-row { grid-template-columns: 1fr !important; }
 }
 
+
 /* =========================================================================
    GLOBAL RESPONSIVENESS FIXES
    ========================================================================= */
@@ -5032,7 +5033,6 @@ html, body {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Ensure KPI cards stack properly on mobile without horizontal overflow */
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
@@ -5139,6 +5139,10 @@ html, body {
   box-sizing: border-box;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .recon-search-box-row { transition: none; }
+}
+
 .recon-search-box-row:focus-within {
   border-color: var(--brand, #0076a8);
   box-shadow: 0 0 0 3px rgba(0, 118, 168, 0.15);
@@ -5177,7 +5181,6 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s;
   margin-left: 8px;
 }
 
@@ -5224,7 +5227,6 @@ html, body {
   color: #374151;
   cursor: pointer;
   margin: 0 8px 8px 0;
-  transition: background-color 0.2s, color 0.2s;
   display: inline-block;
 }
 
@@ -5234,32 +5236,114 @@ html, body {
 }
 
 /* =========================================================================
-   PRODUCT FINANCE DISTRIBUTION FIXES
+   LOAN TABLES
+   ========================================================================= */
+.loan-table th:not(:first-child),
+.loan-table td:not(:first-child) {
+  text-align: center !important;
+}
+
+/* =========================================================================
+   PRODUCT FINANCE DISTRIBUTION GRAPH
    ========================================================================= */
 .page-body > .ov-chart-card.pfd-card {
   max-width: 100% !important;
   width: 100% !important;
   margin-left: 0 !important;
   margin-right: 0 !important;
-  padding: 16px 20px !important; /* Reduce unnecessary whitespace */
+  padding: 16px 20px !important;
   box-sizing: border-box !important;
 }
 
 .pfd-bars {
-  margin-bottom: 0 !important; /* Remove bottom empty space left by hidden legend */
+  margin-bottom: 0 !important;
 }
 
-/* Ensure the grid explicitly stretches to cover the entire right side */
 .pfd-row {
-  grid-template-columns: minmax(150px, max-content) 1fr max-content !important;
+  grid-template-columns: minmax(150px, 220px) 1fr max-content !important;
   gap: 16px !important;
   width: 100% !important;
 }
 
-/* On extremely small screens, stack cleanly */
+.pfd-label {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  word-wrap: break-word;
+  line-height: 1.3;
+}
+
 @media (max-width: 640px) {
   .pfd-row {
     grid-template-columns: 1fr !important;
     gap: 8px !important;
   }
+  .pfd-label {
+    text-align: left;
+  }
+}
+
+/* =========================================================================
+   KPI COLOUR HEADER STRIPS
+   ========================================================================= */
+:root {
+  --kpi-blue:   #6BAED6;   /* trust, core banking */
+  --kpi-teal:   #40B0A6;   /* digital, stability  */
+  --kpi-green:  #52B788;   /* positive, success    */
+  --kpi-amber:  #E9A234;   /* attention, pending   */
+  --kpi-coral:  #E07A5F;   /* caution — NOT harsh red */
+  --kpi-purple: #9B72B0;   /* analytics, insights  */
+  --kpi-indigo: #5B7DBF;   /* operations, systems  */
+}
+
+/* The coloured strip at the top of each KPI card */
+.kpi-colour-strip {
+  height: 5px;
+  border-radius: 3px 3px 0 0;
+  width: 100%;
+  margin: -1px calc(-1 * var(--space-2, 16px)) 12px;
+  /* Stretch to card edges by cancelling the card's own padding */
+  margin-left: calc(-1 * var(--space-2, 16px));
+  margin-right: calc(-1 * var(--space-2, 16px));
+  margin-top: calc(-1 * var(--space-2, 16px));
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+/* Offset the border-top so strip doesn't double up with border-top */
+.kpi-card.kpi-has-strip {
+  border-top: none !important;
+  padding-top: 0 !important;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kpi-colour-strip { transition: none !important; }
+}
+
+/* ── Undo KPI Colours Button ─────────────────────────────────────────────── */
+.btn-undo-kpi {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1.5px solid var(--border, #d1d5db);
+  background: var(--card-bg, #ffffff);
+  color: var(--text-secondary, #4b5563);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.btn-undo-kpi:hover {
+  background: var(--brand-light, #EAF4FB);
+  border-color: var(--brand, #117ABF);
+  color: var(--brand-dark, #0b2240);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-undo-kpi { transition: none; }
 }
