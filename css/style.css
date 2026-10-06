@@ -5284,41 +5284,61 @@ html, body {
 }
 
 /* =========================================================================
-   KPI COLOUR HEADER STRIPS
+   KPI COLOUR PSYCHOLOGY PALETTE
    ========================================================================= */
 :root {
-  --kpi-blue:   #6BAED6;   /* trust, core banking */
-  --kpi-teal:   #40B0A6;   /* digital, stability  */
-  --kpi-green:  #52B788;   /* positive, success    */
-  --kpi-amber:  #E9A234;   /* attention, pending   */
-  --kpi-coral:  #E07A5F;   /* caution — NOT harsh red */
-  --kpi-purple: #9B72B0;   /* analytics, insights  */
-  --kpi-indigo: #5B7DBF;   /* operations, systems  */
+  --kpi-blue:   #5899C5;   /* trust, core banking      */
+  --kpi-teal:   #3A9E96;   /* digital, stability       */
+  --kpi-green:  #48A87A;   /* positive, success        */
+  --kpi-amber:  #D4922E;   /* attention, pending       */
+  --kpi-coral:  #C96B54;   /* caution — soft not harsh */
+  --kpi-purple: #8A63A0;   /* analytics, insights      */
+  --kpi-indigo: #5070AD;   /* operations, systems      */
 }
 
-/* The coloured strip at the top of each KPI card */
-.kpi-colour-strip {
-  height: 5px;
-  border-radius: 3px 3px 0 0;
-  width: 100%;
-  margin: -1px calc(-1 * var(--space-2, 16px)) 12px;
-  /* Stretch to card edges by cancelling the card's own padding */
-  margin-left: calc(-1 * var(--space-2, 16px));
-  margin-right: calc(-1 * var(--space-2, 16px));
-  margin-top: calc(-1 * var(--space-2, 16px));
-  margin-bottom: 10px;
-  flex-shrink: 0;
-}
+/* =========================================================================
+   KPI CARD — FULL COLOURED HEADER BAND
+   ========================================================================= */
 
-/* Offset the border-top so strip doesn't double up with border-top */
-.kpi-card.kpi-has-strip {
+/* Cards that have the colour header: remove default border-top + padding */
+.kpi-card.kpi-has-header-band {
+  padding: 0 !important;
   border-top: none !important;
-  padding-top: 0 !important;
   overflow: hidden;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .kpi-colour-strip { transition: none !important; }
+/* The coloured header band — contains the KPI title */
+.kpi-header-band {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  min-height: 52px;
+  border-radius: calc(var(--radius-md, 8px) - 1px) calc(var(--radius-md, 8px) - 1px) 0 0;
+  text-align: center;
+}
+
+/* Label text INSIDE the coloured band — white, bold */
+.kpi-label-in-band {
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.18);
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* White body area below the band — holds the value + sub */
+.kpi-body {
+  padding: var(--space-2, 16px);
+  background: var(--card-bg, #ffffff);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
 }
 
 /* ── Undo KPI Colours Button ─────────────────────────────────────────────── */
@@ -5345,5 +5365,6 @@ html, body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .kpi-header-band { transition: none !important; }
   .btn-undo-kpi { transition: none; }
 }

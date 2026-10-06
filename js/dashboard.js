@@ -274,24 +274,48 @@ function _getKpiColour(label) {
 
 function kpiCard(label, valueText, subHTML, titleAttr) {
   var colour = _getKpiColour(label);
-  var cardClass = "kpi-card" + (colour && _kpiColoursActive ? " kpi-has-strip" : "");
-  const card = el("div", { class: cardClass });
-  if (colour && _kpiColoursActive) {
-    var strip = el("div", { class: "kpi-colour-strip" });
-    strip.style.background = colour;
-    card.appendChild(strip);
-  }
-  card.appendChild(el("div", { class: "kpi-label", text: label }));
-  if (valueText !== null && valueText !== undefined) {
-    const valEl = el("div", { class: "kpi-value", text: valueText });
-    if (titleAttr) valEl.setAttribute("title", titleAttr);
-    card.appendChild(valEl);
-  }
-  if (subHTML) {
-    if (typeof subHTML === "string") {
-      card.appendChild(el("div", { class: "kpi-sub", html: subHTML }));
-    } else if (subHTML instanceof HTMLElement) {
-      card.appendChild(subHTML);
+  var withColour = colour && _kpiColoursActive;
+
+  const card = el("div", { class: "kpi-card" + (withColour ? " kpi-has-header-band" : "") });
+
+  if (withColour) {
+    /* ── Coloured header band containing the label ── */
+    var headerBand = el("div", { class: "kpi-header-band" });
+    headerBand.style.background = colour;
+    var labelEl = el("div", { class: "kpi-label kpi-label-in-band", text: label });
+    headerBand.appendChild(labelEl);
+    card.appendChild(headerBand);
+
+    /* ── White body area ── */
+    var bodyEl = el("div", { class: "kpi-body" });
+    if (valueText !== null && valueText !== undefined) {
+      var valEl = el("div", { class: "kpi-value", text: valueText });
+      if (titleAttr) valEl.setAttribute("title", titleAttr);
+      bodyEl.appendChild(valEl);
+    }
+    if (subHTML) {
+      if (typeof subHTML === "string") {
+        bodyEl.appendChild(el("div", { class: "kpi-sub", html: subHTML }));
+      } else if (subHTML instanceof HTMLElement) {
+        bodyEl.appendChild(subHTML);
+      }
+    }
+    card.appendChild(bodyEl);
+
+  } else {
+    /* ── Original layout (no colour / undo mode) ── */
+    card.appendChild(el("div", { class: "kpi-label", text: label }));
+    if (valueText !== null && valueText !== undefined) {
+      var valEl2 = el("div", { class: "kpi-value", text: valueText });
+      if (titleAttr) valEl2.setAttribute("title", titleAttr);
+      card.appendChild(valEl2);
+    }
+    if (subHTML) {
+      if (typeof subHTML === "string") {
+        card.appendChild(el("div", { class: "kpi-sub", html: subHTML }));
+      } else if (subHTML instanceof HTMLElement) {
+        card.appendChild(subHTML);
+      }
     }
   }
   return card;
