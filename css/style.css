@@ -5609,3 +5609,168 @@ table th,
   background: var(--border, #E2E8F0);
   flex-shrink: 0;
 }
+
+
+/* =========================================================================
+   UI UPDATES: SIDEBAR REFRESH, HIDE LOAD EXCEL, GLOBAL TABLE HEADERS & NOSTRO
+   ========================================================================= */
+
+/* Hide Load Excel button visually while preserving full functionality */
+#btnLoadExcel {
+  display: none !important;
+}
+
+/* Sidebar Refresh Dashboard Button */
+.btn-refresh-sidebar,
+.side-nav #btnRefresh {
+  margin-top: auto;
+  margin-bottom: 8px;
+  margin-left: 8px;
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--brand-light, #EAF4FB);
+  color: var(--brand-dark, #0D5F92);
+  border: 1px solid var(--brand-border, #90C4E4);
+  border-radius: var(--radius-md, 8px);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: calc(100% - 16px);
+  box-sizing: border-box;
+}
+
+.btn-refresh-sidebar:hover,
+.side-nav #btnRefresh:hover {
+  background: var(--brand, #117ABF);
+  color: #ffffff;
+  border-color: var(--brand, #117ABF);
+  transform: translateY(-1px);
+}
+
+/* Global Table Headers — Full Filled Light Professional Header */
+table th,
+.data-table th,
+.loan-table th,
+.ov-kpi-table th,
+.ov-nostro-redesign-table th {
+  background-color: var(--brand-light, #EAF4FB) !important;
+  color: var(--brand-dark, #0B2240) !important;
+  border-bottom: 2px solid var(--brand-border, #90C4E4) !important;
+  padding: 10px 12px !important;
+  font-weight: 700 !important;
+  font-size: 11px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+
+/* BOTH NOSTRO Boxes — Full Filled Light Professional Title Bar */
+.ov-chart-card.ov-nostro-card-container .ov-chart-title,
+.ov-chart-card.ov-recon-box-card .ov-chart-title {
+  background: var(--brand-light, #EAF4FB) !important;
+  color: var(--brand-dark, #0B2240) !important;
+  padding: 12px 16px !important;
+  font-weight: 700 !important;
+  font-size: 14px !important;
+  border-bottom: 1.5px solid var(--brand-border, #90C4E4) !important;
+  border-radius: calc(var(--radius-md, 8px) - 1px) calc(var(--radius-md, 8px) - 1px) 0 0 !important;
+  margin: -12px -14px 12px -14px !important;
+}
+
+
+/* =========================================================================
+   FINAL: TABLE HEADERS (global — same as KPI header bands) + NOSTRO TITLES
+   Only colour/background change; NO height/padding/font-size/layout changes.
+   ========================================================================= */
+
+/* ALL TABLE HEADERS — full coloured fill matching KPI bands */
+table thead tr,
+table thead tr th,
+.loan-table thead tr th,
+.data-table thead tr th,
+.ov-kpi-table thead tr th,
+.ov-nostro-redesign-table thead tr th,
+.bordered-table thead tr th {
+  background-color: var(--kpi-blue, #5899C5) !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+  border-bottom-color: rgba(0,0,0,0.12) !important;
+}
+
+/* NOSTRO & Recon box — full coloured title bar, no layout change */
+.ov-chart-card.ov-nostro-card-container .ov-chart-title,
+.ov-chart-card.ov-recon-box-card .ov-chart-title {
+  background: var(--kpi-blue, #5899C5) !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+  border-bottom-color: rgba(0,0,0,0.12) !important;
+}
+
+/* Sidebar Refresh → Alerts already at bottom of sidebar via HTML */
+.btn-refresh-sidebar {
+  display: none !important;
+}
+
+
+/* =========================================================================
+   FINAL EXACT STYLING: TABLE HEADERS & NOSTRO BOX HEADERS
+   ONLY header background & text color changed to match KPI header band.
+   NO changes to width, height, padding, font-size, borders or layout.
+   ========================================================================= */
+
+/* All Table Headers — KPI Coloured Header Fill */
+table thead tr th,
+.loan-table thead tr th,
+.data-table thead tr th,
+.ov-kpi-table thead tr th,
+.ov-nostro-redesign-table thead tr th,
+.bordered-table thead tr th {
+  background-color: var(--kpi-blue, #5899C5) !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+
+/* NOSTRO & Reconciliation Box Title Headers — KPI Coloured Header Fill */
+.ov-chart-card.ov-nostro-card-container .ov-chart-title,
+.ov-chart-card.ov-recon-box-card .ov-chart-title {
+  background-color: var(--kpi-blue, #5899C5) !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+
+/* Sidebar Refresh Button Styling */
+.btn-refresh-sidebar,
+.side-nav #btnRefresh {
+  margin-top: auto;
+  margin-bottom: 8px;
+  margin-left: 8px;
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--brand-light, #EAF4FB);
+  color: var(--brand-dark, #0D5F92);
+  border: 1px solid var(--brand-border, #90C4E4);
+  border-radius: var(--radius-md, 8px);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: calc(100% - 16px);
+  box-sizing: border-box;
+}
+
+.btn-refresh-sidebar:hover,
+.side-nav #btnRefresh:hover {
+  background: var(--brand, #117ABF);
+  color: #ffffff;
+  border-color: var(--brand, #117ABF);
+  transform: translateY(-1px);
+}
