@@ -5522,3 +5522,90 @@ html, body {
   background: rgba(255, 255, 255, 0.22) !important;
   color: #ffffff !important;
 }
+
+
+/* =========================================================================
+   GLOBAL TABLE HEADERS & OVERVIEW UI UPDATES
+   ========================================================================= */
+
+/* Global Table Headers — Light Professional Official Banking Fill */
+table th,
+.data-table th,
+.loan-table th,
+.ov-kpi-table th,
+.ov-nostro-redesign-table th {
+  background-color: var(--brand-light, #EAF4FB) !important;
+  color: var(--brand-dark, #0B2240) !important;
+  border-bottom: 2px solid var(--brand-border, #90C4E4) !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* NOSTRO Box Headers — Light Filled Professional Title Bar */
+.ov-chart-card.ov-nostro-card-container .ov-chart-title,
+.ov-chart-card.ov-recon-box-card .ov-chart-title {
+  background: var(--brand-light, #EAF4FB) !important;
+  color: var(--brand-dark, #0B2240) !important;
+  padding: 12px 16px !important;
+  font-weight: 700 !important;
+  font-size: 14px !important;
+  border-bottom: 1.5px solid var(--brand-border, #90C4E4) !important;
+  border-radius: calc(var(--radius-md, 8px) - 1px) calc(var(--radius-md, 8px) - 1px) 0 0 !important;
+  margin: -12px -14px 12px -14px !important;
+}
+
+/* Overview Module Card Headers — Light Filled Title Bar */
+.ov-module-header {
+  background: var(--brand-light, #EAF4FB) !important;
+  border-bottom: 1.5px solid var(--brand-border, #90C4E4) !important;
+  padding: 10px 14px !important;
+  border-radius: calc(var(--radius-md, 8px) - 1px) calc(var(--radius-md, 8px) - 1px) 0 0 !important;
+  margin: -12px -14px 12px -14px !important;
+}
+
+.ov-module-title {
+  color: var(--brand-dark, #0B2240) !important;
+  font-weight: 700 !important;
+}
+
+/* Side-by-Side Loan Summary KPI Box in Overview */
+.ov-loan-kpi-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 8px 8px 8px;
+}
+
+.ov-loan-metric {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.ov-loan-metric-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary, #64748B);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 6px;
+}
+
+.ov-loan-metric-val {
+  font-size: 21px;
+  font-weight: 800;
+  color: var(--brand-dark, #0D5F92);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.ov-loan-metric-divider {
+  width: 1px;
+  height: 36px;
+  background: var(--border, #E2E8F0);
+  flex-shrink: 0;
+}

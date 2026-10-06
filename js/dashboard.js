@@ -4601,6 +4601,43 @@ function svgAgingBar(buckets) {
     + rects + legends + '</svg>';
 }
 
+function buildOvLoanSummaryBox(type, data) {
+  const lbl = getPeriodLabels();
+  const isMonthly = !lbl.isDaily;
+  
+  let totalLogins = 0;
+  let totalDisbCount = 0;
+
+  if (type === "secure") {
+    const products = data.securedOpsProducts || (typeof generateIllustrativeData === "function" ? generateIllustrativeData().securedOpsProducts : []);
+    totalLogins = isMonthly ? products.reduce(function(s,p){return s+(p.loginApplicationsMTD||0);},0) : products.reduce(function(s,p){return s+(p.loginApplications||0);},0);
+    totalDisbCount = isMonthly ? products.reduce(function(s,p){return s+(p.disbursementCountMTD||0);},0) : products.reduce(function(s,p){return s+(p.disbursementCount||0);},0);
+  } else {
+    const products = data.unsecuredOpsProducts || (typeof generateIllustrativeData === "function" ? generateIllustrativeData().unsecuredOpsProducts : []);
+    const disbProducts = products.filter(function(p) { return !p.loginOnly; });
+    totalLogins = isMonthly ? products.reduce(function(s,p){return s+(p.loginApplicationsMTD||0);},0) : products.reduce(function(s,p){return s+(p.loginApplications||0);},0);
+    totalDisbCount = isMonthly ? disbProducts.reduce(function(s,p){return s+(p.disbursementCountMTD||0);},0) : disbProducts.reduce(function(s,p){return s+(p.disbursementCount||0);},0);
+  }
+
+  const wrap = el("div", { class: "ov-loan-kpi-body" });
+
+  const colLogins = el("div", { class: "ov-loan-metric" });
+  colLogins.appendChild(el("div", { class: "ov-loan-metric-lbl", text: "Login Applications" }));
+  colLogins.appendChild(el("div", { class: "ov-loan-metric-val", text: formatNumber(totalLogins) }));
+
+  const divider = el("div", { class: "ov-loan-metric-divider" });
+
+  const colDisb = el("div", { class: "ov-loan-metric" });
+  colDisb.appendChild(el("div", { class: "ov-loan-metric-lbl", text: "Disbursements" }));
+  colDisb.appendChild(el("div", { class: "ov-loan-metric-val", text: formatNumber(totalDisbCount) }));
+
+  wrap.appendChild(colLogins);
+  wrap.appendChild(divider);
+  wrap.appendChild(colDisb);
+
+  return wrap;
+}
+
 function renderOvModules(root, data) {
   root.appendChild(el("div", { class: "ov-section-heading", text: "Module Summaries" }));
   const grid = el("div", { class: "ov-modules-grid" });
@@ -4609,8 +4646,8 @@ function renderOvModules(root, data) {
   grid.appendChild(ovModuleCard("Income Stream",                   "card-financials",   buildOvCardFinTable(data)));
   grid.appendChild(buildOvProvisionalTaxesDualCard(data));
   grid.appendChild(ovModuleCard("Inventory / Stock Position",      "card-non-financials", buildOvInventoryTable(data)));
-  grid.appendChild(ovModuleCard("Secure Loan",               "secure-operations", ovSecOpsRows(data)));
-  grid.appendChild(ovModuleCard("Unsecure Loan",            "unsecured-operations", ovUnsecOpsRows(data)));
+  grid.appendChild(ovModuleCard("Secure Loan",               "secure-operations", buildOvLoanSummaryBox("secure", data)));
+  grid.appendChild(ovModuleCard("Unsecure Loan",            "unsecured-operations", buildOvLoanSummaryBox("unsecure", data)));
   grid.appendChild(ovModuleCard("Banca",                           "banca",             ovBancaRows(data)));
   grid.appendChild(ovModuleCard("BCP (Business Continuity Plan)",   "bcp",               ovBcpRows(data)));
   root.appendChild(grid);
