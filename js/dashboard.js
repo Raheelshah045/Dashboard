@@ -12245,22 +12245,26 @@ function renderReconciliation(data) {
     // LEVEL 2 for 1948: Sub-options Window
     const unit = activeReconciliationUnit;
 
-    const headRow = el("div", { class: "detail-page-header-row" });
-    const headLeft = el("div", { class: "detail-header-left" });
-
+    const headRow = el("div", { class: "detail-page-header-row recon-header-row" });
+    const headLeft = el("div", { class: "detail-header-left recon-head-left" });
     const backBtn = el("button", { class: "page-back-btn", type: "button", title: "Back to Unit Selection", "aria-label": "Back to Unit Selection" });
     backBtn.innerHTML = "&#8249;";
     backBtn.addEventListener("click", function () {
       activeReconciliationUnit = null;
       renderReconciliation(currentData());
     });
-
-    const heading = el("h2", { class: "detail-page-heading" });
-    heading.textContent = "Reconciliation Sub-Units OF " + (unit.titleName || unit.fullName);
-
     headLeft.appendChild(backBtn);
-    headLeft.appendChild(heading);
+
+    const headCenter = el("div", { class: "recon-head-center" });
+    const heading = el("h2", { class: "detail-page-heading recon-page-heading" });
+    heading.textContent = "Reconciliation Sub-Units OF " + (unit.titleName || unit.fullName);
+    headCenter.appendChild(heading);
+
+    const headRight = el("div", { class: "detail-header-right recon-head-right" });
+
     headRow.appendChild(headLeft);
+    headRow.appendChild(headCenter);
+    headRow.appendChild(headRight);
 
     root.appendChild(headRow);
 
@@ -12292,9 +12296,9 @@ function renderReconciliation(data) {
     const rows = getReconciliationUnitRows(unit, subOpt, data);
     const alertInfo = getUnitAgingAlertStatus(rows);
 
-    const headRow = el("div", { class: "detail-page-header-row" });
-    const headLeft = el("div", { class: "detail-header-left" });
-
+    const headRow = el("div", { class: "detail-page-header-row recon-header-row" });
+    
+    const headLeft = el("div", { class: "detail-header-left recon-head-left" });
     const backBtn = el("button", { class: "page-back-btn", type: "button", title: "Back", "aria-label": "Back" });
     backBtn.innerHTML = "&#8249;";
     backBtn.addEventListener("click", function () {
@@ -12306,28 +12310,28 @@ function renderReconciliation(data) {
       }
       renderReconciliation(currentData());
     });
+    headLeft.appendChild(backBtn);
 
-    const heading = el("h2", { class: "detail-page-heading" });
+    const headCenter = el("div", { class: "recon-head-center" });
+    const heading = el("h2", { class: "detail-page-heading recon-page-heading" });
     let titleText = "Reconciliation OF " + (unit.titleName || unit.fullName);
     if (unit.id === "1948" && subOpt) {
       titleText += " - " + subOpt;
     }
     heading.textContent = titleText;
+    headCenter.appendChild(heading);
 
-    headLeft.appendChild(backBtn);
-    headLeft.appendChild(heading);
-    headRow.appendChild(headLeft);
-
-    // TOP-RIGHT: Compact Aging Alerts Button
-    const headRight = el("div", { class: "detail-header-right" });
+    const headRight = el("div", { class: "detail-header-right recon-head-right" });
     const btnAgingAlerts = el("button", {
       class: "btn-aging-alerts " + (alertInfo.isAlert ? "warning" : "ok"),
       type: "button",
       title: "Click to toggle Aging Alert details"
     });
     btnAgingAlerts.innerHTML = '<span>🔔 Aging Alerts</span>' + (alertInfo.isAlert ? ' <span class="aging-alert-badge">!</span>' : '');
-
     headRight.appendChild(btnAgingAlerts);
+
+    headRow.appendChild(headLeft);
+    headRow.appendChild(headCenter);
     headRow.appendChild(headRight);
 
     root.appendChild(headRow);
@@ -12780,8 +12784,9 @@ function buildProductFinanceChart(products, isMonthly, pageId) {
     // Product label column
     var label = document.createElement('div');
     label.className = 'pfd-label';
-    label.textContent = p.product;
-    label.title = p.product;
+    var cleanName = p.product.replace(/\s*\(.*?\)/g, '').trim();
+    label.textContent = cleanName;
+    label.title = cleanName;
 
     // Bar + count overlay column
     var barWrap = document.createElement('div');
@@ -12791,7 +12796,7 @@ function buildProductFinanceChart(products, isMonthly, pageId) {
     bar.className = 'pfd-bar';
     bar.style.width = '0%';
     bar.style.background = color;
-    bar.setAttribute('aria-label', p.product + ': ' + fmtAmt + ', Count: ' + fmtCount);
+    bar.setAttribute('aria-label', cleanName + ': ' + fmtAmt + ', Count: ' + fmtCount);
 
     // Count label — always visible subtly, highlights on hover
     var countLbl = document.createElement('span');
@@ -12878,7 +12883,7 @@ function renderUnsecuredOperations(data) {
   const totalDisbAmt   = isMonthly ? disbProducts.reduce(function(s,p){return s+p.disbursementAmountMTD;},0) : disbProducts.reduce(function(s,p){return s+p.disbursementAmount;},0);
 
   const grid = el("div", { class: "kpi-grid" });
-  grid.appendChild(kpiCard("Total Login Applications (" + lbl.shortPrimary + ")", formatNumber(totalLogins), "Applications logged in across all unsecured products (incl. Credit Card)"));
+  grid.appendChild(kpiCard("Total Login Applications (" + lbl.shortPrimary + ")", formatNumber(totalLogins), "Applications logged in across all unsecured products"));
   grid.appendChild(kpiCard("Total Disbursements (" + lbl.shortPrimary + ")", formatNumber(totalDisbCount), "Total disbursement cases processed "));
   grid.appendChild(kpiCard("Total Disbursement Amount (" + lbl.shortPrimary + ")", formatCurrency(totalDisbAmt), "Aggregate disbursed amount ", fullValueTitle(totalDisbAmt, true)));
   grid.appendChild(kpiCard("Pending / Exception Items (" + lbl.shortPrimary + ")", formatNumber(totalLogins - totalDisbCount), "Pending Applications"));
