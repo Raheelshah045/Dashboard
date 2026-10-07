@@ -6057,3 +6057,59 @@ table.data-table th {
 .ov-module-rows {
   padding: 8px 12px 10px 12px !important;
 }
+
+/* =========================================================================
+   NEW GLOBAL RULES FOR TABLES
+   ========================================================================= */
+
+/* All normal columns and rows of the complete dashboard should have a normal white background */
+table tbody tr,
+table tbody td,
+.data-table tbody tr,
+.data-table tbody td,
+.ov-cb-disputes-table tbody td,
+.ov-cb-disputes-table tbody td.cb-sub-cur,
+.ov-cb-disputes-table tbody td.cb-sub-prev,
+.ov-adc-summary-table tbody tr td,
+.ov-adc-summary-table tbody tr td:nth-child(2),
+.ov-adc-summary-table tbody tr td:nth-child(3),
+.ov-adc-summary-table tbody tr td:nth-child(4),
+.ov-adc-summary-table tbody tr td:nth-child(5) {
+  background-color: #ffffff !important;
+}
+
+table tbody tr.clickable-row:hover td,
+table tbody tr:hover td {
+  background-color: #F5F8FA !important; /* Keep a very subtle hover for usability */
+}
+
+/* Global Table Primary Headers (#117ABF) with increased font size */
+.ov-table-kpi-header,
+.ov-table-kpi-header.ov-table-kpi-header-in-band,
+.ov-chart-card .ov-chart-title,
+.ov-module-header {
+  background: #117ABF !important;
+}
+.ov-table-kpi-title,
+.ov-table-kpi-title-in-band,
+.ov-chart-card .ov-chart-title,
+.ov-module-title {
+  font-size: 15px !important; 
+}
+
+/* Global Table Secondary Headers (#EAF5FB) */
+table th,
+.data-table th,
+.data-table thead tr,
+.ov-kpi-table thead tr th,
+.ov-nostro-redesign-table thead tr th,
+.ov-recon-gl-table thead tr th,
+.ov-adc-table th,
+.ov-module-table thead tr th,
+th.grouped-hdr {
+  background-color: #EAF5FB !important;
+  color: #0B5F91 !important;
+  font-size: 11px !important;
+  text-shadow: none !important;
+  border-bottom: 1.5px solid #D7E2E8 !important;
+}
