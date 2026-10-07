@@ -2572,17 +2572,17 @@ table.ov-recon-gl-table tbody tr.recon-gl-row-link:hover td:first-child {
   font-weight: 600;
 }
 
-/* Highlighted summary rows inside Reconciliation GL Breakdown */
+/* Highlighted summary rows inside Reconciliation GL Breakdown — match header colour exactly */
 table.ov-recon-gl-table tbody tr.recon-gl-highlight-row,
 table.ov-recon-gl-table tbody tr.recon-gl-highlight-row td {
-  background: #117ABF !important;
+  background: var(--kpi-blue, #5899C5) !important;
   color: #ffffff !important;
   font-weight: 700 !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.25) !important;
 }
 
 table.ov-recon-gl-table tbody tr.recon-gl-highlight-row:hover td {
-  background: #0e66a0 !important;
+  background: #4a89b8 !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -5287,13 +5287,13 @@ html, body {
    KPI COLOUR PSYCHOLOGY PALETTE
    ========================================================================= */
 :root {
-  --kpi-blue:   #5899C5;   /* trust, core banking      */
-  --kpi-teal:   #3A9E96;   /* digital, stability       */
+  --kpi-blue:   #117ABF;   /* trust, core banking      */
+  --kpi-teal:   #117ABF;   /* digital, stability       */
   --kpi-green:  #48A87A;   /* positive, success        */
   --kpi-amber:  #D4922E;   /* attention, pending       */
   --kpi-coral:  #C96B54;   /* caution — soft not harsh */
-  --kpi-purple: #8A63A0;   /* analytics, insights      */
-  --kpi-indigo: #5070AD;   /* operations, systems      */
+  --kpi-purple: #117ABF;   /* analytics, insights      */
+  --kpi-indigo: #117ABF;   /* operations, systems      */
 }
 
 /* =========================================================================
@@ -5652,95 +5652,294 @@ table th,
   transform: translateY(-1px);
 }
 
-/* Global Table Headers — Full Filled Light Professional Header */
-table th,
-.data-table th,
-.loan-table th,
-.ov-kpi-table th,
-.ov-nostro-redesign-table th {
-  background-color: var(--brand-light, #EAF4FB) !important;
-  color: var(--brand-dark, #0B2240) !important;
-  border-bottom: 2px solid var(--brand-border, #90C4E4) !important;
-  padding: 10px 12px !important;
-  font-weight: 700 !important;
-  font-size: 11px !important;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  vertical-align: middle;
+/* =========================================================================
+   OVERVIEW PAGE — CLEAN FILLED-HEADER TREATMENT FOR ALL KPI BOXES & TABLES
+   Zero white gaps, zero negative margins, exact visual alignment matching Secure/Unsecure Loan
+   ========================================================================= */
+
+/* 1. Daily Executive KPI Cards (.ov-exec-card-redesign) */
+#page-overview .ov-exec-card-redesign.ov-exec-has-header-band,
+.ov-exec-card-redesign.ov-exec-has-header-band {
+  padding: 0 !important;
+  border-top: none !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border, #DDE5EC) !important;
+  border-radius: var(--radius-md, 8px) !important;
+  background: var(--card-bg, #ffffff) !important;
 }
 
-/* BOTH NOSTRO Boxes — Full Filled Light Professional Title Bar */
-.ov-chart-card.ov-nostro-card-container .ov-chart-title,
-.ov-chart-card.ov-recon-box-card .ov-chart-title {
-  background: var(--brand-light, #EAF4FB) !important;
-  color: var(--brand-dark, #0B2240) !important;
-  padding: 12px 16px !important;
-  font-weight: 700 !important;
-  font-size: 14px !important;
-  border-bottom: 1.5px solid var(--brand-border, #90C4E4) !important;
+.ov-exec-header-band {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 10px 14px !important;
+  min-height: 42px !important;
+  margin: 0 !important;
   border-radius: calc(var(--radius-md, 8px) - 1px) calc(var(--radius-md, 8px) - 1px) 0 0 !important;
-  margin: -12px -14px 12px -14px !important;
+  text-align: center !important;
 }
 
-
-/* =========================================================================
-   FINAL: TABLE HEADERS (global — same as KPI header bands) + NOSTRO TITLES
-   Only colour/background change; NO height/padding/font-size/layout changes.
-   ========================================================================= */
-
-/* ALL TABLE HEADERS — full coloured fill matching KPI bands */
-table thead tr,
-table thead tr th,
-.loan-table thead tr th,
-.data-table thead tr th,
-.ov-kpi-table thead tr th,
-.ov-nostro-redesign-table thead tr th,
-.bordered-table thead tr th {
-  background-color: var(--kpi-blue, #5899C5) !important;
+.ov-exec-title-in-band {
   color: #ffffff !important;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
-  border-bottom-color: rgba(0,0,0,0.12) !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  margin-bottom: 0 !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.18) !important;
 }
 
-/* NOSTRO & Recon box — full coloured title bar, no layout change */
+.ov-exec-body {
+  padding: 14px 16px 16px 16px !important;
+  background: #ffffff !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  flex: 1 !important;
+}
+
+/* 2. Overview Daily KPI Cards (.ov-kpi-card) */
+.ov-kpi-card.ov-kpi-has-header-band {
+  padding: 0 !important;
+  border-top: none !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border, #DDE5EC) !important;
+  border-radius: var(--radius-md, 8px) !important;
+  background: var(--card-bg, #ffffff) !important;
+}
+
+.ov-kpi-header-band {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 10px 14px !important;
+  min-height: 42px !important;
+  margin: 0 !important;
+  border-radius: calc(var(--radius-md, 8px) - 1px) calc(var(--radius-md, 8px) - 1px) 0 0 !important;
+  text-align: center !important;
+}
+
+.ov-kpi-label-in-band {
+  color: #ffffff !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.03em !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15) !important;
+}
+
+.ov-kpi-body {
+  padding: 14px !important;
+  background: var(--card-bg, #ffffff) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: var(--space-0-5, 4px) !important;
+  flex: 1 !important;
+}
+
+/* 3. Overview Table KPI Cards (.ov-table-kpi-card) — Credit Card, Debit Card, Total Card Spend */
+.ov-table-kpi-card,
+.ov-table-kpi-card.ov-table-kpi-has-header-band {
+  padding: 0 !important;
+  border-top: none !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border, #DDE5EC) !important;
+  border-radius: var(--radius-md, 8px) !important;
+  background: var(--card-bg, #ffffff) !important;
+}
+
+.ov-table-kpi-header,
+.ov-table-kpi-header.ov-table-kpi-header-in-band {
+  padding: 10px 14px !important;
+  margin: 0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: calc(var(--radius-md, 8px) - 1px) calc(var(--radius-md, 8px) - 1px) 0 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.ov-table-kpi-title,
+.ov-table-kpi-title-in-band {
+  color: #ffffff !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15) !important;
+}
+
+.ov-table-kpi-freq,
+.ov-table-kpi-freq-in-band {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+  border-radius: var(--radius-pill, 9999px) !important;
+  padding: 2px 7px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+}
+
+.ov-table-kpi-wrap {
+  padding: 0 !important;
+  background: #ffffff !important;
+}
+
+#page-overview table.ov-kpi-table thead tr th,
+.ov-kpi-table thead tr th {
+  background-color: var(--kpi-blue, #117ABF) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25) !important;
+  padding: 6px 8px !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15) !important;
+}
+
+#page-overview table.ov-kpi-table .col-metric,
+.ov-kpi-table .col-metric {
+  padding-left: 10px !important;
+}
+
+#page-overview table.ov-kpi-table .col-change,
+.ov-kpi-table .col-change {
+  padding-right: 10px !important;
+}
+
+/* 4. NOSTRO & Reconciliation GL Cards (.ov-nostro-card-container & .ov-recon-box-card) */
+#page-overview .ov-chart-card.ov-nostro-card-container,
+#page-overview .ov-chart-card.ov-recon-box-card,
+.ov-chart-card.ov-nostro-card-container,
+.ov-chart-card.ov-recon-box-card {
+  padding: 0 !important;
+  border-top: none !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border, #DDE5EC) !important;
+  border-radius: var(--radius-md, 8px) !important;
+  background: var(--card-bg, #ffffff) !important;
+}
+
 .ov-chart-card.ov-nostro-card-container .ov-chart-title,
 .ov-chart-card.ov-recon-box-card .ov-chart-title {
-  background: var(--kpi-blue, #5899C5) !important;
+  background: var(--kpi-blue, #117ABF) !important;
   color: #ffffff !important;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
-  border-bottom-color: rgba(0,0,0,0.12) !important;
+  padding: 12px 16px !important;
+  margin: 0 !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: calc(var(--radius-md, 8px) - 1px) calc(var(--radius-md, 8px) - 1px) 0 0 !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15) !important;
 }
 
-/* Sidebar Refresh → Alerts already at bottom of sidebar via HTML */
-.btn-refresh-sidebar {
+#page-overview table.ov-nostro-redesign-table thead tr th,
+#page-overview table.ov-recon-gl-table thead tr th,
+.ov-nostro-redesign-table thead tr th,
+.ov-recon-gl-table thead tr th {
+  background-color: var(--kpi-blue, #117ABF) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25) !important;
+  padding: 6px 10px !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15) !important;
+}
+
+/* 5. Overview Module Cards (.ov-module-card) */
+#page-overview .ov-module-card,
+.ov-module-card {
+  padding: 0 !important;
+  border-top: none !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border, #DDE5EC) !important;
+  border-radius: var(--radius-md, 8px) !important;
+  background: var(--card-bg, #ffffff) !important;
+}
+
+.ov-module-header {
+  background: var(--kpi-blue, #117ABF) !important;
+  padding: 10px 14px !important;
+  margin: 0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: calc(var(--radius-md, 8px) - 1px) calc(var(--radius-md, 8px) - 1px) 0 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.ov-module-title,
+.ov-module-title-in-band {
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15) !important;
+}
+
+.ov-view-details,
+.ov-view-details-in-band {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 3px 9px !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  transition: background-color 0.15s ease !important;
+}
+
+.ov-view-details:hover {
+  background: rgba(255, 255, 255, 0.35) !important;
+}
+
+/* 6. ALL Table Headers on Overview Page */
+#page-overview table thead tr th,
+#page-overview table.ov-module-table thead tr th,
+#page-overview table.ov-adc-table thead tr th,
+#page-overview table.ov-recon-summary-table thead tr th,
+.ov-module-table thead tr th,
+.ov-adc-table thead tr th,
+.ov-recon-summary-table thead tr th {
+  background-color: var(--kpi-blue, #117ABF) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border-bottom: 1.5px solid rgba(255, 255, 255, 0.25) !important;
+  padding: 8px 10px !important;
+  font-size: 11px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.03em !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15) !important;
+}
+
+#page-overview table.ov-module-table th.grouped-hdr,
+.ov-module-table th.grouped-hdr {
+  background-color: #117ABF !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+/* 7. Provisional Taxes Dual Card */
+.ov-provisional-dual-card {
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.ov-provisional-dual-wrap {
+  padding: 12px 14px !important;
+  background: #ffffff !important;
+}
+
+.ov-provisional-sub-title {
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  color: var(--brand-dark, #0D5F92) !important;
+  margin-bottom: 6px !important;
+}
+
+/* 8. Standalone ADC Table Wrapper */
+.ov-adc-table-wrap {
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-radius: var(--radius-md, 8px) !important;
+  border: 1px solid var(--border, #DDE5EC) !important;
+  background: #ffffff !important;
+}
+
+/* Hide Load Excel button visually while preserving full functionality */
+#btnLoadExcel {
   display: none !important;
-}
-
-
-/* =========================================================================
-   FINAL EXACT STYLING: TABLE HEADERS & NOSTRO BOX HEADERS
-   ONLY header background & text color changed to match KPI header band.
-   NO changes to width, height, padding, font-size, borders or layout.
-   ========================================================================= */
-
-/* All Table Headers — KPI Coloured Header Fill */
-table thead tr th,
-.loan-table thead tr th,
-.data-table thead tr th,
-.ov-kpi-table thead tr th,
-.ov-nostro-redesign-table thead tr th,
-.bordered-table thead tr th {
-  background-color: var(--kpi-blue, #5899C5) !important;
-  color: #ffffff !important;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
-}
-
-/* NOSTRO & Reconciliation Box Title Headers — KPI Coloured Header Fill */
-.ov-chart-card.ov-nostro-card-container .ov-chart-title,
-.ov-chart-card.ov-recon-box-card .ov-chart-title {
-  background-color: var(--kpi-blue, #5899C5) !important;
-  color: #ffffff !important;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
 }
 
 /* Sidebar Refresh Button Styling */
@@ -5767,10 +5966,94 @@ table thead tr th,
   box-sizing: border-box;
 }
 
-.btn-refresh-sidebar:hover,
 .side-nav #btnRefresh:hover {
   background: var(--brand, #117ABF);
   color: #ffffff;
   border-color: var(--brand, #117ABF);
   transform: translateY(-1px);
+}
+
+/* =========================================================================
+   TARGETED FIXES — OVERVIEW MODULE TABLES: TODAY / YESTERDAY CELL FILLS
+   ========================================================================= */
+
+/* ADC Operations summary table — Today cols (2,3) body cell background */
+.ov-module-table.ov-adc-summary-table tbody tr td:nth-child(2),
+.ov-module-table.ov-adc-summary-table tbody tr td:nth-child(3) {
+  background-color: rgba(88, 153, 197, 0.13) !important;
+}
+
+/* ADC Operations summary table — Yesterday cols (4,5) body cell background */
+.ov-module-table.ov-adc-summary-table tbody tr td:nth-child(4),
+.ov-module-table.ov-adc-summary-table tbody tr td:nth-child(5) {
+  background-color: rgba(88, 153, 197, 0.07) !important;
+}
+
+/* Complaints / CB Disputes table — Current Month body cells */
+table.ov-cb-disputes-table tbody td.cb-sub-cur {
+  background-color: rgba(88, 153, 197, 0.13) !important;
+}
+
+/* Complaints / CB Disputes table — Previous Month body cells */
+table.ov-cb-disputes-table tbody td.cb-sub-prev {
+  background-color: rgba(88, 153, 197, 0.07) !important;
+}
+
+/* =========================================================================
+   GLOBAL TABLE HEADER TREATMENT — ALL NON-OVERVIEW PAGES
+   Same filled-header colour as Overview applied to data-table th
+   ========================================================================= */
+
+table.data-table th {
+  background: var(--kpi-blue, #5899C5) !important;
+  color: #ffffff !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  border-bottom: 1.5px solid rgba(255, 255, 255, 0.25) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15) !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 2 !important;
+}
+
+#page-adc-operations table.data-table th,
+#adc-operations-body table.data-table th,
+#page-card-financials table.data-table th,
+#card-financials-body table.data-table th,
+#page-card-non-financials table.data-table th,
+#card-non-financials-body table.data-table th {
+  background: var(--kpi-blue, #5899C5) !important;
+  color: #ffffff !important;
+}
+
+#page-adc-operations table.data-table thead tr,
+#adc-operations-body table.data-table thead tr,
+#page-card-financials table.data-table thead tr,
+#card-financials-body table.data-table thead tr,
+#page-card-non-financials table.data-table thead tr,
+#card-non-financials-body table.data-table thead tr {
+  background: var(--kpi-blue, #5899C5) !important;
+}
+
+/* =========================================================================
+   KPI BOX TEXT BREATHING ROOM — subtle internal padding
+   Does NOT change card outer dimensions
+   ========================================================================= */
+
+.ov-kpi-body {
+  padding: 12px 14px 14px 14px !important;
+}
+
+.ov-exec-body {
+  padding: 12px 16px 14px 16px !important;
+}
+
+.ov-table-kpi-wrap {
+  padding: 0 0 4px 0 !important;
+}
+
+.ov-module-rows {
+  padding: 8px 12px 10px 12px !important;
 }
