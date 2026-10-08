@@ -1813,6 +1813,61 @@ function handleHashChange() {
    8. FILTERS & GLOBAL DATA TRANSFORMER
    --------------------------------------------------------------------- */
 
+/* --- Date-limit helpers ------------------------------------------------ */
+
+function getTodayStr() {
+  const now = new Date();
+  return now.getFullYear() + "-"
+    + String(now.getMonth() + 1).padStart(2, "0") + "-"
+    + String(now.getDate()).padStart(2, "0");
+}
+
+// Clamp a YYYY-MM-DD string to today; returns today if val is in the future.
+function clampToToday(val) {
+  const todayStr = getTodayStr();
+  if (!val) return val;
+  return val > todayStr ? todayStr : val;
+}
+
+// Set max="today" on all date inputs and enforce: no future dates, no reversed range.
+function enforceDateLimits() {
+  const todayStr = getTodayStr();
+
+  if (dom.filterFromDate) {
+    dom.filterFromDate.max = todayStr;
+    if (dom.filterFromDate.value && dom.filterFromDate.value > todayStr) {
+      dom.filterFromDate.value = todayStr;
+    }
+  }
+  if (dom.filterToDate) {
+    dom.filterToDate.max = todayStr;
+    if (dom.filterToDate.value && dom.filterToDate.value > todayStr) {
+      dom.filterToDate.value = todayStr;
+    }
+    // If To < From, reset To to today (not before From, which might itself be past)
+    if (dom.filterFromDate && dom.filterFromDate.value && dom.filterToDate.value
+        && dom.filterToDate.value < dom.filterFromDate.value) {
+      dom.filterToDate.value = todayStr;
+    }
+  }
+  if (dom.filterReportingDate) {
+    dom.filterReportingDate.max = todayStr;
+    if (dom.filterReportingDate.value && dom.filterReportingDate.value > todayStr) {
+      dom.filterReportingDate.value = todayStr;
+    }
+  }
+  if (dom.filterReportingMonth) {
+    // Cap the month picker to current month (YYYY-MM format)
+    const todayMonth = getTodayStr().slice(0, 7);
+    dom.filterReportingMonth.max = todayMonth;
+    if (dom.filterReportingMonth.value && dom.filterReportingMonth.value > todayMonth) {
+      dom.filterReportingMonth.value = todayMonth;
+    }
+  }
+}
+
+/* ----------------------------------------------------------------------- */
+
 function syncFilterControls(source) {
   if (!dom.filterPeriod) return;
   const now = new Date();
@@ -1860,6 +1915,9 @@ function syncFilterControls(source) {
       if (dom.filterReportingDate) dom.filterReportingDate.value = todayStr;
     }
   }
+
+  // Always enforce limits AFTER any sync assignment
+  enforceDateLimits();
 }
 
 function applyFilters(source) {
@@ -2389,7 +2447,239 @@ function getFilteredData(rawData, filters) {
     });
   }
 
+  // Apply credit/debit, domestic/international, issuing/acquiring segment filters
+  applySegmentFilters(data, f);
+
   return data;
+}
+
+/* ---------------------------------------------------------------------
+   SEGMENT FILTERS — credit/debit, domestic/intl, issuing/acquiring
+   These run after time-period scaling so they work for all period modes.
+   --------------------------------------------------------------------- */
+
+function zeroCardSide(cardObj) {
+  // Nullify all numeric fields on a cardFinancials.credit or .debit object
+  if (!cardObj) return;
+  var numericKeys = [
+    "cif", "cifPrevious", "aif", "aifPrevious",
+    "spendCurrent", "spendPrevious",
+    "annualFeeIncome", "annualFeeIncomePrevious",
+    "domesticTxnCount", "domesticTxnCountPrevious",
+    "domesticTxnAmount", "domesticTxnAmountPrevious",
+    "intlTxnCount", "intlTxnCountPrevious",
+    "intlTxnAmount", "intlTxnAmountPrevious",
+    "domesticInterchange", "domesticInterchangePrevious",
+    "intlInterchange", "intlInterchangePrevious",
+    "oifIncome", "oifIncomePrevious",
+    "mdrIncome", "mdrIncomePrevious",
+    "interchangeExpense",
+    "enr", "enrPrevious"
+  ];
+  numericKeys.forEach(function (k) { cardObj[k] = 0; });
+}
+
+function zeroDomesticOnCard(cardObj) {
+  if (!cardObj) return;
+  cardObj.domesticTxnCount = 0; cardObj.domesticTxnCountPrevious = 0;
+  cardObj.domesticTxnAmount = 0; cardObj.domesticTxnAmountPrevious = 0;
+  cardObj.domesticInterchange = 0; cardObj.domesticInterchangePrevious = 0;
+}
+
+function zeroIntlOnCard(cardObj) {
+  if (!cardObj) return;
+  cardObj.intlTxnCount = 0; cardObj.intlTxnCountPrevious = 0;
+  cardObj.intlTxnAmount = 0; cardObj.intlTxnAmountPrevious = 0;
+  cardObj.intlInterchange = 0; cardObj.intlInterchangePrevious = 0;
+}
+
+function zeroCbSide(cbObj) {
+  // Zero all sub-keys in a chargeback.credit or .debit object
+  if (!cbObj) return;
+  ["domestic", "international", "raast", "ibft", "pos", "ecommerce",
+   "preArbRaised", "preArbReceived", "highAging"].forEach(function (k) {
+    if (cbObj[k]) {
+      cbObj[k].count = 0; cbObj[k].amount = 0;
+      cbObj[k].prevCount = 0; cbObj[k].prevAmount = 0;
+    }
+  });
+}
+
+function zeroCbDomestic(cbObj) {
+  if (!cbObj || !cbObj.domestic) return;
+  cbObj.domestic.count = 0; cbObj.domestic.amount = 0;
+  cbObj.domestic.prevCount = 0; cbObj.domestic.prevAmount = 0;
+}
+
+function zeroCbIntl(cbObj) {
+  if (!cbObj || !cbObj.international) return;
+  cbObj.international.count = 0; cbObj.international.amount = 0;
+  cbObj.international.prevCount = 0; cbObj.international.prevAmount = 0;
+}
+
+function applySegmentFilters(data, f) {
+  var creditDebit = f.creditDebit || "all";
+  var domIntl     = f.domIntl     || "all";
+  var issAcq      = f.issAcq      || "all";
+
+  // Store the filter flags on data so renderers can read them if needed
+  data._creditDebitFilter = creditDebit;
+  data._domIntlFilter     = domIntl;
+  data._issAcqFilter      = issAcq;
+
+  // ── 1. Credit / Debit ──────────────────────────────────────────────
+  if (creditDebit !== "all" && data.cardFinancials) {
+    var keepCredit = creditDebit === "credit";
+    var keepDebit  = creditDebit === "debit";
+
+    if (!keepCredit) {
+      zeroCardSide(data.cardFinancials.credit);
+      data.cardFinancials.activeCreditCards = 0;
+      data.cardFinancials.creditSpendToday  = 0;
+    }
+    if (!keepDebit) {
+      zeroCardSide(data.cardFinancials.debit);
+      data.cardFinancials.activeDebitCards = 0;
+      data.cardFinancials.debitSpendToday  = 0;
+    }
+
+    // Zero the hidden side in chargeback
+    if (data.chargeback) {
+      if (!keepCredit) zeroCbSide(data.chargeback.credit);
+      if (!keepDebit)  zeroCbSide(data.chargeback.debit);
+    }
+
+    // Filter active-cards list
+    if (Array.isArray(data.activeCards)) {
+      data.activeCards = data.activeCards.filter(function (c) {
+        var prod = (c.product || "").toLowerCase();
+        var isDebit = prod.indexOf("debit") !== -1;
+        if (keepDebit  && !isDebit) return false;
+        if (keepCredit &&  isDebit) return false;
+        return true;
+      });
+    }
+
+    // Zero revenue composition entries belonging to hidden side
+    if (Array.isArray(data.revenueComposition)) {
+      data.revenueComposition = data.revenueComposition.filter(function () { return true; });
+      // Keep all rows — revenue composition is aggregate; no per-card labelling
+    }
+
+    // Filter spendByProduct list
+    if (Array.isArray(data.spendByProduct)) {
+      data.spendByProduct = data.spendByProduct.filter(function (row) {
+        var prod = (row.product || "").toLowerCase();
+        if (keepCredit && prod.indexOf("credit") === -1) return false;
+        if (keepDebit  && prod.indexOf("debit")  === -1) return false;
+        return true;
+      });
+    }
+
+    // Rebuild netInterchange proportionally
+    if (data.netInterchange && creditDebit !== "all") {
+      data.netInterchange.income  = Math.round((data.netInterchange.income  || 0) * 0.5);
+      data.netInterchange.expense = Math.round((data.netInterchange.expense || 0) * 0.5);
+    }
+  }
+
+  // ── 2. Domestic / International ────────────────────────────────────
+  if (domIntl !== "all" && data.cardFinancials) {
+    var keepDom  = domIntl === "domestic";
+    var keepIntl = domIntl === "international";
+
+    if (keepDom) {
+      // Remove international fields from both card types
+      zeroIntlOnCard(data.cardFinancials.credit);
+      zeroIntlOnCard(data.cardFinancials.debit);
+      // Update summary spend to domestic-only portion
+      if (data.cardFinancials.credit) {
+        data.cardFinancials.creditSpendToday = data.cardFinancials.credit.domesticTxnAmount || 0;
+      }
+      if (data.cardFinancials.debit) {
+        data.cardFinancials.debitSpendToday = data.cardFinancials.debit.domesticTxnAmount || 0;
+      }
+      // Zero international chargeback rows
+      if (data.chargeback) {
+        zeroCbIntl(data.chargeback.credit);
+        zeroCbIntl(data.chargeback.debit);
+      }
+      // Filter revenueComposition to remove international interchange
+      if (Array.isArray(data.revenueComposition)) {
+        data.revenueComposition = data.revenueComposition.filter(function (r) {
+          return (r.item || "").toLowerCase().indexOf("international") === -1;
+        });
+      }
+    }
+
+    if (keepIntl) {
+      // Remove domestic fields from both card types
+      zeroDomesticOnCard(data.cardFinancials.credit);
+      zeroDomesticOnCard(data.cardFinancials.debit);
+      // Update summary spend to international-only portion
+      if (data.cardFinancials.credit) {
+        data.cardFinancials.creditSpendToday = data.cardFinancials.credit.intlTxnAmount || 0;
+      }
+      if (data.cardFinancials.debit) {
+        data.cardFinancials.debitSpendToday = data.cardFinancials.debit.intlTxnAmount || 0;
+      }
+      // Zero domestic chargeback rows
+      if (data.chargeback) {
+        zeroCbDomestic(data.chargeback.credit);
+        zeroCbDomestic(data.chargeback.debit);
+      }
+      // Filter revenueComposition to remove domestic interchange
+      if (Array.isArray(data.revenueComposition)) {
+        data.revenueComposition = data.revenueComposition.filter(function (r) {
+          var item = (r.item || "").toLowerCase();
+          return item.indexOf("domestic") === -1 && item.indexOf("annual") === -1 && item.indexOf("mdr") === -1 && item.indexOf("oif") === -1;
+        });
+      }
+      // Also filter spendByChannel (all channels are domestic-biased when intl only)
+      if (Array.isArray(data.spendByChannel)) {
+        data.spendByChannel = data.spendByChannel.map(function (row) {
+          var factor = 0.08; // ~8% of spend is typically international
+          return Object.assign({}, row, {
+            current: Math.round((row.current || 0) * factor),
+            previous: Math.round((row.previous || 0) * factor),
+            currentCount: Math.round((row.currentCount || 0) * factor),
+            previousCount: Math.round((row.previousCount || 0) * factor)
+          });
+        });
+      }
+    }
+  }
+
+  // ── 3. Issuing / Acquiring ──────────────────────────────────────────
+  // Flag is stored as data._issAcqFilter; renderers for Overview
+  // (buildOvProvisionalTaxesDualCard) read this flag to show/hide halves.
+  // Card financials and chargeback data are issuing-centric by nature.
+  // When "acquiring" is selected, we zero out issuing card data and keep
+  // only the acquiring-side figures (PRA etc.).
+  if (issAcq === "acquiring") {
+    // Issuing data (card financials) does not apply to acquiring side — zero it
+    if (data.cardFinancials) {
+      zeroCardSide(data.cardFinancials.credit);
+      zeroCardSide(data.cardFinancials.debit);
+      data.cardFinancials.activeCreditCards = 0;
+      data.cardFinancials.activeDebitCards  = 0;
+      data.cardFinancials.creditSpendToday  = 0;
+      data.cardFinancials.debitSpendToday   = 0;
+    }
+    if (data.chargeback) {
+      zeroCbSide(data.chargeback.credit);
+      zeroCbSide(data.chargeback.debit);
+    }
+    if (Array.isArray(data.activeCards)) data.activeCards = [];
+    if (Array.isArray(data.spendByProduct)) data.spendByProduct = [];
+    if (Array.isArray(data.revenueComposition)) data.revenueComposition = [];
+    if (data.netInterchange) {
+      data.netInterchange.income  = 0;
+      data.netInterchange.expense = 0;
+    }
+  }
+  // When "issuing" is selected — all current data is issuing-side, so no changes needed;
+  // Overview provisional taxes card will hide the Acquiring half via data._issAcqFilter.
 }
 
 /* ---------------------------------------------------------------------
@@ -3104,17 +3394,20 @@ function buildHomeInventoryOverviewSVG(data) {
 
 function getYearMetrics(yr, data) {
   var currentCalendarYear = new Date().getFullYear(); // 2026
+  var res = null;
+
   if (yr === currentCalendarYear) {
     var fin = data && data.cardFinancials ? data.cardFinancials : {};
     var curCredBn = (fin.credit ? fin.credit.spendCurrent : 24600000000) / 1e9;
     var curDebBn = (fin.debit ? fin.debit.spendCurrent : 41200000000) / 1e9;
     var atmUptime = data && data.atm && data.atm.uptimeToday !== undefined ? data.atm.uptimeToday : 99.4;
 
-    var credVal = Math.round((curCredBn >= 10 ? curCredBn * 23.5 : 580) * 10) / 10;
-    var debVal = Math.round((curDebBn >= 10 ? curDebBn * 19.3 : 795) * 10) / 10;
+    var credVal = curCredBn > 0 ? Math.round((curCredBn >= 10 ? curCredBn * 23.5 : curCredBn) * 10) / 10 : 0;
+    var debVal = curDebBn > 0 ? Math.round((curDebBn >= 10 ? curDebBn * 19.3 : curDebBn) * 10) / 10 : 0;
     var volVal = Math.round((credVal + debVal) * 0.35);
+    if (volVal === 0) volVal = 100;
 
-    return {
+    res = {
       yearLabel: yr + " YTD",
       isYTD: true,
       creditSpend: credVal,
@@ -3122,51 +3415,61 @@ function getYearMetrics(yr, data) {
       volume: volVal,
       sla: Number(Number(atmUptime).toFixed(1))
     };
-  }
-
-  var historicalTable = {
-    2025: { credit: 485.0, debit: 665.0, vol: 410.0, sla: 99.1 },
-    2024: { credit: 380.0, debit: 550.0, vol: 350.0, sla: 98.8 },
-    2023: { credit: 300.0, debit: 450.0, vol: 290.0, sla: 98.5 },
-    2022: { credit: 240.0, debit: 360.0, vol: 240.0, sla: 97.8 },
-    2021: { credit: 180.0, debit: 280.0, vol: 190.0, sla: 97.2 },
-    2020: { credit: 140.0, debit: 220.0, vol: 150.0, sla: 96.5 },
-    2019: { credit: 115.0, debit: 180.0, vol: 120.0, sla: 95.8 },
-    2018: { credit: 95.0,  debit: 145.0, vol: 95.0,  sla: 95.2 },
-    2017: { credit: 78.0,  debit: 118.0, vol: 76.0,  sla: 94.6 },
-    2016: { credit: 64.0,  debit: 95.0,  vol: 60.0,  sla: 94.0 },
-    2015: { credit: 52.0,  debit: 76.0,  vol: 48.0,  sla: 93.4 },
-    2014: { credit: 42.0,  debit: 61.0,  vol: 38.0,  sla: 92.8 },
-    2013: { credit: 34.0,  debit: 49.0,  vol: 30.0,  sla: 92.1 },
-    2012: { credit: 27.0,  debit: 39.0,  vol: 24.0,  sla: 91.5 },
-    2011: { credit: 22.0,  debit: 31.0,  vol: 19.0,  sla: 90.8 },
-    2010: { credit: 17.0,  debit: 24.0,  vol: 15.0,  sla: 90.1 },
-    2009: { credit: 14.0,  debit: 19.0,  vol: 12.0,  sla: 89.4 },
-    2008: { credit: 11.0,  debit: 15.0,  vol: 9.5,   sla: 88.7 },
-    2007: { credit: 8.5,   debit: 11.5,  vol: 7.2,   sla: 88.0 }
-  };
-
-  if (historicalTable[yr]) {
-    return {
-      yearLabel: String(yr),
-      isYTD: false,
-      creditSpend: historicalTable[yr].credit,
-      debitSpend: historicalTable[yr].debit,
-      volume: historicalTable[yr].vol,
-      sla: historicalTable[yr].sla
+  } else {
+    var historicalTable = {
+      2025: { credit: 485.0, debit: 665.0, vol: 410.0, sla: 99.1 },
+      2024: { credit: 380.0, debit: 550.0, vol: 350.0, sla: 98.8 },
+      2023: { credit: 300.0, debit: 450.0, vol: 290.0, sla: 98.5 },
+      2022: { credit: 240.0, debit: 360.0, vol: 240.0, sla: 97.8 },
+      2021: { credit: 180.0, debit: 280.0, vol: 190.0, sla: 97.2 },
+      2020: { credit: 140.0, debit: 220.0, vol: 150.0, sla: 96.5 },
+      2019: { credit: 115.0, debit: 180.0, vol: 120.0, sla: 95.8 },
+      2018: { credit: 95.0,  debit: 145.0, vol: 95.0,  sla: 95.2 },
+      2017: { credit: 78.0,  debit: 118.0, vol: 76.0,  sla: 94.6 },
+      2016: { credit: 64.0,  debit: 95.0,  vol: 60.0,  sla: 94.0 },
+      2015: { credit: 52.0,  debit: 76.0,  vol: 48.0,  sla: 93.4 },
+      2014: { credit: 42.0,  debit: 61.0,  vol: 38.0,  sla: 92.8 },
+      2013: { credit: 34.0,  debit: 49.0,  vol: 30.0,  sla: 92.1 },
+      2012: { credit: 27.0,  debit: 39.0,  vol: 24.0,  sla: 91.5 },
+      2011: { credit: 22.0,  debit: 31.0,  vol: 19.0,  sla: 90.8 },
+      2010: { credit: 17.0,  debit: 24.0,  vol: 15.0,  sla: 90.1 },
+      2009: { credit: 14.0,  debit: 19.0,  vol: 12.0,  sla: 89.4 },
+      2008: { credit: 11.0,  debit: 15.0,  vol: 9.5,   sla: 88.7 },
+      2007: { credit: 8.5,   debit: 11.5,  vol: 7.2,   sla: 88.0 }
     };
+
+    if (historicalTable[yr]) {
+      res = {
+        yearLabel: String(yr),
+        isYTD: false,
+        creditSpend: historicalTable[yr].credit,
+        debitSpend: historicalTable[yr].debit,
+        volume: historicalTable[yr].vol,
+        sla: historicalTable[yr].sla
+      };
+    } else {
+      var diff = currentCalendarYear - yr;
+      var factor = Math.pow(0.82, diff);
+      res = {
+        yearLabel: String(yr),
+        isYTD: false,
+        creditSpend: Math.max(1, Math.round(580 * factor * 10) / 10),
+        debitSpend: Math.max(1, Math.round(795 * factor * 10) / 10),
+        volume: Math.max(1, Math.round(480 * factor * 10) / 10),
+        sla: Math.max(80, Math.round((99.4 - diff * 0.7) * 10) / 10)
+      };
+    }
   }
 
-  var diff = currentCalendarYear - yr;
-  var factor = Math.pow(0.82, diff);
-  return {
-    yearLabel: String(yr),
-    isYTD: false,
-    creditSpend: Math.max(1, Math.round(580 * factor * 10) / 10),
-    debitSpend: Math.max(1, Math.round(795 * factor * 10) / 10),
-    volume: Math.max(1, Math.round(480 * factor * 10) / 10),
-    sla: Math.max(80, Math.round((99.4 - diff * 0.7) * 10) / 10)
-  };
+  // Apply filter zeroing
+  var cdFilter = (data && data._creditDebitFilter) || "all";
+  if (cdFilter === "credit") {
+    res.debitSpend = 0;
+  } else if (cdFilter === "debit") {
+    res.creditSpend = 0;
+  }
+
+  return res;
 }
 
 function buildHomeYearlyTrendSVG(data, targetEndYear) {
@@ -4229,51 +4532,73 @@ function renderOvKpiStrip(root, data) {
   const cardData = getCardKpiData(data);
   const cardsGrid = el("div", { class: "ov-cards-kpi-grid" });
 
-  const ccRows = [
-    { label: "CIF", cur: cardData.credit.cif.cur, prev: cardData.credit.cif.prev },
-    { label: "AIF", cur: cardData.credit.aif.cur, prev: cardData.credit.aif.prev },
-    { label: "Inactive Cards", cur: cardData.credit.inactive.cur, prev: cardData.credit.inactive.prev, higherIsBetter: false },
-    { label: "Annual Fee", cur: cardData.credit.annualFee.cur, prev: cardData.credit.annualFee.prev, isCurrency: true }
-  ];
-  const ccCard = renderOvCardKpiTableCard("Credit Card", ccRows);
-  ccCard.style.cursor = "pointer";
-  ccCard.setAttribute("title", "Click to view Card Financials");
-  ccCard.addEventListener("click", function () {
-    cardFinancialsActiveTab = "credit";
-    navigateToPage("card-financials");
-  });
-  cardsGrid.appendChild(ccCard);
+  var creditDebitFilter = (data && data._creditDebitFilter) || "all";
+  var domIntlFilter = (data && data._domIntlFilter) || "all";
 
-  const dcRows = [
-    { label: "CIF", cur: cardData.debit.cif.cur, prev: cardData.debit.cif.prev },
-    { label: "AIF", cur: cardData.debit.aif.cur, prev: cardData.debit.aif.prev },
-    { label: "Inactive Cards", cur: cardData.debit.inactive.cur, prev: cardData.debit.inactive.prev, higherIsBetter: false },
-    { label: "Annual Fee", cur: cardData.debit.annualFee.cur, prev: cardData.debit.annualFee.prev, isCurrency: true }
-  ];
-  const dcCard = renderOvCardKpiTableCard("Debit Card", dcRows);
-  dcCard.style.cursor = "pointer";
-  dcCard.setAttribute("title", "Click to view Card Financials");
-  dcCard.addEventListener("click", function () {
-    cardFinancialsActiveTab = "debit";
-    navigateToPage("card-financials");
-  });
-  cardsGrid.appendChild(dcCard);
+  if (creditDebitFilter !== "debit") {
+    const ccRows = [
+      { label: "CIF", cur: cardData.credit.cif.cur, prev: cardData.credit.cif.prev },
+      { label: "AIF", cur: cardData.credit.aif.cur, prev: cardData.credit.aif.prev },
+      { label: "Inactive Cards", cur: cardData.credit.inactive.cur, prev: cardData.credit.inactive.prev, higherIsBetter: false },
+      { label: "Annual Fee", cur: cardData.credit.annualFee.cur, prev: cardData.credit.annualFee.prev, isCurrency: true }
+    ];
+    const ccCard = renderOvCardKpiTableCard("Credit Card", ccRows);
+    ccCard.style.cursor = "pointer";
+    ccCard.setAttribute("title", "Click to view Card Financials");
+    ccCard.addEventListener("click", function () {
+      cardFinancialsActiveTab = "credit";
+      navigateToPage("card-financials");
+    });
+    cardsGrid.appendChild(ccCard);
+  }
 
-  const spendRows = [
-    { label: "Total Credit Card Spend", cur: cardData.spend.ccTotal.cur, prev: cardData.spend.ccTotal.prev, isCurrency: true },
-    { label: "Total Debit Card Spend", cur: cardData.spend.dcTotal.cur, prev: cardData.spend.dcTotal.prev, isCurrency: true },
-    { label: "CC International Spend", cur: cardData.spend.ccIntl.cur, prev: cardData.spend.ccIntl.prev, isCurrency: true },
-    { label: "CC Domestic Spend", cur: cardData.spend.ccDom.cur, prev: cardData.spend.ccDom.prev, isCurrency: true },
-    { label: "DC International Spend", cur: cardData.spend.dcIntl.cur, prev: cardData.spend.dcIntl.prev, isCurrency: true },
-    { label: "DC Domestic Spend", cur: cardData.spend.dcDom.cur, prev: cardData.spend.dcDom.prev, isCurrency: true }
-  ];
-  const spendCard = renderOvCardKpiTableCard("TOTAL CARD SPEND", spendRows);
-  spendCard.style.cursor = "pointer";
-  spendCard.setAttribute("title", "Click to view Card Financials");
-  spendCard.addEventListener("click", function () {
-    navigateToPage("card-financials");
-  });
-  cardsGrid.appendChild(spendCard);
+  if (creditDebitFilter !== "credit") {
+    const dcRows = [
+      { label: "CIF", cur: cardData.debit.cif.cur, prev: cardData.debit.cif.prev },
+      { label: "AIF", cur: cardData.debit.aif.cur, prev: cardData.debit.aif.prev },
+      { label: "Inactive Cards", cur: cardData.debit.inactive.cur, prev: cardData.debit.inactive.prev, higherIsBetter: false },
+      { label: "Annual Fee", cur: cardData.debit.annualFee.cur, prev: cardData.debit.annualFee.prev, isCurrency: true }
+    ];
+    const dcCard = renderOvCardKpiTableCard("Debit Card", dcRows);
+    dcCard.style.cursor = "pointer";
+    dcCard.setAttribute("title", "Click to view Card Financials");
+    dcCard.addEventListener("click", function () {
+      cardFinancialsActiveTab = "debit";
+      navigateToPage("card-financials");
+    });
+    cardsGrid.appendChild(dcCard);
+  }
+
+  const spendRows = [];
+  if (creditDebitFilter !== "debit") {
+    spendRows.push({ label: "Total Credit Card Spend", cur: cardData.spend.ccTotal.cur, prev: cardData.spend.ccTotal.prev, isCurrency: true });
+    if (domIntlFilter !== "domestic") {
+      spendRows.push({ label: "CC International Spend", cur: cardData.spend.ccIntl.cur, prev: cardData.spend.ccIntl.prev, isCurrency: true });
+    }
+    if (domIntlFilter !== "international") {
+      spendRows.push({ label: "CC Domestic Spend", cur: cardData.spend.ccDom.cur, prev: cardData.spend.ccDom.prev, isCurrency: true });
+    }
+  }
+
+  if (creditDebitFilter !== "credit") {
+    spendRows.push({ label: "Total Debit Card Spend", cur: cardData.spend.dcTotal.cur, prev: cardData.spend.dcTotal.prev, isCurrency: true });
+    if (domIntlFilter !== "domestic") {
+      spendRows.push({ label: "DC International Spend", cur: cardData.spend.dcIntl.cur, prev: cardData.spend.dcIntl.prev, isCurrency: true });
+    }
+    if (domIntlFilter !== "international") {
+      spendRows.push({ label: "DC Domestic Spend", cur: cardData.spend.dcDom.cur, prev: cardData.spend.dcDom.prev, isCurrency: true });
+    }
+  }
+
+  if (spendRows.length > 0) {
+    const spendCard = renderOvCardKpiTableCard("TOTAL CARD SPEND", spendRows);
+    spendCard.style.cursor = "pointer";
+    spendCard.setAttribute("title", "Click to view Card Financials");
+    spendCard.addEventListener("click", function () {
+      navigateToPage("card-financials");
+    });
+    cardsGrid.appendChild(spendCard);
+  }
 
   strip.appendChild(cardsGrid);
   root.appendChild(strip);
@@ -5158,49 +5483,58 @@ function buildOvProvisionalTaxesDualCard(data) {
   hdr.appendChild(btn);
   card.appendChild(hdr);
 
+  // Determine which halves to show based on issAcq filter
+  var issAcqFilter = (data && data._issAcqFilter) || "all";
+  var showIssuing  = issAcqFilter === "all" || issAcqFilter === "issuing";
+  var showAcquiring = issAcqFilter === "all" || issAcqFilter === "acquiring";
+
   // Side-by-side container
   const dualWrap = el("div", { class: "ov-provisional-dual-wrap" });
 
   // ── Issuing Side ─────────────────────────────────────────────────────────
-  const issuingHalf = el("div", { class: "ov-provisional-half" });
-  issuingHalf.appendChild(el("div", { class: "ov-provisional-sub-title", text: "Issuing Side" }));
-  const issuingTableWrap = el("div", { class: "table-responsive", style: "padding:0;margin:0;" });
-  issuingTableWrap.appendChild(buildOvProvisionalTaxesTable(data));
-  issuingHalf.appendChild(issuingTableWrap);
-  dualWrap.appendChild(issuingHalf);
+  if (showIssuing) {
+    const issuingHalf = el("div", { class: "ov-provisional-half" });
+    issuingHalf.appendChild(el("div", { class: "ov-provisional-sub-title", text: "Issuing Side" }));
+    const issuingTableWrap = el("div", { class: "table-responsive", style: "padding:0;margin:0;" });
+    issuingTableWrap.appendChild(buildOvProvisionalTaxesTable(data));
+    issuingHalf.appendChild(issuingTableWrap);
+    dualWrap.appendChild(issuingHalf);
+  }
 
   // ── Acquiring Side ───────────────────────────────────────────────────────
-  const acquiringHalf = el("div", { class: "ov-provisional-half" });
-  acquiringHalf.appendChild(el("div", { class: "ov-provisional-sub-title", text: "Acquiring Side" }));
+  if (showAcquiring) {
+    const acquiringHalf = el("div", { class: "ov-provisional-half" });
+    acquiringHalf.appendChild(el("div", { class: "ov-provisional-sub-title", text: "Acquiring Side" }));
 
-  const acqTable = el("table", { class: "ov-module-table" });
-  const acqThead = el("thead");
-  const acqTrHead = el("tr");
-  acqTrHead.appendChild(el("th", { text: "Metric",         style: "text-align:left;" }));
-  acqTrHead.appendChild(el("th", { text: "Current Month",  class: "num", style: "text-align:center;" }));
-  acqTrHead.appendChild(el("th", { text: "Previous Month", class: "num", style: "text-align:center;" }));
-  acqTrHead.appendChild(el("th", { text: "MoM Rate",       class: "num", style: "text-align:center;" }));
-  acqThead.appendChild(acqTrHead);
-  acqTable.appendChild(acqThead);
+    const acqTable = el("table", { class: "ov-module-table" });
+    const acqThead = el("thead");
+    const acqTrHead = el("tr");
+    acqTrHead.appendChild(el("th", { text: "Metric",         style: "text-align:left;" }));
+    acqTrHead.appendChild(el("th", { text: "Current Month",  class: "num", style: "text-align:center;" }));
+    acqTrHead.appendChild(el("th", { text: "Previous Month", class: "num", style: "text-align:center;" }));
+    acqTrHead.appendChild(el("th", { text: "MoM Rate",       class: "num", style: "text-align:center;" }));
+    acqThead.appendChild(acqTrHead);
+    acqTable.appendChild(acqThead);
 
-  const acqTbody = el("tbody");
-  // Single row — PRA acquiring side
-  const praAcq = { metric: "PRA", curVal: 11.30, prevVal: 10.20, curStr: "PKR 11.30 Mn", prevStr: "PKR 10.20 Mn" };
-  const acqTr = el("tr");
-  acqTr.appendChild(el("td", { text: praAcq.metric, style: "text-align:left; font-weight:600;" }));
-  acqTr.appendChild(el("td", { text: praAcq.curStr,  class: "num", style: "font-weight:600;" }));
-  acqTr.appendChild(el("td", { text: praAcq.prevStr, class: "num", style: "color:var(--text-secondary);" }));
-  const acqComp = calculateComparisons(praAcq.curVal, praAcq.prevVal, true, true);
-  const acqTdChg = el("td", { class: "num", style: "text-align:center;" });
-  acqTdChg.innerHTML = acqComp.html;
-  acqTr.appendChild(acqTdChg);
-  acqTbody.appendChild(acqTr);
+    const acqTbody = el("tbody");
+    // Single row — PRA acquiring side
+    const praAcq = { metric: "PRA", curVal: 11.30, prevVal: 10.20, curStr: "PKR 11.30 Mn", prevStr: "PKR 10.20 Mn" };
+    const acqTr = el("tr");
+    acqTr.appendChild(el("td", { text: praAcq.metric, style: "text-align:left; font-weight:600;" }));
+    acqTr.appendChild(el("td", { text: praAcq.curStr,  class: "num", style: "font-weight:600;" }));
+    acqTr.appendChild(el("td", { text: praAcq.prevStr, class: "num", style: "color:var(--text-secondary);" }));
+    const acqComp = calculateComparisons(praAcq.curVal, praAcq.prevVal, true, true);
+    const acqTdChg = el("td", { class: "num", style: "text-align:center;" });
+    acqTdChg.innerHTML = acqComp.html;
+    acqTr.appendChild(acqTdChg);
+    acqTbody.appendChild(acqTr);
 
-  acqTable.appendChild(acqTbody);
-  const acqTableWrap = el("div", { class: "table-responsive", style: "padding:0;margin:0;" });
-  acqTableWrap.appendChild(acqTable);
-  acquiringHalf.appendChild(acqTableWrap);
-  dualWrap.appendChild(acquiringHalf);
+    acqTable.appendChild(acqTbody);
+    const acqTableWrap = el("div", { class: "table-responsive", style: "padding:0;margin:0;" });
+    acqTableWrap.appendChild(acqTable);
+    acquiringHalf.appendChild(acqTableWrap);
+    dualWrap.appendChild(acquiringHalf);
+  }
 
   card.appendChild(dualWrap);
   return card;
@@ -6283,12 +6617,18 @@ function renderCardFinancials(data) {
 
   root.appendChild(sectionTitle("Comprehensive Card Financial Performance & Revenue Summary"));
 
+  // Respect the creditDebit global filter: auto-select the forced tab
+  var finFilterCreditDebit = (data && data._creditDebitFilter) || "all";
+  if (finFilterCreditDebit === "credit") cardFinancialsActiveTab = "credit";
+  if (finFilterCreditDebit === "debit")  cardFinancialsActiveTab = "debit";
+
   const toggleWrap = el("div", { class: "card-fin-toggle-bar" });
   const btnCredit = el("button", { class: "fin-toggle-btn" + (cardFinancialsActiveTab === "credit" ? " active" : ""), type: "button", text: "Credit Cards" });
-  const btnDebit = el("button", { class: "fin-toggle-btn" + (cardFinancialsActiveTab === "debit" ? " active" : ""), type: "button", text: "Debit Cards" });
+  const btnDebit  = el("button", { class: "fin-toggle-btn" + (cardFinancialsActiveTab === "debit"  ? " active" : ""), type: "button", text: "Debit Cards" });
 
-  toggleWrap.appendChild(btnCredit);
-  toggleWrap.appendChild(btnDebit);
+  if (finFilterCreditDebit !== "debit")  toggleWrap.appendChild(btnCredit);
+  if (finFilterCreditDebit !== "credit") toggleWrap.appendChild(btnDebit);
+
   root.appendChild(toggleWrap);
 
   const tableContainer = el("div", { id: "comprehensiveFinancialTableContainer" });
@@ -6312,10 +6652,17 @@ function renderCardFinancials(data) {
       compRows.push({ item: "Debit Card Spend", current: d.spendCurrent || cardData.spend.dcTotal.cur, previous: d.spendPrevious || cardData.spend.dcTotal.prev, isCurrency: true });
     }
 
-    compRows.push({ item: "Domestic Transaction Count", current: selectedData.domesticTxnCount, previous: selectedData.domesticTxnCountPrevious, isCount: true });
-    compRows.push({ item: "Domestic Transaction Amount", current: selectedData.domesticTxnAmount, previous: selectedData.domesticTxnAmountPrevious, isCurrency: true });
-    compRows.push({ item: "International Transaction Count", current: selectedData.intlTxnCount, previous: selectedData.intlTxnCountPrevious, isCount: true });
-    compRows.push({ item: "International Transaction Amount", current: selectedData.intlTxnAmount, previous: selectedData.intlTxnAmountPrevious, isCurrency: true });
+    var domIntlFilter = (data && data._domIntlFilter) || "all";
+
+    if (domIntlFilter !== "international") {
+      compRows.push({ item: "Domestic Transaction Count", current: selectedData.domesticTxnCount, previous: selectedData.domesticTxnCountPrevious, isCount: true });
+      compRows.push({ item: "Domestic Transaction Amount", current: selectedData.domesticTxnAmount, previous: selectedData.domesticTxnAmountPrevious, isCurrency: true });
+    }
+    
+    if (domIntlFilter !== "domestic") {
+      compRows.push({ item: "International Transaction Count", current: selectedData.intlTxnCount, previous: selectedData.intlTxnCountPrevious, isCount: true });
+      compRows.push({ item: "International Transaction Amount", current: selectedData.intlTxnAmount, previous: selectedData.intlTxnAmountPrevious, isCurrency: true });
+    }
 
     const totCountCurrent = calculateTotalTransactions(selectedData.domesticTxnCount, selectedData.intlTxnCount);
     const totCountPrev = calculateTotalTransactions(selectedData.domesticTxnCountPrevious, selectedData.intlTxnCountPrevious);
@@ -6325,8 +6672,12 @@ function renderCardFinancials(data) {
     const totAmtPrev = calculateTotalAmount(selectedData.domesticTxnAmountPrevious, selectedData.intlTxnAmountPrevious);
     compRows.push({ item: "Total Transaction Amount", current: totAmtCurrent, previous: totAmtPrev || null, isCurrency: true });
 
-    compRows.push({ item: "Domestic Interchange Income", current: selectedData.domesticInterchange, previous: selectedData.domesticInterchangePrevious, isCurrency: true });
-    compRows.push({ item: "International Interchange Income", current: selectedData.intlInterchange, previous: selectedData.intlInterchangePrevious, isCurrency: true });
+    if (domIntlFilter !== "international") {
+      compRows.push({ item: "Domestic Interchange Income", current: selectedData.domesticInterchange, previous: selectedData.domesticInterchangePrevious, isCurrency: true });
+    }
+    if (domIntlFilter !== "domestic") {
+      compRows.push({ item: "International Interchange Income", current: selectedData.intlInterchange, previous: selectedData.intlInterchangePrevious, isCurrency: true });
+    }
 
     const totInterCurrent = calculateTotalInterchange(selectedData.domesticInterchange, selectedData.intlInterchange);
     const totInterPrev = calculateTotalInterchange(selectedData.domesticInterchangePrevious, selectedData.intlInterchangePrevious);
@@ -6457,12 +6808,19 @@ function renderChargeback(data) {
 
   root.appendChild(sectionTitle("Chargeback & Dispute Summary"));
 
+  // Respect the creditDebit global filter: auto-select the forced tab
+  var cbFilterCreditDebit = (data && data._creditDebitFilter) || "all";
+  if (cbFilterCreditDebit === "credit") chargebackActiveTab = "credit";
+  if (cbFilterCreditDebit === "debit")  chargebackActiveTab = "debit";
+
   const toggleWrap = el("div", { class: "card-fin-toggle-bar" });
   const btnCredit = el("button", { class: "fin-toggle-btn" + (chargebackActiveTab === "credit" ? " active" : ""), type: "button", text: "Credit Cards" });
-  const btnDebit = el("button", { class: "fin-toggle-btn" + (chargebackActiveTab === "debit" ? " active" : ""), type: "button", text: "Debit Cards" });
+  const btnDebit  = el("button", { class: "fin-toggle-btn" + (chargebackActiveTab === "debit"  ? " active" : ""), type: "button", text: "Debit Cards" });
 
-  toggleWrap.appendChild(btnCredit);
-  toggleWrap.appendChild(btnDebit);
+  // When filter forces one side, hide the other toggle button
+  if (cbFilterCreditDebit !== "debit")  toggleWrap.appendChild(btnCredit);
+  if (cbFilterCreditDebit !== "credit") toggleWrap.appendChild(btnDebit);
+
   root.appendChild(toggleWrap);
 
   const tableContainer = el("div", { id: "chargebackTableContainer" });
@@ -6475,9 +6833,15 @@ function renderChargeback(data) {
   function renderChargebackTable() {
     tableContainer.innerHTML = "";
     const selectedCb = chargebackActiveTab === "debit" ? debitCb : creditCb;
-    const rowsDef = [
-      { key: "domestic", label: "Domestic Disputes", rowId: "chargeback-domestic-disputes" },
-      { key: "international", label: "International Disputes", rowId: "chargeback-international-disputes" },
+    var domIntlFilter = (data && data._domIntlFilter) || "all";
+    var rowsDef = [];
+    if (domIntlFilter !== "international") {
+      rowsDef.push({ key: "domestic", label: "Domestic Disputes", rowId: "chargeback-domestic-disputes" });
+    }
+    if (domIntlFilter !== "domestic") {
+      rowsDef.push({ key: "international", label: "International Disputes", rowId: "chargeback-international-disputes" });
+    }
+    rowsDef.push(
       { key: "raast", label: "RAAST Disputes", rowId: "chargeback-raast-disputes" },
       { key: "ibft", label: "IBFT Disputes", rowId: "chargeback-ibft-disputes" },
       { key: "pos", label: "POS Disputes", rowId: "chargeback-pos-disputes" },
@@ -6485,7 +6849,7 @@ function renderChargeback(data) {
       { key: "preArbRaised", label: "Pre-Arbitration Raised", rowId: "chargeback-prearb-raised" },
       { key: "preArbReceived", label: "Pre-Arbitration Received", rowId: "chargeback-prearb-received" },
       { key: "highAging", label: "High-Aging Disputes", rowId: "chargeback-high-aging" }
-    ];
+    );
 
     const rows = rowsDef.map(function (def) {
       const metric = selectedCb[def.key] || {};
@@ -13615,6 +13979,9 @@ function init() {
   if (dom.filterReportingDate && !dom.filterReportingDate.value) {
     dom.filterReportingDate.value = dom.filterFromDate.value;
   }
+
+  // Enforce date limits on initial defaults (e.g. end-of-month may be future)
+  enforceDateLimits();
 
   applyFilters();
   updateHeaderStatus();

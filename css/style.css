@@ -161,7 +161,7 @@ button, input, select {
   right: 0;
   width: 100%;
   z-index: 1000;
-  background: linear-gradient(135deg, var(--header-bg-start) 0%, var(--header-bg-end) 100%);
+  background: #117ABF !important;
   color: var(--white);
   padding: 6px 16px 6px 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.25);
@@ -172,16 +172,7 @@ button, input, select {
 
 /* Digital Network Vector Texture Overlay */
 .header-texture-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.35;
-  overflow: hidden;
-  transition: opacity 0.3s ease;
+  display: none !important;
 }
 
 .header-texture-svg {
@@ -6065,21 +6056,25 @@ table.data-table th {
 /* All normal columns and rows of the complete dashboard should have a normal white background */
 table tbody tr,
 table tbody td,
+#page-overview table tbody tr,
+#page-overview table tbody td,
 .data-table tbody tr,
 .data-table tbody td,
-.ov-cb-disputes-table tbody td,
-.ov-cb-disputes-table tbody td.cb-sub-cur,
-.ov-cb-disputes-table tbody td.cb-sub-prev,
-.ov-adc-summary-table tbody tr td,
-.ov-adc-summary-table tbody tr td:nth-child(2),
-.ov-adc-summary-table tbody tr td:nth-child(3),
-.ov-adc-summary-table tbody tr td:nth-child(4),
-.ov-adc-summary-table tbody tr td:nth-child(5) {
+#page-overview .ov-cb-disputes-table tbody td,
+#page-overview .ov-cb-disputes-table tbody td.cb-sub-cur,
+#page-overview .ov-cb-disputes-table tbody td.cb-sub-prev,
+#page-overview .ov-adc-summary-table tbody tr td,
+#page-overview .ov-adc-summary-table tbody tr td:nth-child(2),
+#page-overview .ov-adc-summary-table tbody tr td:nth-child(3),
+#page-overview .ov-adc-summary-table tbody tr td:nth-child(4),
+#page-overview .ov-adc-summary-table tbody tr td:nth-child(5) {
   background-color: #ffffff !important;
 }
 
 table tbody tr.clickable-row:hover td,
-table tbody tr:hover td {
+table tbody tr:hover td,
+#page-overview table tbody tr.clickable-row:hover td,
+#page-overview table tbody tr:hover td {
   background-color: #F5F8FA !important; /* Keep a very subtle hover for usability */
 }
 
@@ -6087,29 +6082,68 @@ table tbody tr:hover td {
 .ov-table-kpi-header,
 .ov-table-kpi-header.ov-table-kpi-header-in-band,
 .ov-chart-card .ov-chart-title,
-.ov-module-header {
+.ov-module-header,
+#page-overview .ov-table-kpi-header,
+#page-overview .ov-chart-card .ov-chart-title,
+#page-overview .ov-module-header {
   background: #117ABF !important;
 }
 .ov-table-kpi-title,
 .ov-table-kpi-title-in-band,
 .ov-chart-card .ov-chart-title,
-.ov-module-title {
+.ov-module-title,
+#page-overview .ov-table-kpi-title,
+#page-overview .ov-chart-card .ov-chart-title,
+#page-overview .ov-module-title {
   font-size: 15px !important; 
 }
 
 /* Global Table Secondary Headers (#EAF5FB) */
-table th,
-.data-table th,
-.data-table thead tr,
 .ov-kpi-table thead tr th,
 .ov-nostro-redesign-table thead tr th,
 .ov-recon-gl-table thead tr th,
-.ov-adc-table th,
 .ov-module-table thead tr th,
-th.grouped-hdr {
+th.grouped-hdr,
+#page-overview table.ov-kpi-table thead tr th,
+#page-overview table.ov-nostro-redesign-table thead tr th,
+#page-overview table.ov-recon-gl-table thead tr th,
+#page-overview table.ov-module-table thead tr th,
+#page-overview table.ov-module-table th.grouped-hdr {
   background-color: #EAF5FB !important;
   color: #0B5F91 !important;
   font-size: 11px !important;
   text-shadow: none !important;
   border-bottom: 1.5px solid #D7E2E8 !important;
 }
+
+/* Custom Glassmorphism styling for Alert Button */
+#btnAllAlerts {
+  background: rgba(201, 74, 74, 0.3) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(201, 74, 74, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  color: #ffffff !important;
+  transition: all 0.3s ease !important;
+}
+
+#btnAllAlerts:hover {
+  background: rgba(201, 74, 74, 0.45) !important;
+  border: 1px solid rgba(201, 74, 74, 0.7) !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(-1px);
+}
+
+#btnAllAlerts svg {
+  stroke: #D99A24 !important;
+  filter: drop-shadow(0 0 3px rgba(217, 154, 36, 0.5));
+}
+
+/* Reconciliation Page Unit Table Headers (#117ABF) */
+#page-reconciliation table th,
+#page-reconciliation .recon-detail-table th {
+  background-color: #117ABF !important;
+  color: #ffffff !important;
+}
+
+
