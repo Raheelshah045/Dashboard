@@ -2696,6 +2696,11 @@ function renderActivePage() {
   document.querySelectorAll("[data-period-label]").forEach(function (n) { n.textContent = periodLabelText(); });
   evaluateAndShowToastAlerts(data);
 
+  // Trigger Premium Entrance Animation
+  document.body.classList.remove("anim-enter");
+  void document.body.offsetWidth;
+  document.body.classList.add("anim-enter");
+
   switch (appState.activePage) {
     case "home": renderHome(data); break;
     case "overview": renderOverview(data); break;
@@ -4210,7 +4215,67 @@ function renderOvNostro(root, data) {
 
   const gridRow = el("div", { class: "ov-nostro-recon-grid" });
 
-  // 1. NOSTRO POSITION TABLE GRID
+  // 1. RECONCILIATION SUMMARY BOX (GL COUNT BREAKDOWN)
+  const reconCard = el("div", { class: "ov-chart-card ov-recon-box-card" });
+  reconCard.appendChild(el("div", { class: "ov-chart-title", text: "Reconciliation GL Breakdown" }));
+
+  const reconTableWrap = el("div", { class: "table-responsive" });
+  const reconTable = el("table", { class: "ov-recon-gl-table" });
+
+  const rThead = el("thead");
+  const rTrHead = el("tr");
+  rTrHead.appendChild(el("th", { text: "UNIT / GL", style: "text-align:left;" }));
+  rTrHead.appendChild(el("th", { text: "GL COUNT", style: "text-align:right;" }));
+  rThead.appendChild(rTrHead);
+  reconTable.appendChild(rThead);
+
+  const rTbody = el("tbody");
+  const glBreakdownData = [
+    { unit: "1888 - ADC",                  count: 5,  reconUnitId: "1888"  },
+    { unit: "1948 - Credit Card (CTL)",     count: 72, reconUnitId: "1948"  },
+    { unit: "7928 - Credit Card (Card Pro)",count: 24, reconUnitId: "7928"  },
+    { unit: "1922 - Ijarah",               count: 44, reconUnitId: "1922"  },
+    { unit: "1944 - Auto Loan",            count: 32, reconUnitId: "1944"  },
+    { unit: "1945 - PRL (Personal Loan)",  count: 10, reconUnitId: "1945"   },
+    { unit: "1946 - MTG (Mortgage)",       count: 4,  reconUnitId: "1946"  },
+    { unit: "2000 - SME",                  count: 11, reconUnitId: "2000"  },
+    { unit: "Banca",                       count: 3,  reconUnitId: "banca" }
+  ];
+
+  glBreakdownData.forEach(function (item) {
+    const tr = el("tr", { class: "recon-gl-row-link" });
+    tr.title = "Open " + item.unit + " Reconciliation";
+    tr.appendChild(el("td", { text: item.unit, style: "text-align:left; font-weight:500;" }));
+    tr.appendChild(el("td", { text: item.count.toString(), class: "num", style: "text-align:right; font-weight:600;" }));
+    tr.addEventListener("click", function () {
+      const matchedUnit = RECON_UNITS.find(function (u) { return u.id === item.reconUnitId; });
+      if (matchedUnit) {
+        activeReconciliationUnit = matchedUnit;
+      }
+      navigateToPage("reconciliation");
+    });
+    rTbody.appendChild(tr);
+  });
+
+  // Two newly added rows inside THIS SAME Reconciliation GL Breakdown box
+  const extraReconRows = [
+    { label: "Receivables > 30d Amount", val: "PKR 145.60 Mn" },
+    { label: "Payables > 30d Amount",    val: "PKR 89.40 Mn"  }
+  ];
+
+  extraReconRows.forEach(function (r) {
+    const tr = el("tr", { class: "recon-gl-highlight-row" });
+    tr.appendChild(el("td", { text: r.label, style: "text-align:left; font-weight:bold; color:#ffffff;" }));
+    tr.appendChild(el("td", { text: r.val, class: "num", style: "text-align:right; font-weight:bold; color:#ffffff;" }));
+    rTbody.appendChild(tr);
+  });
+
+  reconTable.appendChild(rTbody);
+  reconTableWrap.appendChild(reconTable);
+  reconCard.appendChild(reconTableWrap);
+  gridRow.appendChild(reconCard);
+
+  // 2. NOSTRO POSITION TABLE GRID
   const nostroCard = el("div", { class: "ov-chart-card ov-nostro-card-container" });
   nostroCard.appendChild(el("div", { class: "ov-chart-title", text: "NOSTRO Position" }));
 
@@ -4256,66 +4321,6 @@ function renderOvNostro(root, data) {
   nostroTableWrap.appendChild(nostroTable);
   nostroCard.appendChild(nostroTableWrap);
   gridRow.appendChild(nostroCard);
-
-  // 2. RECONCILIATION SUMMARY BOX (GL COUNT BREAKDOWN)
-  const reconCard = el("div", { class: "ov-chart-card ov-recon-box-card" });
-  reconCard.appendChild(el("div", { class: "ov-chart-title", text: "Reconciliation GL Breakdown" }));
-
-  const reconTableWrap = el("div", { class: "table-responsive" });
-  const reconTable = el("table", { class: "ov-recon-gl-table" });
-
-  const rThead = el("thead");
-  const rTrHead = el("tr");
-  rTrHead.appendChild(el("th", { text: "UNIT / GL", style: "text-align:left;" }));
-  rTrHead.appendChild(el("th", { text: "GL COUNT", style: "text-align:right;" }));
-  rThead.appendChild(rTrHead);
-  reconTable.appendChild(rThead);
-
-  const rTbody = el("tbody");
-  const glBreakdownData = [
-    { unit: "1888 - ADC",                  count: 25, reconUnitId: "1888"  },
-    { unit: "1948 - Credit Card (CTL)",     count: 18, reconUnitId: "1948"  },
-    { unit: "7928 - Credit Card (Card Pro)",count: 32, reconUnitId: "7928"  },
-    { unit: "1922 - Ijarah",               count: 14, reconUnitId: "1922"  },
-    { unit: "1944 - Auto Loan",            count: 22, reconUnitId: "1944"  },
-    { unit: "1945 - PRL (Personal Loan)",  count: 29, reconUnitId: "1945"   },
-    { unit: "1946 - MTG (Mortgage)",       count: 16, reconUnitId: "1946"  },
-    { unit: "2000 - SME",                  count: 12, reconUnitId: "2000"  },
-    { unit: "Banca",                       count: 9,  reconUnitId: "banca" }
-  ];
-
-  glBreakdownData.forEach(function (item) {
-    const tr = el("tr", { class: "recon-gl-row-link" });
-    tr.title = "Open " + item.unit + " Reconciliation";
-    tr.appendChild(el("td", { text: item.unit, style: "text-align:left; font-weight:500;" }));
-    tr.appendChild(el("td", { text: item.count.toString(), class: "num", style: "text-align:right; font-weight:600;" }));
-    tr.addEventListener("click", function () {
-      const matchedUnit = RECON_UNITS.find(function (u) { return u.id === item.reconUnitId; });
-      if (matchedUnit) {
-        activeReconciliationUnit = matchedUnit;
-      }
-      navigateToPage("reconciliation");
-    });
-    rTbody.appendChild(tr);
-  });
-
-  // Two newly added rows inside THIS SAME Reconciliation GL Breakdown box
-  const extraReconRows = [
-    { label: "Receivables > 30d Amount", val: "PKR 145.60 Mn" },
-    { label: "Payables > 30d Amount",    val: "PKR 89.40 Mn"  }
-  ];
-
-  extraReconRows.forEach(function (r) {
-    const tr = el("tr", { class: "recon-gl-highlight-row" });
-    tr.appendChild(el("td", { text: r.label, style: "text-align:left; font-weight:bold; color:#ffffff;" }));
-    tr.appendChild(el("td", { text: r.val, class: "num", style: "text-align:right; font-weight:bold; color:#ffffff;" }));
-    rTbody.appendChild(tr);
-  });
-
-  reconTable.appendChild(rTbody);
-  reconTableWrap.appendChild(reconTable);
-  reconCard.appendChild(reconTableWrap);
-  gridRow.appendChild(reconCard);
 
   section.appendChild(gridRow);
   root.appendChild(section);
@@ -6936,15 +6941,15 @@ function renderChargeback(data) {
    --------------------------------------------------------------------- */
 
 const RECON_UNITS = [
-  { id: "1888", code: "1888", name: "ADC", fullName: "1888 - ADC", titleName: "Branch 1888 - ADC Operations" },
-  { id: "1948", code: "1948", name: "Credit Card (CTL)", fullName: "1948 - Credit Card (CTL)", titleName: "Branch 1948 - Credit Card (CTL)" },
-  { id: "7928", code: "7928", name: "Credit Card (Card Pro)", fullName: "7928 - Credit Card (Card Pro)", titleName: "Branch 7928 - Credit Card (Card Pro)" },
-  { id: "1922", code: "1922", name: "Ijarah", fullName: "1922 - Ijarah", titleName: "Branch 1922 - Ijarah" },
-  { id: "1944", code: "1944", name: "Auto", fullName: "1944 - Auto", titleName: "Branch 1944 - Auto Loan" },
-  { id: "1945", code: "1945", name: "Personal Loan (PRL)", fullName: "PRL - Personal Loan", titleName: "PRL - Personal Loan" },
-  { id: "1946", code: "1946", name: "MTG - Mortgage", fullName: "1946 - MTG - Mortgage", titleName: "Branch 1946 - Mortgage" },
-  { id: "2000", code: "2000", name: "SME", fullName: "2000 - SME", titleName: "Branch 2000 - SME" },
-  { id: "banca", code: "Banca", name: "Banca", fullName: "Banca", titleName: "Banca" }
+  { id: "1888", code: "1888", name: "ADC", fullName: "1888 - ADC", titleName: "Branch 1888 - ADC Operations", glCount: 5 },
+  { id: "1948", code: "1948", name: "Credit Card (CTL)", fullName: "1948 - Credit Card (CTL)", titleName: "Branch 1948 - Credit Card (CTL)", glCount: 72 },
+  { id: "7928", code: "7928", name: "Credit Card (Card Pro)", fullName: "7928 - Credit Card (Card Pro)", titleName: "Branch 7928 - Credit Card (Card Pro)", glCount: 24 },
+  { id: "1922", code: "1922", name: "Ijarah", fullName: "1922 - Ijarah", titleName: "Branch 1922 - Ijarah", glCount: 44 },
+  { id: "1944", code: "1944", name: "Auto", fullName: "1944 - Auto", titleName: "Branch 1944 - Auto Loan", glCount: 32 },
+  { id: "1945", code: "1945", name: "Personal Loan (PRL)", fullName: "PRL - Personal Loan", titleName: "PRL - Personal Loan", glCount: 10 },
+  { id: "1946", code: "1946", name: "MTG - Mortgage", fullName: "1946 - MTG - Mortgage", titleName: "Branch 1946 - Mortgage", glCount: 4 },
+  { id: "2000", code: "2000", name: "SME", fullName: "2000 - SME", titleName: "Branch 2000 - SME", glCount: 11 },
+  { id: "banca", code: "Banca", name: "Banca", fullName: "Banca", titleName: "Banca", glCount: 3 }
 ];
 
 let activeReconciliationUnit = null;
@@ -12780,6 +12785,9 @@ function renderReconciliation(data) {
       const card = el("div", { class: "recon-unit-card", type: "button" });
       card.appendChild(el("div", { class: "recon-unit-code", text: unit.code }));
       card.appendChild(el("div", { class: "recon-unit-name", text: unit.name }));
+      if (unit.glCount !== undefined) {
+        card.appendChild(el("div", { class: "recon-unit-gl-count", text: "GL Count: " + unit.glCount }));
+      }
 
       card.addEventListener("click", function () {
         activeReconciliationUnit = unit;
@@ -12818,9 +12826,9 @@ function renderReconciliation(data) {
     root.appendChild(headRow);
 
     const subOpts = [
-      { id: "SD", name: "SD Credit Card" },
-      { id: "IPS", name: "Credit Card Recon (IPS)" },
-      { id: "TPA", name: "TPA Reconciliation" }
+      { id: "SD", name: "SD Credit Card", glCount: 12 },
+      { id: "IPS", name: "Credit Card Recon (IPS)", glCount: 23 },
+      { id: "TPA", name: "TPA Reconciliation", glCount: 37 }
     ];
 
     const grid = el("div", { class: "recon-unit-grid" });
@@ -12828,6 +12836,9 @@ function renderReconciliation(data) {
       const card = el("div", { class: "recon-unit-card", type: "button" });
       card.appendChild(el("div", { class: "recon-unit-code", text: opt.id }));
       card.appendChild(el("div", { class: "recon-unit-name", text: opt.name }));
+      if (opt.glCount !== undefined) {
+        card.appendChild(el("div", { class: "recon-unit-gl-count", text: "GL Count: " + opt.glCount }));
+      }
       card.addEventListener("click", function () {
         activeReconSubOption = opt.id;
         renderReconciliation(currentData());
@@ -12893,6 +12904,8 @@ function renderReconciliation(data) {
       return hasAging || isClosureReq || hasTBVal;
     });
 
+    const unitTitle = (unit.titleName || unit.fullName || unit.name) + (subOpt ? " - " + subOpt : "");
+
     let alertItemsHTML = "";
     if (outstandingItems.length > 0) {
       alertItemsHTML = '<div class="aging-alert-items-list">';
@@ -12910,27 +12923,52 @@ function renderReconciliation(data) {
         else agingBucketStr = "Pending Closure";
 
         const codeStr = item.sundryCode || "GL-" + item.sNo;
+        const descStr = item.description || "Unspecified GL Account";
+
+        // Structured email message carrying proper details to the concern
+        const emailSubject = "[Reconciliation Alert] Outstanding Aging Closure Required - GL " + codeStr + " (" + unitTitle + ")";
+        let emailBody = "Dear Concern,\r\n\r\n";
+        emailBody += "This is an automated notification regarding an outstanding reconciliation item requiring closure.\r\n\r\n";
+        emailBody += "--- RECONCILIATION DETAILS ---\r\n";
+        emailBody += "Branch / Unit: " + unitTitle + "\r\n";
+        emailBody += "GL / Sundry Code: " + codeStr + "\r\n";
+        emailBody += "Description: " + descStr + "\r\n";
+        emailBody += "Outstanding Amount: " + amtStr + "\r\n";
+        emailBody += "Aging Duration: " + agingBucketStr + "\r\n";
+        emailBody += "As per Trial Balance: " + formatCurrency(item.asPerTB) + "\r\n";
+        emailBody += "As per Recon: " + formatCurrency(item.asPerRecon) + "\r\n";
+        emailBody += "Difference: " + formatCurrency(item.difference) + "\r\n";
+        emailBody += "Status / Action Required: Closure Required (" + (item.remarks || "Outstanding Transactions") + ")\r\n\r\n";
+        emailBody += "Please investigate this account and ensure the necessary reconciliation actions or closures are initiated promptly.\r\n\r\n";
+        emailBody += "Regards,\r\nOperations Dashboard Monitoring";
+
+        const mailtoHref = "mailto:?subject=" + encodeURIComponent(emailSubject) + "&body=" + encodeURIComponent(emailBody);
 
         alertItemsHTML += '<div class="aging-alert-item-card">'
-          + 'GL <strong>' + codeStr + '</strong> (' + item.description + ') has <strong>' + amtStr + '</strong> outstanding for <strong>' + agingBucketStr + '</strong> &mdash; <em>Closure Required</em>.'
+          + '<div class="aging-alert-item-content">'
+          + 'GL <strong>' + codeStr + '</strong> (' + descStr + ') has <strong>' + amtStr + '</strong> outstanding for <strong>' + agingBucketStr + '</strong> &mdash; <em>Closure Required</em>.'
+          + '</div>'
+          + '<div class="aging-alert-actions">'
+          + '<a class="btn-aging-gl-email" href="' + mailtoHref + '" title="Email concern for GL ' + codeStr + '">&#9993; Email Alert</a>'
+          + '</div>'
           + '</div>';
       });
       alertItemsHTML += '</div>';
     } else {
-      alertItemsHTML = '<div style="font-size: 12px; margin-top: 6px; color: var(--positive); font-weight: 500;">All GL/Sundry accounts are fully reconciled. No outstanding aging items requiring closure.</div>';
+      alertItemsHTML = '<div style="font-size: 12.5px; padding: 10px 0; color: var(--positive, #0D5F92); font-weight: 600;">&#10003; All GL/Sundry accounts are fully reconciled. No outstanding aging items requiring closure.</div>';
     }
 
     // Expandable compact panel for Aging Alert details
     const alertPanel = el("div", { class: "aging-alerts-panel " + (alertInfo.isAlert ? "warning" : "ok"), style: "display: none;" });
-    const alertStatusTag = alertInfo.isAlert ? "warning" : "ok";
+    const alertStatusTag = alertInfo.isAlert ? "critical" : "positive";
     const alertText = alertInfo.status;
 
-    alertPanel.innerHTML = '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom: 4px;">'
+    alertPanel.innerHTML = '<div class="aging-alerts-panel-header">'
       + '<div style="display:flex; align-items:center; gap:8px;">'
-      + '<span class="status-badge ' + alertStatusTag + '">Aging Alert</span>'
-      + '<strong style="font-size: 13px;">Reconciliation Status: ' + alertText + ' (' + outstandingItems.length + ' Outstanding Account' + (outstandingItems.length !== 1 ? 's' : '') + ')</strong>'
+      + '<span class="status-badge ' + (alertInfo.isAlert ? "critical" : "positive") + '">Aging Alert</span>'
+      + '<strong style="font-size: 13.5px; color: var(--text-main);">' + unitTitle + ' &mdash; ' + alertText + ' (' + outstandingItems.length + ' Outstanding Account' + (outstandingItems.length !== 1 ? 's' : '') + ')</strong>'
       + '</div>'
-      + '<button type="button" class="panel-close-btn" style="background:none;border:none;cursor:pointer;font-size:16px;line-height:1;color:inherit;" aria-label="Close aging alerts">&times;</button>'
+      + '<button type="button" class="panel-close-btn" style="background:none;border:none;cursor:pointer;font-size:18px;line-height:1;color:inherit;padding:2px 6px;" aria-label="Close aging alerts">&times;</button>'
       + '</div>'
       + alertItemsHTML;
 
@@ -13994,3 +14032,4 @@ function init() {
 
 document.addEventListener("DOMContentLoaded", init);
 syncHeaderHeight();
+

@@ -1465,7 +1465,7 @@ table.data-table {
 /* Overview NOSTRO & Reconciliation Grid Height Matching & Visual Balance */
 .ov-nostro-recon-grid {
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: var(--space-2);
   align-items: stretch;
   margin-bottom: var(--space-3);
@@ -2415,7 +2415,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 
 .ov-nostro-recon-grid {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: var(--space-2);
   align-items: stretch;
 }
@@ -2435,7 +2435,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 
 .ov-recon-box-card {
   height: 100%;
-  min-width: 340px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
@@ -2952,7 +2952,7 @@ table.ov-recon-summary-table tr.recon-highlight-row td .indicator {
   border: 1px solid var(--border);
   border-top: 3.5px solid var(--brand);
   border-radius: var(--radius-md);
-  padding: 24px var(--space-2);
+  padding: 20px var(--space-2) 18px var(--space-2);
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
@@ -2960,7 +2960,7 @@ table.ov-recon-summary-table tr.recon-highlight-row td .indicator {
   justify-content: center;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
-  min-height: 110px;
+  min-height: 128px;
   text-align: center;
   box-sizing: border-box;
 }
@@ -2986,6 +2986,21 @@ table.ov-recon-summary-table tr.recon-highlight-row td .indicator {
   font-weight: 600;
   color: var(--text-secondary);
   line-height: 1.3;
+}
+
+.recon-unit-gl-count {
+  margin-top: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--brand-dark);
+  background: var(--brand-light);
+  border: 1px solid var(--brand-border, #90C4E4);
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .recon-detail-topbar {
@@ -6116,27 +6131,176 @@ th.grouped-hdr,
   border-bottom: 1.5px solid #D7E2E8 !important;
 }
 
-/* Custom Glassmorphism styling for Alert Button */
+/* Darkened prominent highlight styling for Dashboard Header Alert Button */
 #btnAllAlerts {
-  background: rgba(201, 74, 74, 0.3) !important;
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
-  border: 1px solid rgba(201, 74, 74, 0.5) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  background: #A81B1B !important;
+  border: 1px solid #7F1414 !important;
+  box-shadow: 0 2px 8px rgba(168, 27, 27, 0.45) !important;
   color: #ffffff !important;
-  transition: all 0.3s ease !important;
+  font-weight: 700 !important;
+  transition: all 0.25s ease !important;
 }
 
 #btnAllAlerts:hover {
-  background: rgba(201, 74, 74, 0.45) !important;
-  border: 1px solid rgba(201, 74, 74, 0.7) !important;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15) !important;
+  background: #8A1414 !important;
+  border: 1px solid #5E0C0C !important;
+  box-shadow: 0 4px 14px rgba(138, 20, 20, 0.6) !important;
   transform: translateY(-1px);
 }
 
 #btnAllAlerts svg {
-  stroke: #D99A24 !important;
-  filter: drop-shadow(0 0 3px rgba(217, 154, 36, 0.5));
+  stroke: #F59E0B !important;
+  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.65));
+}
+
+/* =========================================================================
+   RECONCILIATION UNIT AGING ALERTS PANEL & EMAIL REDIRECTION
+   ========================================================================= */
+.btn-aging-alerts {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+  border-radius: var(--radius-md, 8px);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-aging-alerts.warning {
+  background: rgba(168, 27, 27, 0.82) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(254, 178, 178, 0.35) !important;
+  box-shadow: 0 4px 12px rgba(168, 27, 27, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.2) !important;
+}
+
+.btn-aging-alerts.warning:hover {
+  background: rgba(138, 20, 20, 0.92) !important;
+  border: 1px solid rgba(254, 178, 178, 0.55) !important;
+  box-shadow: 0 6px 16px rgba(138, 20, 20, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.3) !important;
+  transform: translateY(-1px);
+}
+
+.btn-aging-alerts.ok {
+  background: var(--brand-light, #EAF3FA);
+  color: var(--brand-dark, #0D5F92);
+  border: 1px solid var(--brand-border, #90C4E4);
+}
+
+.btn-aging-alerts.ok:hover {
+  background: #d8ebf7;
+}
+
+.aging-alert-badge {
+  background: #FFFFFF;
+  color: #C53030;
+  font-weight: 800;
+  font-size: 11px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.aging-alerts-panel {
+  margin-top: var(--space-1-5, 12px);
+  margin-bottom: var(--space-2, 16px);
+  border-radius: var(--radius-md, 8px);
+  padding: 14px 16px;
+  background: #FFF5F5;
+  border: 1.5px solid #FEB2B2;
+  box-shadow: 0 3px 10px rgba(197, 48, 48, 0.08);
+}
+
+.aging-alerts-panel.ok {
+  background: #F0FFF4;
+  border-color: #9AE6B4;
+}
+
+.aging-alerts-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(197, 48, 48, 0.15);
+}
+
+.aging-alerts-panel.ok .aging-alerts-panel-header {
+  border-bottom-color: rgba(56, 161, 105, 0.2);
+}
+
+.aging-alert-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.aging-alert-item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #FFFFFF;
+  border: 1px solid #FED7D7;
+  border-left: 4px solid #E53E3E;
+  border-radius: 6px;
+  padding: 10px 14px;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.aging-alert-item-card:hover {
+  background: #FFFAF0;
+  border-color: #FC8181;
+  box-shadow: 0 3px 8px rgba(229, 62, 62, 0.12);
+}
+
+.aging-alert-item-content {
+  flex: 1;
+  font-size: 12.5px;
+  color: var(--text-main, #1F2937);
+  line-height: 1.45;
+}
+
+.aging-alert-item-content strong {
+  color: #9B2C2C;
+}
+
+.aging-alert-actions {
+  flex-shrink: 0;
+}
+
+.btn-aging-gl-email {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #FFFFFF !important;
+  background: #C53030;
+  border: 1px solid #9B2C2C;
+  border-radius: 5px;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.btn-aging-gl-email:hover {
+  background: #9B2C2C;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 6px rgba(155, 44, 44, 0.35);
+  transform: translateY(-1px);
 }
 
 /* Reconciliation Page Unit Table Headers (#117ABF) */
