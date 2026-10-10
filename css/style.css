@@ -1690,13 +1690,17 @@ table.data-table th {
   font-variant-numeric: tabular-nums;
 }
 
-table.data-table td.num, table.data-table th.num {
-  text-align: right;
+table.data-table td.num, table.data-table th.num,
+table.data-table td.col-center, table.data-table th.col-center,
+table.data-table td.col-sno, table.data-table th.col-sno,
+table.data-table td.center, table.data-table th.center {
+  text-align: center !important;
   font-variant-numeric: tabular-nums;
 }
 
-table.data-table td.center, table.data-table th.center {
-  text-align: center !important;
+table.data-table th.col-desc,
+table.data-table td.col-desc {
+  text-align: left !important;
 }
 
 table.data-table tbody tr {
@@ -6131,26 +6135,53 @@ th.grouped-hdr,
   border-bottom: 1.5px solid #D7E2E8 !important;
 }
 
-/* Darkened prominent highlight styling for Dashboard Header Alert Button */
+/* Neumorphic styling for Dashboard Header Alert Button with Glassy White Border */
 #btnAllAlerts {
-  background: #A81B1B !important;
-  border: 1px solid #7F1414 !important;
-  box-shadow: 0 2px 8px rgba(168, 27, 27, 0.45) !important;
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: linear-gradient(145deg, #B91C1C, #821010) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.55) !important;
+  border-radius: 9px !important;
+  box-shadow:
+    3px 3px 8px rgba(0, 0, 0, 0.38),
+    -2px -2px 6px rgba(255, 255, 255, 0.22),
+    inset 1px 1px 2px rgba(255, 255, 255, 0.38),
+    inset -1px -1px 2px rgba(0, 0, 0, 0.25) !important;
   color: #ffffff !important;
   font-weight: 700 !important;
-  transition: all 0.25s ease !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer !important;
 }
 
 #btnAllAlerts:hover {
-  background: #8A1414 !important;
-  border: 1px solid #5E0C0C !important;
-  box-shadow: 0 4px 14px rgba(138, 20, 20, 0.6) !important;
+  background: linear-gradient(145deg, #C52222, #941515) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow:
+    4px 4px 12px rgba(0, 0, 0, 0.42),
+    -3px -3px 8px rgba(255, 255, 255, 0.32),
+    inset 1px 1px 3px rgba(255, 255, 255, 0.45) !important;
   transform: translateY(-1px);
 }
 
-#btnAllAlerts svg {
-  stroke: #F59E0B !important;
-  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.65));
+#btnAllAlerts:active {
+  background: linear-gradient(145deg, #7A1010, #9B1616) !important;
+  box-shadow:
+    inset 3px 3px 6px rgba(0, 0, 0, 0.5),
+    inset -2px -2px 5px rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(0);
+}
+
+#btnAllAlerts svg,
+#btnAllAlerts svg path {
+  fill: #F59E0B !important;
+  stroke: #D97706 !important;
+  stroke-width: 1.4 !important;
+  filter: drop-shadow(0 1px 3px rgba(245, 158, 11, 0.65)) !important;
 }
 
 /* =========================================================================
@@ -6309,5 +6340,78 @@ th.grouped-hdr,
   background-color: #117ABF !important;
   color: #ffffff !important;
 }
+
+/* Chargeback & Disputes Custom Themed KPI Cards */
+.kpi-card.kpi-card-matte-red .kpi-header-band {
+  background: #C96B54 !important;
+}
+
+.kpi-card.kpi-card-soft-green .kpi-header-band {
+  background: #48A87A !important;
+}
+
+/* Pending item color (#D4922E / var(--kpi-amber)) for Cashback to Customer */
+.kpi-card.kpi-card-pending-amber .kpi-header-band {
+  background: var(--kpi-amber, #D4922E) !important;
+}
+
+/* =========================================================================
+   GLOBAL TABLE COLUMN ALIGNMENT RULE:
+   - All columns of Count, Amount, Change Rate, and S.No are CENTER aligned.
+   - Only the descriptive column (or first column if descriptive) is LEFT aligned.
+   ========================================================================= */
+table.data-table th.col-desc,
+table.data-table td.col-desc,
+table.ov-module-table th.col-desc,
+table.ov-module-table td.col-desc,
+table.recon-detail-table th.col-left,
+table.recon-detail-table td.col-left {
+  text-align: left !important;
+}
+
+table.data-table th.num,
+table.data-table td.num,
+table.data-table th.col-center,
+table.data-table td.col-center,
+table.data-table th.col-sno,
+table.data-table td.col-sno,
+table.data-table th.center,
+table.data-table td.center,
+table.ov-module-table th.num,
+table.ov-module-table td.num,
+table.ov-adc-table th.num,
+table.ov-adc-table td.num,
+table.ov-recon-gl-table th.num,
+table.ov-recon-gl-table td.num,
+table.recon-detail-table th:not(.col-left),
+table.recon-detail-table td.num,
+table.recon-detail-table td.center,
+.loan-table tbody td.num,
+.loan-table thead th.num {
+  text-align: center !important;
+  font-variant-numeric: tabular-nums;
+}
+
+/* =========================================================================
+   CHARGEBACK & DISPUTES PAGE — COMPLETE PRIMARY CORE COLORED HEADERS (#117ABF)
+   Both two-tier tables (Disputes & Chargeback) have their entire 2-tier header
+   (top grouped headers + bottom sub-headers) styled in core banking primary.
+   ========================================================================= */
+#page-chargeback .cb-two-tier-table thead th,
+#page-chargeback table.cb-two-tier-table thead tr th,
+#page-chargeback table.cb-two-tier-table th.grouped-hdr,
+#page-chargeback table.cb-two-tier-table th.col-desc,
+#page-chargeback table.cb-two-tier-table th.col-center,
+#page-chargeback table.cb-two-tier-table th.num,
+#page-chargeback table thead th {
+  background-color: #117ABF !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  font-weight: 700 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15) !important;
+  vertical-align: middle !important;
+}
+
+
 
 
